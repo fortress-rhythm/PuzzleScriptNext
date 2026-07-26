@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PuzzleScript Map Editor</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%2312131a'/%3E%3Crect x='2' y='2' width='5' height='5' fill='%23a3ce27'/%3E%3Crect x='9' y='2' width='5' height='5' fill='%23eb8931'/%3E%3Crect x='2' y='9' width='5' height='5' fill='%23a46422'/%3E%3Crect x='9' y='9' width='5' height='5' fill='%236ea8fe'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+
+<div id="dropzone" class="dropzone hidden"><div>Drop a PuzzleScript file</div></div>
+
+<header class="topbar">
+  <div class="brand">PuzzleScript <b>Map Editor</b></div>
+
+  <div class="tools" role="toolbar" aria-label="Tools">
+    <button class="tool" data-tool="select" title="Marquee select (M)">▦<span>select</span></button>
+    <button class="tool" data-tool="brush"  title="Brush (B)">✎<span>brush</span></button>
+    <button class="tool" data-tool="rect"   title="Rectangle (R)">▭<span>rect</span></button>
+    <button class="tool" data-tool="line"   title="Line (L)">╱<span>line</span></button>
+    <button class="tool" data-tool="fill"   title="Flood fill (G)">◈<span>fill</span></button>
+    <button class="tool" data-tool="pick"   title="Eyedropper (I)">◎<span>pick</span></button>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="actions">
+    <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button id="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    <span class="divider"></span>
+    <label class="zoom">Zoom
+      <input id="zoom" type="range" min="8" max="48" step="2" value="24">
+    </label>
+    <span class="divider"></span>
+    <button id="open">Open&hellip;</button>
+    <button id="save" class="primary" disabled>Download .txt</button>
+    <input id="file" type="file" accept=".txt,text/plain" hidden>
+  </div>
+</header>
+
+<main id="workspace" class="workspace hidden">
+
+  <aside class="panel palette-panel">
+    <h2>Tiles</h2>
+    <div id="palette" class="palette"></div>
+    <div class="hint" id="paletteHint"></div>
+  </aside>
+
+  <section class="stage">
+    <div class="stage-head">
+      <span id="levelTitle" class="level-title"></span>
+      <span id="sizeBadge" class="badge"></span>
+      <span class="spacer"></span>
+      <div class="resize" aria-label="Resize level">
+        <span>rows</span>
+        <button data-resize="row-remove-top" title="Remove top row">−↑</button>
+        <button data-resize="row-add-top" title="Add row at top">+↑</button>
+        <button data-resize="row-add-bottom" title="Add row at bottom">+↓</button>
+        <button data-resize="row-remove-bottom" title="Remove bottom row">−↓</button>
+        <span>cols</span>
+        <button data-resize="col-remove-left" title="Remove left column">−←</button>
+        <button data-resize="col-add-left" title="Add column at left">+←</button>
+        <button data-resize="col-add-right" title="Add column at right">+→</button>
+        <button data-resize="col-remove-right" title="Remove right column">−→</button>
+      </div>
+    </div>
+
+    <div class="canvas-wrap">
+      <canvas id="canvas" tabindex="0"></canvas>
+    </div>
+
+    <div class="statusbar">
+      <span id="cursor" class="mono"></span>
+      <span id="selInfo" class="mono"></span>
+      <span class="spacer"></span>
+      <span id="status" class="status"></span>
+    </div>
+  </section>
+
+  <aside class="panel levels-panel">
+    <h2>Levels</h2>
+    <div id="levels" class="levels"></div>
+    <div class="hint">
+      Copy a rectangle in one level, switch to another, paste. The clipboard
+      follows you.
+    </div>
+  </aside>
+
+</main>
+
+<section id="welcome" class="welcome">
+  <div class="welcome-inner">
+    <h1>PuzzleScript Map Editor</h1>
+    <p class="lede">
+      A grid editor for PuzzleScript levels, built around the one thing text
+      editors get wrong: copying a rectangle and pasting it <em>as</em> a
+      rectangle, overwriting rather than shoving rows sideways.
+    </p>
+    <ul class="features">
+      <li>Your real sprites, drawn from the game's <code>OBJECTS</code> section</li>
+      <li>Marquee select, copy, cut and overwrite-paste, with a live ghost preview</li>
+      <li>Paste across levels &mdash; the clipboard is shared</li>
+      <li>Flood fill, rectangles, lines, eyedropper, unlimited undo</li>
+      <li>Resize from any edge; nothing else in your file is touched on save</li>
+    </ul>
+    <div class="welcome-actions">
+      <button id="open2" class="primary big">Open a game file&hellip;</button>
+      <button id="demo" class="big">Try the example</button>
+    </div>
+    <p class="fineprint">Everything happens in your browser. Nothing is uploaded.</p>
+  </div>
+</section>
+
+<script src="../src/palettes.js"></script>
+<script src="../src/psgame.js"></script>
+<script src="render.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

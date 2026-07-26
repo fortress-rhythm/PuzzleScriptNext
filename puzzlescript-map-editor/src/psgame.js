@@ -137,16 +137,19 @@ function parseObjects(lines, stripped, section) {
             const name = tokens[0];
             const aliases = tokens.slice(1).filter(t => !t.includes(':'));
             let colors = [];
+            let spriteStart = 1;
             if (block.length > 1) {
                 const maybeColors = block[1].trim();
                 if (maybeColors && looksLikeColorLine(maybeColors)) {
                     colors = maybeColors.split(/\s+/).filter(Boolean);
+                    spriteStart = 2;
                 }
             }
+            const sprite = parseSpriteMatrix(block.slice(spriteStart));
             // `names` keeps the original casing, which is what a level grid and
             // the legend actually contain; the map is keyed lower-case because
             // PuzzleScript is case-insensitive unless the prelude says otherwise.
-            const entry = { name, aliases, colors, names: [name, ...aliases] };
+            const entry = { name, aliases, colors, sprite, names: [name, ...aliases] };
             objects[name.toLowerCase()] = entry;
             for (const a of aliases) objects[a.toLowerCase()] = entry;
             order.push(entry);
@@ -170,6 +173,36 @@ const COLOR_WORDS = new Set([
     'green', 'darkgreen', 'lightgreen', 'blue', 'lightblue', 'darkblue', 'purple', 'pink',
     'transparent',
 ]);
+
+/**
+ * Parse an object's sprite matrix - the block of digit rows under its colours.
+ *
+ * Each character is an index into the object's colour list; '.' is transparent.
+ * PuzzleScript's own sprites are 5x5, but PuzzleScript Next allows other sizes
+ * via `sprite_size`, so the dimensions come from the matrix itself.
+ *
+ * Returns null when the lines are not a sprite - objects may legally have no
+ * matrix at all, in which case they render as a solid square of colour 0.
+ */
+function parseSpriteMatrix(lines) {
+    const rows = lines.map(l => l.trim()).filter(Boolean);
+    if (rows.length < 2) return null;
+    if (!rows.every(r => /^[0-9a-z.]+$/i.test(r))) return null;
+    if (!rows.every(r => r.length === rows[0].length)) return null;
+    // A single column would be ambiguous with other markup.
+    if (rows[0].length < 2) return null;
+
+    return {
+        width: rows[0].length,
+        height: rows.length,
+        // Row-major array of colour indices, with null for transparent.
+        pixels: rows.map(r => Array.from(r).map(ch => {
+            if (ch === '.') return null;
+            const n = parseInt(ch, 36);
+            return Number.isNaN(n) ? null : n;
+        })),
+    };
+}
 
 function looksLikeColorLine(text) {
     const tokens = text.split(/\s+/).filter(Boolean);
@@ -207,6 +240,38 @@ function parseLegend(lines, stripped, section) {
         };
     }
     return legend;
+}
+
+/**
+ * Parse COLLISIONLAYERS into an array of layers, each a list of object names,
+ * bottom layer first. A renderer needs this to stack a tile like
+ * `@ = Crate and Target` in the order the game itself would draw it.
+ */
+function parseCollisionLayers(lines, stripped, section) {
+    const layers = [];
+    if (!section) return layers;
+    for (let i = section.start; i < section.end; i++) {
+        const code = stripped[i].code.trim();
+        if (!code || RE_EQUALS_ROW.test(code)) continue;
+        const names = code.split(',').map(t => t.trim()).filter(Boolean);
+        if (names.length) layers.push(names);
+    }
+    return layers;
+}
+
+/**
+ * Map each object name to the index of the collision layer it sits on.
+ */
+function buildLayerIndex(collisionLayers) {
+    const index = new Map();
+    collisionLayers.forEach((names, i) => {
+        for (const n of names) {
+            // A layer entry may be a property name covering several objects;
+            // storing it as written is enough for ordering purposes.
+            if (!index.has(n.toLowerCase())) index.set(n.toLowerCase(), i);
+        }
+    });
+    return index;
 }
 
 /**
@@ -314,6 +379,7 @@ function parseGame(source) {
 
     const objects = parseObjects(lines, stripped, byName.objects);
     const legend = parseLegend(lines, stripped, byName.legend);
+    const collisionLayers = parseCollisionLayers(lines, stripped, byName.collisionlayers);
     const levelBlocks = parseLevels(lines, stripped, byName.levels);
 
     // `case_sensitive` in the prelude decides whether P and p are one tile or two.
@@ -333,6 +399,8 @@ function parseGame(source) {
         sectionByName: byName,
         caseSensitive,
         objects,
+        collisionLayers,
+        layerIndex: buildLayerIndex(collisionLayers),
         legend,
         levelBlocks,
         levels: groupLevels(levelBlocks),
@@ -349,6 +417,24 @@ function parseGame(source) {
  */
 function buildGlyphTable(game, palette) {
     const glyphs = {};
+
+    // The drawable form of a glyph: one entry per object it expands to, in
+    // legend order, each with its palette-resolved colours and sprite matrix.
+    // `@ = Crate and Target` therefore draws as Target with Crate on top.
+    const rendersFor = (objectNames) => objectNames.map(n => {
+        const obj = game.objects[n.toLowerCase()];
+        if (!obj) return null;
+        const layer = game.layerIndex ? game.layerIndex.get(obj.name.toLowerCase()) : undefined;
+        return {
+            name: obj.name,
+            colors: obj.colors.map(c => resolveColor(c, palette)),
+            sprite: obj.sprite || null,
+            layer: layer === undefined ? Infinity : layer,
+        };
+    }).filter(Boolean)
+        // Bottom collision layer first, so a crate draws on top of its target.
+        // Objects missing from COLLISIONLAYERS keep their legend order at the top.
+        .sort((a, b) => a.layer - b.layer);
 
     const colorFor = (objectNames) => {
         for (const n of objectNames) {
@@ -391,6 +477,7 @@ function buildGlyphTable(game, palette) {
                 label: obj.name,
                 objects: [obj.name],
                 color: colorFor([obj.name]),
+                renders: rendersFor([obj.name]),
                 source: 'objects',
             });
         }
@@ -404,6 +491,7 @@ function buildGlyphTable(game, palette) {
             label: entry.expansion,
             objects: entry.objects,
             color: colorFor(entry.objects),
+            renders: rendersFor(entry.objects),
             source: 'legend',
         });
     }
@@ -484,7 +572,9 @@ function applyGridEdits(game, edits) {
     return joinLines(lines, endings);
 }
 
-module.exports = {
+// Named distinctly rather than a generic `API`: in the browser these files
+// load as plain <script>s and share one global scope.
+const PSGAME_API = {
     SECTION_NAMES,
     LEVEL_COMMANDS,
     parseGame,
@@ -500,4 +590,15 @@ module.exports = {
     joinLines,
     splitLines,
     findSections,
+    parseSpriteMatrix,
+    parseCollisionLayers,
+    buildLayerIndex,
 };
+
+// Usable both as a CommonJS module (the psmap CLI) and as a plain <script> in
+// the browser (the web editor), with no build step in either case.
+if (typeof module !== 'undefined' && module.exports) module.exports = PSGAME_API;
+if (typeof globalThis !== 'undefined') {
+    globalThis.PSMap = globalThis.PSMap || {};
+    globalThis.PSMap.psgame = PSGAME_API;
+}

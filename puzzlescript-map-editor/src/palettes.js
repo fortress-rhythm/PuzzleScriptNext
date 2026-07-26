@@ -387,4 +387,10 @@ const colorPalettesAliases = {
     "14": "whitingjp"
 };
 
-module.exports = { colorPalettes, colorPalettesAliases };
+const PALETTES_API = { colorPalettes, colorPalettesAliases };
+
+if (typeof module !== 'undefined' && module.exports) module.exports = PALETTES_API;
+if (typeof globalThis !== 'undefined') {
+    globalThis.PSMap = globalThis.PSMap || {};
+    globalThis.PSMap.palettes = PALETTES_API;
+}
