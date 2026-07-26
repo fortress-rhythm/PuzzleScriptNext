@@ -676,8 +676,10 @@ function redrawCellGrid(curlevel) {
         ctx.restore();
     }
 
-    if (levelEditorOpened)
+    if (levelEditorOpened) {
+        drawEditorSelection();
         drawEditorIcons(minMaxIJ[0], minMaxIJ[1]);
+    }
 
     //----- functions -----
     // Default draw loop, including when animating
@@ -992,6 +994,71 @@ function setClip(tween) {
     ctx.lineTo(rc.x + rc.w, rc.y + rc.h);
     ctx.lineTo(rc.x, rc.y + rc.h);
     ctx.clip();
+}
+
+// Convert a level coordinate to the pixel position of that cell's top-left.
+function editorCellToPixel(x,y) {
+	return { x: xoffset + x*cellwidth, y: yoffset + y*cellheight };
+}
+
+// The marquee, and the ghost of a pending paste. Drawn over the map so you can
+// see exactly which cells a paste is about to overwrite before committing it.
+function drawEditorSelection() {
+	if (editorSelection!==null) {
+		const sel = editorSelection;
+		const tl = editorCellToPixel(sel.x0, sel.y0);
+		const w = (sel.x1-sel.x0+1)*cellwidth;
+		const h = (sel.y1-sel.y0+1)*cellheight;
+
+		ctx.save();
+		ctx.fillStyle = '#6ea8fe';
+		ctx.globalAlpha = 0.22;
+		ctx.fillRect(tl.x, tl.y, w, h);
+		ctx.globalAlpha = 1.0;
+		ctx.strokeStyle = '#6ea8fe';
+		ctx.lineWidth = 2;
+		ctx.setLineDash([6,4]);
+		ctx.strokeRect(tl.x+1, tl.y+1, w-2, h-2);
+		ctx.restore();
+	}
+
+	if (editorPasteMode && editorClipboard!==null) {
+		const clip = editorClipboard;
+		const ox = mouseCoordX;
+		const oy = mouseCoordY;
+		const tl = editorCellToPixel(ox, oy);
+
+		ctx.save();
+		// Clip to the map so the ghost cannot spill over the tile palette.
+		ctx.beginPath();
+		ctx.rect(xoffset, yoffset, curLevel.width*cellwidth, curLevel.height*cellheight);
+		ctx.clip();
+
+		ctx.globalAlpha = 0.7;
+		for (let y=0; y<clip.h; y++) {
+			for (let x=0; x<clip.w; x++) {
+				const mask = clip.cells[y*clip.w+x];
+				const pos = editorCellToPixel(ox+x, oy+y);
+				// Stack the cell's objects in collision layer order, matching
+				// how the map itself is drawn.
+				for (const group of state.collisionLayerGroups) {
+					for (let k=group.firstObjectNo; k<group.firstObjectNo+group.numObjects; ++k) {
+						if (mask.get(k) && spriteImages[k]) {
+							ctx.drawImage(spriteImages[k], pos.x, pos.y, cellwidth, cellheight);
+						}
+					}
+				}
+			}
+		}
+		ctx.restore();
+
+		ctx.save();
+		ctx.strokeStyle = '#7ee787';
+		ctx.lineWidth = 2;
+		ctx.setLineDash([5,3]);
+		ctx.strokeRect(tl.x+1, tl.y+1, clip.w*cellwidth-2, clip.h*cellheight-2);
+		ctx.restore();
+	}
 }
 
 function drawEditorIcons(mini,minj) {

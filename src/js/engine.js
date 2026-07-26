@@ -650,8 +650,10 @@ function drawMessageScreen(message) {
 var loadedLevelSeed=0;
 
 // workhorse to load and setup a new level
-function loadLevelFromLevelDat(state,leveldat,randomseed,clearinputhistory) {	
+function loadLevelFromLevelDat(state,leveldat,randomseed,clearinputhistory) {
 	if (debugSwitch.includes('load')) console.log(`loadLevelFromLevelDat()`, leveldat);
+	// A selection belongs to the level it was made in.
+	editorClearSelectionState();
 	if (randomseed==null) {
 		randomseed = (Math.random() + Date.now()).toString();
 	}

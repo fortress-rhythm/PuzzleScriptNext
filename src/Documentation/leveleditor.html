@@ -86,11 +86,44 @@ Click the <b>S</b> button to save the output to your console, where you can past
 <img src="images/editoroutput.png">
 <p>
 If you've messed with the map so that it's not in a state that can be converted faithfully into single-character glyphs, the editor will output the closest approximation it can find.
+
+<h3>Selecting and pasting rectangles</h3>
+<p>
+Moving a chunk of map around is awkward in a text editor, because pasting a block of
+text <i>inserts</i> it and shoves the rest of every row sideways. The level editor
+treats a rectangle as a rectangle instead: a paste <b>overwrites</b> the region it
+lands on, and the map never changes size.
+<p>
+<b>Hold shift and drag</b> across the map to select a rectangle. Plain dragging still
+paints, so nothing about the rest of the editor changes. The selection is shown as a
+dashed blue box.
+<p>
+With a selection made:
+<ul>
+  <li><b>⌘/Ctrl+C</b> copies the rectangle.</li>
+  <li><b>⌘/Ctrl+X</b> cuts it, leaving background behind.</li>
+  <li><b>Delete</b> or <b>Backspace</b> clears it to background without copying.</li>
+  <li><b>⌘/Ctrl+A</b> selects the whole map.</li>
+</ul>
+<p>
+<b>⌘/Ctrl+V</b> then arms a paste. Nothing is written yet &mdash; a translucent ghost of
+the copied tiles follows your cursor inside a dashed green box, so you can see exactly
+which cells are about to be overwritten. <b>Left click</b> to stamp it down;
+<b>right click</b> or <b>Escape</b> cancels.
+<p>
+Anything that would land outside the map is dropped rather than growing it, and the
+console tells you how many tiles fell off the edge. Pastes go through the normal undo,
+so <b>Z</b> puts things back.
+<p>
+The clipboard survives switching levels, so you can copy a room out of one level and
+stamp it into another.
+
 <p>Tips: </p>
 <ul>
   <li>Press <b>E</b> while playing the game in the editor to toggle the level editor.</li>
   <li>Press <b>R</b> to reset to the last time the editor was toggled.</li>
   <li>Press <b>⌘/Ctrl+left click</b> on the text of a level in the script editor or the console, to load it in game.</li>
+  <li>Hold <b>shift</b> and drag to select a rectangle, then <b>⌘/Ctrl+C</b> and <b>⌘/Ctrl+V</b> to copy and paste it.</li>
 </ul>
 <p>
     </div><!-- /.container -->
