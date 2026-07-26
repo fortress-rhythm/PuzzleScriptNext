@@ -4,24 +4,30 @@
 const fs = require('fs');
 const path = require('path');
 const sheet = require('./sheet');
+const rexbridge = require('./rexbridge');
 const { applyGridEdits } = require('./psgame');
 
 const USAGE = `psmap - PuzzleScript map tooling
 
-  psmap export <game.txt> [-o out.xlsx]     level grids -> spreadsheet
-  psmap import <game.txt> <edited.xlsx>     spreadsheet -> back into the game file
-  psmap info   <game.txt>                   summarise levels and legend
+  psmap export <game.txt> [-o dest]     level grids -> spreadsheet or .xp files
+  psmap import <game.txt> <edited>      edits -> spliced back into the game file
+  psmap info   <game.txt>               summarise levels and legend
 
 Options
-  -o, --output <file>   where to write (default: alongside the input)
-  -f, --format <fmt>    xlsx | csv | tsv     (export; default xlsx)
+  -o, --output <path>   where to write (default: alongside the input)
+  -f, --format <fmt>    xlsx | csv | tsv | xp     (export; default xlsx)
       --stdout          write the updated game to stdout instead of the file
       --dry-run         report what import would change, write nothing
 
-Round trip
-  psmap export sokoban.txt          -> sokoban.levels.xlsx
+Spreadsheet round trip
+  psmap export sokoban.txt                     -> sokoban.levels.xlsx
   (edit in Excel / Google Sheets - rectangular copy and paste just works)
   psmap import sokoban.txt sokoban.levels.xlsx
+
+REXPaint round trip
+  psmap export sokoban.txt -f xp               -> sokoban.rex/L00.xp, L01.xp, ...
+  (open the folder in REXPaint; its image browser doubles as a level browser)
+  psmap import sokoban.txt sokoban.rex
 
 Import only ever rewrites the level grids. Comments, level commands, and every
 other section of the file are left exactly as they were.
@@ -74,8 +80,10 @@ function doExport(opts) {
         process.stderr.write(`Wrote ${grids.length} level(s) to ${out}\n`);
         return 0;
     }
+    if (format === 'xp') return exportRex(opts, source, base);
+
     if (format !== 'xlsx') {
-        process.stderr.write(`Unknown format "${format}". Use xlsx, csv or tsv.\n`);
+        process.stderr.write(`Unknown format "${format}". Use xlsx, csv, tsv or xp.\n`);
         return 2;
     }
 
@@ -89,6 +97,57 @@ function doExport(opts) {
     return 0;
 }
 
+/**
+ * Read either a directory of .xp files or a single one, along with the sidecar
+ * that maps CP437 codes back to legend characters.
+ */
+function importRex(source, target, isDir) {
+    const dir = isDir ? target : path.dirname(target);
+    const names = isDir
+        ? fs.readdirSync(dir).filter(f => f.toLowerCase().endsWith('.xp')).sort()
+        : [path.basename(target)];
+
+    if (!names.length) {
+        process.stderr.write(`No .xp files in ${dir}\n`);
+        return null;
+    }
+
+    const sidecarPath = path.join(dir, rexbridge.SIDECAR);
+    let sidecar = null;
+    if (fs.existsSync(sidecarPath)) {
+        try { sidecar = JSON.parse(fs.readFileSync(sidecarPath, 'utf8')); }
+        catch (e) { process.stderr.write(`warning: ${rexbridge.SIDECAR} is unreadable (${e.message})\n`); }
+    } else {
+        process.stderr.write(
+            `warning: no ${rexbridge.SIDECAR} beside the .xp files - falling back to\n`
+            + '         code page 437, which is only right if the legend is plain ASCII\n');
+    }
+
+    const files = names.map(n => ({ name: n, buffer: fs.readFileSync(path.join(dir, n)) }));
+    return rexbridge.fromRexFiles(source, files, sidecar);
+}
+
+function exportRex(opts, source, base) {
+    const dir = opts.output || `${base}.rex`;
+    fs.mkdirSync(dir, { recursive: true });
+
+    const { files, sidecar, unmapped } = rexbridge.toRexFiles(source);
+    for (const f of files) fs.writeFileSync(path.join(dir, f.name), f.buffer);
+    fs.writeFileSync(path.join(dir, rexbridge.SIDECAR), JSON.stringify(sidecar, null, 2), 'utf8');
+
+    process.stderr.write(`Wrote ${files.length} level(s) to ${dir}/\n`);
+    process.stderr.write(`  plus ${rexbridge.SIDECAR} - keep it, import needs it\n`);
+    if (unmapped.length) {
+        process.stderr.write(
+            `  ${unmapped.length} glyph(s) have no code page 437 equivalent and are\n`
+            + '  shown as substitutes in REXPaint (they map back correctly on import):\n');
+        for (const u of unmapped) {
+            process.stderr.write(`    "${u.char}" appears as "${u.shownAs}" (code ${u.code})\n`);
+        }
+    }
+    return 0;
+}
+
 function doImport(opts) {
     const gameFile = opts._[1];
     const sheetFile = opts._[2];
@@ -99,14 +158,20 @@ function doImport(opts) {
         return 2;
     }
 
+    const stat = fs.statSync(sheetFile);
     const ext = path.extname(sheetFile).toLowerCase();
     let parsed;
-    if (ext === '.xlsx') {
+    if (stat.isDirectory() || ext === '.xp') {
+        parsed = importRex(source, sheetFile, stat.isDirectory());
+        if (!parsed) return 2;
+    } else if (ext === '.xlsx') {
         parsed = sheet.fromWorkbook(source, fs.readFileSync(sheetFile));
     } else if (ext === '.csv' || ext === '.tsv') {
         parsed = sheet.fromDelimited(source, fs.readFileSync(sheetFile, 'utf8'), ext.slice(1));
     } else {
-        process.stderr.write(`Do not know how to read "${ext}". Use .xlsx, .csv or .tsv.\n`);
+        process.stderr.write(
+            `Do not know how to read "${ext}". Use .xlsx, .csv, .tsv, .xp `
+            + 'or a directory of .xp files.\n');
         return 2;
     }
 

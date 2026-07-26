@@ -72,6 +72,21 @@ function contrastText(hex) {
 }
 
 /**
+ * Look a character up in the glyph table, honouring the game's case rules.
+ *
+ * PuzzleScript is case-insensitive unless the prelude says otherwise, so a game
+ * that declares `Wall W` may write `w` throughout its levels. Matching only on
+ * exact case would leave most of such a game's tiles apparently unknown - and
+ * therefore uncoloured on export, and warned about on import.
+ */
+function makeGlyphLookup(glyphs, caseSensitive) {
+    if (caseSensitive) return ch => glyphs[ch];
+    const folded = new Map();
+    for (const [ch, g] of Object.entries(glyphs)) folded.set(ch.toLowerCase(), g);
+    return ch => glyphs[ch] || folded.get(String(ch).toLowerCase());
+}
+
+/**
  * Build the analysis every exporter needs.
  */
 function analyse(source) {
@@ -81,7 +96,8 @@ function analyse(source) {
     const glyphs = buildGlyphTable(game, palette);
     const grids = game.grids;
     const background = findBackgroundChar(game, glyphs, grids);
-    return { game, palette, paletteName, glyphs, grids, background };
+    const glyphAt = makeGlyphLookup(glyphs, game.caseSensitive);
+    return { game, palette, paletteName, glyphs, glyphAt, grids, background };
 }
 
 // ---------------------------------------------------------------------------
@@ -89,7 +105,7 @@ function analyse(source) {
 // ---------------------------------------------------------------------------
 
 function toWorkbook(source, options = {}) {
-    const { game, glyphs, grids, background, paletteName } = analyse(source);
+    const { game, glyphs, glyphAt, grids, background, paletteName } = analyse(source);
     const sheets = [];
 
     // Index sheet: what is in this workbook, and the commands attached to each
@@ -108,7 +124,7 @@ function toWorkbook(source, options = {}) {
         const name = (level.commandsBefore.find(c => c.verb === 'level') || {}).text || '';
         indexRows.push([tab, `${level.grid.width} x ${level.grid.height}`, name, cmds]);
 
-        sheets.push(gridSheet(tab, level.grid, glyphs, background));
+        sheets.push(gridSheet(tab, level.grid, glyphAt));
         gridIndex++;
     }
 
@@ -146,10 +162,10 @@ function toWorkbook(source, options = {}) {
     };
 }
 
-function gridSheet(name, grid, glyphs, background) {
+function gridSheet(name, grid, glyphAt) {
     const rows = grid.rows.map(row =>
         Array.from(row).map(ch => {
-            const g = glyphs[ch];
+            const g = glyphAt(ch);
             return { v: ch, fill: g && g.color ? g.color : null };
         })
     );
@@ -193,7 +209,7 @@ function toDelimited(source, kind = 'csv') {
  * Turn a 2-D array of cell strings into grid rows, padding ragged rows and
  * reporting anything suspicious rather than silently corrupting the level.
  */
-function cellsToRows(cells, background, glyphs, context, warnings) {
+function cellsToRows(cells, background, glyphAt, context, warnings) {
     // Drop trailing empty rows.
     const trimmed = cells.slice();
     while (trimmed.length && trimmed[trimmed.length - 1].every(c => !String(c ?? '').trim())) {
@@ -223,7 +239,7 @@ function cellsToRows(cells, background, glyphs, context, warnings) {
                 out += Array.from(value)[0];
                 continue;
             }
-            if (glyphs && !glyphs[value]) {
+            if (glyphAt && !glyphAt(value)) {
                 warnings.push(`${context} r${y + 1}c${x + 1}: "${value}" is not in the legend`);
             }
             out += value;
@@ -256,7 +272,7 @@ function unpadUntouchedRows(edits, grids, background) {
 }
 
 function fromWorkbook(source, buffer) {
-    const { game, glyphs, background } = analyse(source);
+    const { game, glyphAt, background } = analyse(source);
     const sheets = xlsx.readWorkbook(buffer);
     const edits = [];
     const warnings = [];
@@ -269,7 +285,7 @@ function fromWorkbook(source, buffer) {
             warnings.push(`sheet "${name}": no level ${gridIndex} in the game file, skipped`);
             continue;
         }
-        const rows = cellsToRows(cells, background, glyphs, `sheet "${name}"`, warnings);
+        const rows = cellsToRows(cells, background, glyphAt, `sheet "${name}"`, warnings);
         if (!rows.length) {
             warnings.push(`sheet "${name}": empty, skipped`);
             continue;
@@ -280,7 +296,7 @@ function fromWorkbook(source, buffer) {
 }
 
 function fromDelimited(source, text, kind = 'csv') {
-    const { game, glyphs, background } = analyse(source);
+    const { game, glyphAt, background } = analyse(source);
     const table = kind === 'tsv' ? csv.fromTsv(text) : csv.fromCsv(text);
     const warnings = [];
 
@@ -301,7 +317,7 @@ function fromDelimited(source, text, kind = 'csv') {
             warnings.push(`L${gridIndex}: no such level in the game file, skipped`);
             continue;
         }
-        const rows = cellsToRows(cells, background, glyphs, `L${gridIndex}`, warnings);
+        const rows = cellsToRows(cells, background, glyphAt, `L${gridIndex}`, warnings);
         if (rows.length) edits.push({ gridIndex, rows });
     }
     return { game, edits: unpadUntouchedRows(edits, game.grids, background), warnings };
@@ -317,5 +333,6 @@ module.exports = {
     levelTabName,
     contrastText,
     cellsToRows,
+    makeGlyphLookup,
     unpadUntouchedRows,
 };

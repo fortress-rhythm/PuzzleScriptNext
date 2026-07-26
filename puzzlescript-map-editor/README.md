@@ -23,9 +23,9 @@ means every general-purpose tool you might reach for is subtly wrong for the job
 
 Block *copy* is easy. Block *paste* — overwriting a rectangle in place rather
 than inserting text — is a grid operation, and text editors do not have it.
-Spreadsheets do, so this project meets them halfway: it explodes your levels into
-a spreadsheet **coloured with your own game's palette**, and splices your edits
-back into the source file without touching anything else.
+Spreadsheets and REXPaint both do, so this project meets them halfway: it
+explodes your levels into either one, **coloured with your own game's palette**,
+and splices your edits back into the source file without touching anything else.
 
 ## Install
 
@@ -63,6 +63,36 @@ psmap import mygame.txt mygame.levels.xlsx
 Your levels are updated in place. **Nothing else in the file is touched** — not a
 comment, not a blank line, not a level command, not your line endings.
 
+## Use with REXPaint
+
+[REXPaint](https://www.gridsagegames.com/rexpaint/) is the reputable ASCII art
+editor in this space — free, fast, and it has had proper rectangular
+copy/cut/paste, layers and a multi-image browser for a decade. It is Windows
+only, but runs well under Wine.
+
+```sh
+psmap export mygame.txt -f xp        # -> mygame.rex/L00.xp, L01.xp, ... + glyphmap.json
+```
+
+Point REXPaint at that folder. Its image browser becomes a level browser, so
+copying a rectangle out of one level and stamping it into another is two
+keystrokes. Every tile is drawn in its object's colour, as with the spreadsheet.
+
+```sh
+psmap import mygame.txt mygame.rex
+```
+
+REXPaint draws code page 437, and PuzzleScript legends are not limited to it —
+the demo games alone use `§`, `è` and Japanese kana. So export assigns every
+character a CP437 code (its natural one wherever it has one) and writes the
+assignment to `glyphmap.json` beside the `.xp` files. Keep that file: import
+uses it to map codes back exactly, whatever your legend contains. Characters
+that needed a substitute are listed on export so you know what you are looking
+at on screen.
+
+Resize a level by resizing the REXPaint canvas. Multiple layers are flattened
+top-down on import, with undrawn cells falling through.
+
 ### Other commands
 
 ```sh
@@ -96,8 +126,13 @@ Specifically:
   empty cell becomes the background character and prints a warning naming the
   exact row and column.
 
-Verified against all 94 demo games shipped with PuzzleScript Next: export then
-import with no edits returns each file byte for byte.
+- **Case-insensitivity is respected.** A game that declares `Wall W` but writes
+  `w` in its levels is coloured and round-tripped correctly, unless the prelude
+  sets `case_sensitive`.
+
+Verified against all 94 demo games shipped with PuzzleScript Next, through both
+the spreadsheet and the REXPaint path: export then import with no edits returns
+each file byte for byte.
 
 ## Tests
 
@@ -112,10 +147,15 @@ src/psgame.js    parses OBJECTS, LEGEND and LEVELS, keeping source line ranges
 src/palettes.js  colour palettes, copied from PuzzleScript Next
 src/xlsx.js      dependency-free XLSX reader/writer (inline strings, fills)
 src/csv.js       RFC 4180 CSV/TSV
-src/sheet.js     the bridge: levels <-> spreadsheet
+src/sheet.js     the spreadsheet bridge
+src/rexpaint.js  REXPaint .xp reader/writer
+src/cp437.js     the code page REXPaint draws with
+src/rexbridge.js the REXPaint bridge, including the glyph mapping
 src/cli.js       the psmap command
 ```
 
 ## Licence
 
-MIT. Colour palettes are taken from PuzzleScript Next, also MIT.
+MIT. Colour palettes are taken from PuzzleScript Next, also MIT. REXPaint is a
+separate program by Grid Sage Games; this project only reads and writes its file
+format.

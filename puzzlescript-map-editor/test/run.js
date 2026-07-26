@@ -10,6 +10,9 @@ const psgame = require('../src/psgame');
 const sheet = require('../src/sheet');
 const xlsx = require('../src/xlsx');
 const csv = require('../src/csv');
+const rexpaint = require('../src/rexpaint');
+const rexbridge = require('../src/rexbridge');
+const zlib = require('zlib');
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures');
 const SOKOBAN = fs.readFileSync(path.join(FIXTURES, 'sokoban.txt'), 'utf8');
@@ -292,7 +295,7 @@ test('an empty cell becomes the background character, with a warning', () => {
 
 test('an unknown glyph is reported but preserved', () => {
     const warnings = [];
-    const rows = sheet.cellsToRows([['#', 'Z', '#']], '.', { '#': {} }, 'test', warnings);
+    const rows = sheet.cellsToRows([['#', 'Z', '#']], '.', ch => ({ '#': {} })[ch], 'test', warnings);
     assert.deepStrictEqual(rows, ['#Z#']);
     assert.ok(warnings.some(w => w.includes('not in the legend')));
 });
@@ -304,6 +307,139 @@ test('level tab names are legal Excel sheet names', () => {
     assert.ok(name.length <= 31, `sheet name too long: ${name}`);
     assert.ok(!/[:\\/?*[\]]/.test(name), `illegal characters in ${name}`);
     assert.ok(name.startsWith('L03'));
+});
+
+// ---------------------------------------------------------------------------
+// REXPaint
+// ---------------------------------------------------------------------------
+
+test('xp files match the published binary layout', () => {
+    const cells = [
+        { code: 65, fg: { r: 1, g: 2, b: 3 }, bg: { r: 4, g: 5, b: 6 } },
+        { code: 66, fg: { r: 7, g: 8, b: 9 }, bg: { r: 10, g: 11, b: 12 } },
+        { code: 67, fg: { r: 0, g: 0, b: 0 }, bg: { r: 0, g: 0, b: 0 } },
+        { code: 68, fg: { r: 0, g: 0, b: 0 }, bg: { r: 0, g: 0, b: 0 } },
+    ];
+    const buf = rexpaint.writeXp([{ width: 2, height: 2, cells }]);
+    const raw = zlib.gunzipSync(buf);
+
+    assert.strictEqual(raw.readInt32LE(0), -1, 'version field');
+    assert.strictEqual(raw.readInt32LE(4), 1, 'layer count');
+    assert.strictEqual(raw.readInt32LE(8), 2, 'width');
+    assert.strictEqual(raw.readInt32LE(12), 2, 'height');
+    assert.strictEqual(raw.length, 16 + 4 * 10, 'ten bytes per cell');
+    // Column-major: after (0,0) comes (0,1), not (1,0).
+    assert.strictEqual(raw.readUInt32LE(16), 65);
+    assert.strictEqual(raw.readUInt32LE(26), 67);
+
+    const back = rexpaint.readXp(buf);
+    assert.strictEqual(back.length, 1);
+    assert.deepStrictEqual(back[0].cells.map(c => c.code), [65, 66, 67, 68]);
+    assert.deepStrictEqual(back[0].cells[0].bg, { r: 4, g: 5, b: 6 });
+});
+
+test('xp reader rejects a file that is not an xp', () => {
+    assert.throws(() => rexpaint.readXp(Buffer.from('not compressed at all')),
+        /could not decompress/);
+});
+
+test('xp reader accepts pre-R9 files with no version field', () => {
+    // A positive first int32 is the layer count, not a version.
+    const body = Buffer.alloc(4 + 8 + 10);
+    body.writeInt32LE(1, 0);
+    body.writeInt32LE(1, 4);
+    body.writeInt32LE(1, 8);
+    body.writeUInt32LE(88, 12);
+    const layers = rexpaint.readXp(zlib.gzipSync(body));
+    assert.strictEqual(layers[0].cells[0].code, 88);
+});
+
+test('rexpaint round trip with no edits is byte-identical', () => {
+    const { files, sidecar } = rexbridge.toRexFiles(SOKOBAN);
+    assert.strictEqual(files.length, 2);
+    assert.deepStrictEqual(files.map(f => f.name), ['L00.xp', 'L01.xp']);
+    const { game, edits } = rexbridge.fromRexFiles(SOKOBAN, files, sidecar);
+    assert.strictEqual(psgame.applyGridEdits(game, edits), SOKOBAN);
+});
+
+test('a rectangle painted in an xp file lands back in the level', () => {
+    const { files, sidecar } = rexbridge.toRexFiles(SOKOBAN);
+    const layers = rexpaint.readXp(files[0].buffer);
+    const layer = layers[0];
+    const crate = sidecar.codeToChar[42] !== undefined ? 42 : null;
+    assert.ok(crate, 'the crate glyph "*" should sit on its natural CP437 code');
+
+    // Stamp a 3x2 rectangle of crates over open floor.
+    for (let y = 1; y <= 2; y++) {
+        for (let x = 1; x <= 3; x++) layer.cells[y * layer.width + x].code = crate;
+    }
+    const edited = [{ name: 'L00.xp', buffer: rexpaint.writeXp(layers) }];
+    const { game, edits } = rexbridge.fromRexFiles(SOKOBAN, edited, sidecar);
+    const grid = psgame.parseGame(psgame.applyGridEdits(game, edits)).grids[0];
+
+    assert.strictEqual(grid.width, 9);
+    assert.strictEqual(grid.rows[1], '#***....#');
+    // Row 2 already had a crate at column 4, which the rectangle does not cover.
+    assert.strictEqual(grid.rows[2], '#****.O.#');
+    assert.strictEqual(grid.rows[0], '#########', 'a row outside the rectangle changed');
+    assert.strictEqual(grid.rows[3], '#..*..O.#', 'a row below the rectangle changed');
+});
+
+test('resizing the xp canvas resizes the level', () => {
+    const { files, sidecar } = rexbridge.toRexFiles(SOKOBAN);
+    const layer = rexpaint.readXp(files[1].buffer)[0];
+    const wall = sidecar.codeToChar[35] !== undefined ? 35 : null;
+    assert.ok(wall, 'the wall glyph "#" should sit on its natural CP437 code');
+
+    // Rebuild as a 3x3 canvas of walls.
+    const small = {
+        width: 3, height: 3,
+        cells: Array.from({ length: 9 }, () => ({
+            code: wall, fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 },
+        })),
+    };
+    const { game, edits } = rexbridge.fromRexFiles(
+        SOKOBAN, [{ name: 'L01.xp', buffer: rexpaint.writeXp([small]) }], sidecar);
+    const out = psgame.applyGridEdits(game, edits);
+    const after = psgame.parseGame(out);
+    assert.deepStrictEqual(after.grids[1].rows, ['###', '###', '###']);
+    assert.deepStrictEqual(after.grids[0].rows, psgame.parseGame(SOKOBAN).grids[0].rows);
+    assert.ok(out.includes('message Thank you for playing.'));
+});
+
+test('lower-case grid characters survive a case-insensitive game', () => {
+    // `Wall W` in OBJECTS, but the level writes 'w'. Both must round-trip and
+    // both must be coloured.
+    const src = SOKOBAN.replace('#####\n#.O.#\n#.*.#\n#.P.#\n#####',
+        'wwwww\nw.O.w\nw.*.w\nw.P.w\nwwwww');
+    assert.ok(src.includes('wwwww'), 'fixture replacement did not apply');
+
+    const { glyphAt } = sheet.analyse(src);
+    assert.ok(glyphAt('w'), 'lower-case w should resolve to the Wall glyph');
+    assert.strictEqual(glyphAt('w').color, glyphAt('W').color);
+
+    const { files, sidecar } = rexbridge.toRexFiles(src);
+    const { game, edits } = rexbridge.fromRexFiles(src, files, sidecar);
+    assert.strictEqual(psgame.applyGridEdits(game, edits), src);
+});
+
+test('glyphs outside code page 437 get a substitute code that maps back', () => {
+    const glyphs = { '#': {}, 'あ': {}, 'い': {} };
+    const map = rexbridge.buildGlyphMap(glyphs, new Set(['#', 'あ', 'い']));
+    assert.strictEqual(map.charToCode['#'], 35, 'ASCII should keep its natural code');
+    assert.strictEqual(map.unmapped.length, 2);
+    for (const ch of ['あ', 'い']) {
+        assert.strictEqual(map.codeToChar[map.charToCode[ch]], ch);
+    }
+    // No two characters may share a code.
+    const codes = Object.values(map.charToCode);
+    assert.strictEqual(new Set(codes).size, codes.length, 'two glyphs collided on one code');
+});
+
+test('rexpaint round trip works without a sidecar for an ASCII legend', () => {
+    const { files } = rexbridge.toRexFiles(SOKOBAN);
+    const { game, edits } = rexbridge.fromRexFiles(SOKOBAN, files, null);
+    assert.strictEqual(psgame.applyGridEdits(game, edits), SOKOBAN);
 });
 
 // ---------------------------------------------------------------------------
@@ -321,12 +457,19 @@ test('all upstream demo games round-trip unchanged', () => {
         try {
             const wb = sheet.toWorkbook(src);
             const { game, edits } = sheet.fromWorkbook(src, wb.buffer);
-            if (psgame.applyGridEdits(game, edits) !== src) broken.push(f);
+            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${f} (xlsx)`);
         } catch (e) {
-            broken.push(`${f} (threw: ${e.message})`);
+            broken.push(`${f} (xlsx threw: ${e.message})`);
+        }
+        try {
+            const { files: xps, sidecar } = rexbridge.toRexFiles(src);
+            const { game, edits } = rexbridge.fromRexFiles(src, xps, sidecar);
+            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${f} (xp)`);
+        } catch (e) {
+            broken.push(`${f} (xp threw: ${e.message})`);
         }
     }
-    assert.deepStrictEqual(broken, [], `${broken.length}/${files.length} games did not round-trip`);
+    assert.deepStrictEqual(broken, [], `${broken.length} failures across ${files.length} games`);
 });
 
 // ---------------------------------------------------------------------------
