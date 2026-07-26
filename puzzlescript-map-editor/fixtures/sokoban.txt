@@ -1,0 +1,107 @@
+title Test Sokoban
+author psmap tests
+color_palette arnecolors
+
+========
+OBJECTS
+========
+
+Background
+LIGHTGREEN GREEN
+11111
+01111
+11101
+11111
+10111
+
+Target
+DarkBlue
+.....
+.000.
+.0.0.
+.000.
+.....
+
+Wall W
+BROWN DARKBROWN
+00010
+11111
+01000
+11111
+00010
+
+Player P
+Black Orange White Blue
+.000.
+.111.
+22222
+.333.
+.3.3.
+
+Crate
+Orange Yellow
+00000
+0...0
+0...0
+0...0
+00000
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+@ = Crate and Target
+O = Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate
+
+======
+RULES
+======
+
+[ >  Player | Crate ] -> [  >  Player | > Crate  ]
+
+==============
+WINCONDITIONS
+==============
+
+All Target on Crate
+
+=======
+LEVELS
+=======
+
+message Push the crates onto the targets.
+
+level First Steps
+#########
+#.......#
+#.*.*.O.#
+#..*..O.#
+#.P.*.*.#
+#.......#
+#########
+
+section Harder
+
+#####
+#.O.#
+#.*.#
+#.P.#
+#####
+
+message Thank you for playing.

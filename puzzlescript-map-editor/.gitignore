@@ -1,0 +1,4 @@
+node_modules/
+*.levels.xlsx
+*.levels.csv
+*.levels.tsv

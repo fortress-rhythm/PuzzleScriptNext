@@ -1,0 +1,19 @@
+{
+  "name": "puzzlescript-map-editor",
+  "version": "0.1.0",
+  "description": "Map editing tools for PuzzleScript and PuzzleScript Next, built around rectangular copy and paste",
+  "keywords": ["puzzlescript", "level-editor", "map-editor", "ascii", "tilemap", "xlsx"],
+  "license": "MIT",
+  "main": "src/sheet.js",
+  "bin": {
+    "psmap": "src/cli.js"
+  },
+  "files": ["src", "README.md", "LICENSE"],
+  "scripts": {
+    "test": "node test/run.js"
+  },
+  "engines": {
+    "node": ">=16"
+  },
+  "dependencies": {}
+}
