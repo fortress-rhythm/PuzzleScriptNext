@@ -1,0 +1,73 @@
+title Case Sensitive
+author psmap tests
+color_palette arnecolors
+case_sensitive
+
+(With case_sensitive set, 'P' and 'p' are two different tiles. Without it they
+are the same one. No game in the demo collection sets this flag, so the only way
+to test the distinction is to write one.)
+
+========
+OBJECTS
+========
+
+Background
+LIGHTGREEN GREEN
+
+Wall
+BROWN DARKBROWN
+
+BigPlayer
+Blue White
+.000.
+.111.
+00000
+.000.
+.0.0.
+
+SmallPlayer
+Red White
+.....
+.000.
+.010.
+.000.
+.....
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = BigPlayer
+p = SmallPlayer
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Wall, BigPlayer, SmallPlayer
+
+======
+RULES
+======
+
+==============
+WINCONDITIONS
+==============
+
+=======
+LEVELS
+=======
+
+level Two players, one letter
+#######
+#.P.p.#
+#.....#
+#.p.P.#
+#######

@@ -222,11 +222,14 @@ function parseLegend(lines, stripped, section) {
     for (let i = section.start; i < section.end; i++) {
         const code = stripped[i].code.trim();
         if (!code || RE_EQUALS_ROW.test(code)) continue;
-        const eq = code.indexOf('=');
-        if (eq < 0) continue;
-        const key = code.slice(0, eq).trim();
-        const expansion = code.slice(eq + 1).trim();
-        if (!key) continue;
+        // The key is the first token, then a separating '='. Splitting on the
+        // first '=' in the line would be wrong for `= = Equals`, where the key
+        // itself is an equals sign - a legal and occasionally used glyph.
+        const m = code.match(/^(\S+?)\s*=\s*(.*)$/);
+        if (!m) continue;
+        const key = m[1];
+        const expansion = m[2].trim();
+        if (!key || !expansion) continue;
         const parts = expansion.split(/\s+/).filter(Boolean);
         const op = parts.find(p => /^(and|or)$/i.test(p));
         const objects = parts.filter(p => !/^(and|or)$/i.test(p));

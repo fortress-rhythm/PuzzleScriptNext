@@ -176,8 +176,8 @@ Specifically:
   `w` in its levels is coloured and round-tripped correctly, unless the prelude
   sets `case_sensitive`.
 
-Verified against all 94 demo games shipped with PuzzleScript Next, through both
-the spreadsheet and the REXPaint path: export then import with no edits returns
+Verified against all 94 demo games shipped with PuzzleScript Next, through the
+spreadsheet, CSV and REXPaint paths: export then import with no edits returns
 each file byte for byte.
 
 ## Tests
@@ -186,9 +186,23 @@ each file byte for byte.
 npm test
 ```
 
-Covers the parser, both bridges, the XLSX and `.xp` containers, and the
-round-trip guarantee across every demo game it can find. The browser editor was
-verified by driving it headlessly against those same games.
+Covers the parser, all three bridges, the XLSX and `.xp` containers, and the
+round-trip guarantee. The corpus comes in three layers:
+
+- **`fixtures/games/`** — eight real games vendored into the repo, so the sweep
+  runs anywhere, including CI with nothing else checked out. They were chosen to
+  cover ragged levels, CRLF and LF endings, non-ASCII glyphs, comments inside
+  `LEVELS`, a 36-glyph palette and a 1x1 degenerate level. See
+  [`fixtures/games/NOTICE.md`](fixtures/games/NOTICE.md) for provenance and
+  licensing.
+- **`fixtures/*.txt`** — synthetic files for cases no real game happens to
+  contain: a legend built entirely from characters Excel treats as formulas
+  (`=` `+` `-` `@` `,` `"` `\`), and a `case_sensitive` game where `P` and `p`
+  are different tiles.
+- **`../src/demo`** — when checked out beside PuzzleScriptNext, the full 94-game
+  sweep runs too. It self-skips otherwise.
+
+The browser editor was verified by driving it headlessly against the same games.
 
 ## Layout
 
@@ -205,6 +219,7 @@ src/rexbridge.js the REXPaint bridge, including the glyph mapping
 src/cli.js       the psmap command
 src/serve.js     tiny static server for `npm start`
 web/             the browser editor (no build step)
+fixtures/        synthetic edge cases, plus vendored real games under games/
 ```
 
 ## Licence

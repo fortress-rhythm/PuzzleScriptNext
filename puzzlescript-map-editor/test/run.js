@@ -111,12 +111,41 @@ test('reads the palette and case sensitivity from the prelude', () => {
 // Glyphs and colours
 // ---------------------------------------------------------------------------
 
-test('builds a glyph table with legend entries winning over object names', () => {
+test('builds a glyph table from both the legend and object aliases', () => {
     const { glyphs } = sheet.analyse(SOKOBAN);
     assert.strictEqual(glyphs['P'].source, 'legend');
-    assert.strictEqual(glyphs['W'].source, 'objects');
+    assert.strictEqual(glyphs['W'].source, 'objects', 'a single-letter alias should be placeable');
     // Case-insensitive game: 'p' must not appear as a separate tile.
     assert.ok(!glyphs['p'], 'lower-case duplicate glyph leaked through');
+});
+
+test('a legend entry beats an object alias for the same character', () => {
+    // Declaring `Crate C` and then `C = Crate and Target` is legal; the legend
+    // is the more deliberate statement, so it should win.
+    const src = SOKOBAN
+        .replace('Crate\nOrange Yellow', 'Crate C\nOrange Yellow')
+        .replace('O = Target', 'O = Target\nC = Crate and Target');
+    const { glyphs } = sheet.analyse(src);
+    assert.strictEqual(glyphs['C'].source, 'legend');
+    assert.deepStrictEqual(glyphs['C'].objects, ['Crate', 'Target']);
+});
+
+test('a legend key may itself be an equals sign', () => {
+    // `= = Equals` is legal, and splitting the line on its first '=' loses it.
+    const src = fs.readFileSync(path.join(FIXTURES, 'formulaglyphs.txt'), 'utf8');
+    const { glyphs } = sheet.analyse(src);
+    for (const ch of ['=', '+', '-', '@', ',', '"', '\\']) {
+        assert.ok(glyphs[ch], `glyph "${ch}" missing from the legend`);
+    }
+    assert.strictEqual(glyphs['='].label, 'Equals');
+});
+
+test('case_sensitive keeps P and p as separate tiles', () => {
+    const src = fs.readFileSync(path.join(FIXTURES, 'casesensitive.txt'), 'utf8');
+    const { game, glyphs, glyphAt } = sheet.analyse(src);
+    assert.strictEqual(game.caseSensitive, true);
+    assert.ok(glyphs['P'] && glyphs['p'], 'both cases should be placeable');
+    assert.notStrictEqual(glyphAt('P').label, glyphAt('p').label);
 });
 
 test('resolves colours through the named palette', () => {
@@ -446,30 +475,61 @@ test('rexpaint round trip works without a sidecar for an ASCII legend', () => {
 // Every demo game in the upstream repo, if present
 // ---------------------------------------------------------------------------
 
-test('all upstream demo games round-trip unchanged', () => {
-    const demoDir = path.join(__dirname, '..', '..', 'src', 'demo');
-    if (!fs.existsSync(demoDir)) return; // standalone checkout, nothing to test against
-
-    const files = fs.readdirSync(demoDir).filter(f => f.endsWith('.txt'));
+function sweepRoundTrip(files, label) {
     const broken = [];
-    for (const f of files) {
-        const src = fs.readFileSync(path.join(demoDir, f), 'utf8');
+    for (const file of files) {
+        const src = fs.readFileSync(file, 'utf8');
+        const name = path.basename(file);
         try {
             const wb = sheet.toWorkbook(src);
             const { game, edits } = sheet.fromWorkbook(src, wb.buffer);
-            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${f} (xlsx)`);
+            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${name} (xlsx)`);
         } catch (e) {
-            broken.push(`${f} (xlsx threw: ${e.message})`);
+            broken.push(`${name} (xlsx threw: ${e.message})`);
         }
         try {
             const { files: xps, sidecar } = rexbridge.toRexFiles(src);
             const { game, edits } = rexbridge.fromRexFiles(src, xps, sidecar);
-            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${f} (xp)`);
+            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${name} (xp)`);
         } catch (e) {
-            broken.push(`${f} (xp threw: ${e.message})`);
+            broken.push(`${name} (xp threw: ${e.message})`);
+        }
+        try {
+            const text = sheet.toDelimited(src, 'csv');
+            const { game, edits } = sheet.fromDelimited(src, text, 'csv');
+            if (psgame.applyGridEdits(game, edits) !== src) broken.push(`${name} (csv)`);
+        } catch (e) {
+            broken.push(`${name} (csv threw: ${e.message})`);
         }
     }
-    assert.deepStrictEqual(broken, [], `${broken.length} failures across ${files.length} games`);
+    assert.deepStrictEqual(broken, [],
+        `${broken.length} failures across ${files.length} ${label}`);
+}
+
+test('vendored real games round-trip unchanged', () => {
+    // These ship with the repo, so this runs everywhere including CI.
+    const dir = path.join(FIXTURES, 'games');
+    const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).map(f => path.join(dir, f));
+    assert.ok(files.length >= 8, `expected the vendored corpus, found ${files.length} files`);
+    sweepRoundTrip(files, 'vendored games');
+});
+
+test('synthetic edge-case fixtures round-trip unchanged', () => {
+    const files = fs.readdirSync(FIXTURES)
+        .filter(f => f.endsWith('.txt'))
+        .map(f => path.join(FIXTURES, f));
+    assert.ok(files.length >= 3, `expected the synthetic fixtures, found ${files.length}`);
+    sweepRoundTrip(files, 'fixtures');
+});
+
+test('all upstream demo games round-trip unchanged', () => {
+    // Only present when checked out next to PuzzleScriptNext; the vendored
+    // corpus above is what guarantees coverage on its own.
+    const demoDir = path.join(__dirname, '..', '..', 'src', 'demo');
+    if (!fs.existsSync(demoDir)) return;
+    const files = fs.readdirSync(demoDir).filter(f => f.endsWith('.txt'))
+        .map(f => path.join(demoDir, f));
+    sweepRoundTrip(files, 'upstream demo games');
 });
 
 // ---------------------------------------------------------------------------
