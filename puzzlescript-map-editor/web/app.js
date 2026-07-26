@@ -148,8 +148,8 @@ function loadSource(text, fileName) {
     state.outline = [];
     let index = 0;
     for (const level of game.levels) {
-        for (const label of psgame.orphanLabels(level.commandsBefore, !!level.grid)) {
-            state.outline.push({ kind: 'empty', label: label });
+        for (const sec of psgame.emptySections(level.commandsBefore, !!level.grid)) {
+            state.outline.push({ kind: 'empty', label: sec.label, afterLine: sec.lastLine });
         }
         if (!level.grid) continue;
         state.levels.push({
@@ -164,8 +164,8 @@ function loadSource(text, fileName) {
     // Headings trailing the last map own nothing, so all of them are empty.
     const last = game.levels[game.levels.length - 1];
     if (last) {
-        for (const label of psgame.orphanLabels(last.commandsAfter, false)) {
-            state.outline.push({ kind: 'empty', label: label });
+        for (const sec of psgame.emptySections(last.commandsAfter, false)) {
+            state.outline.push({ kind: 'empty', label: sec.label, afterLine: sec.lastLine });
         }
     }
 
@@ -267,12 +267,14 @@ function buildLevelList() {
 
     for (const row of state.outline) {
         if (row.kind === 'empty') {
-            // A SECTION with no map yet. Shown, but nothing to edit.
-            const item = document.createElement('div');
+            // A SECTION with no map yet. Clicking gives it one.
+            const item = document.createElement('button');
             item.className = 'level-item empty';
-            item.innerHTML = '<span class="lv-name"></span><span class="lv-meta">no map yet</span>';
+            item.innerHTML =
+                '<span class="lv-name"></span><span class="lv-meta">+ add map</span>';
             item.querySelector('.lv-name').textContent = row.label;
-            item.title = `Section "${row.label}" has no level grid in the file yet`;
+            item.title = `Section "${row.label}" has no map yet - click to create one`;
+            item.addEventListener('click', () => addMapToSection(row));
             host.appendChild(item);
             continue;
         }
@@ -289,6 +291,48 @@ function buildLevelList() {
         button.addEventListener('click', () => selectLevel(i));
         host.appendChild(button);
     }
+}
+
+/**
+ * Give an empty SECTION a map.
+ *
+ * The new grid is background-filled at the same size as the level you were last
+ * looking at, which is nearly always the right starting point and is trivially
+ * resized from the row/column buttons. Nothing is written to disk until you
+ * save; the grid is spliced in directly beneath that section's own commands.
+ */
+function addMapToSection(row) {
+    const reference = currentLevel();
+    const size = reference ? levelSize(reference) : { w: 9, h: 7 };
+    const w = Math.max(1, size.w);
+    const h = Math.max(1, size.h);
+    const rows = [];
+    for (let y = 0; y < h; y++) rows.push(state.background.repeat(w));
+
+    const index = state.levels.length;
+    state.levels.push({
+        rows: rows,
+        name: row.label,
+        gridIndex: null,          // no grid in the original file
+        insertAfterLine: row.afterLine,
+        isNew: true,
+        edited: true,
+    });
+
+    // The placeholder becomes a real level, keeping its place in the list.
+    row.kind = 'level';
+    row.index = index;
+
+    state.current = index;
+    state.selection = null;
+    state.pasteAt = null;
+    state.undo.length = 0;
+    state.redo.length = 0;
+
+    fitZoom();
+    fullRefresh();
+    canvas.focus();
+    setStatus(`Added a ${w}×${h} map to section "${row.label}" - resize or paste into it`);
 }
 
 function selectLevel(i) {
@@ -706,8 +750,48 @@ function resize(action) {
 function buildOutput() {
     const edits = state.levels
         .filter(l => l.edited)
-        .map(l => ({ gridIndex: l.gridIndex, rows: l.rows }));
+        .map(l => (l.isNew
+            ? { insertAfterLine: l.insertAfterLine, rows: l.rows }
+            : { gridIndex: l.gridIndex, rows: l.rows }));
     return psgame.applyGridEdits(state.game, edits);
+}
+
+/**
+ * The current level as plain text, ready to paste into a LEVELS section or
+ * straight into the PuzzleScript editor to try it out.
+ */
+function currentLevelText() {
+    const level = currentLevel();
+    return level ? level.rows.join('\n') : '';
+}
+
+/**
+ * Copy that text out. The async clipboard API needs a secure context, which a
+ * page opened straight off disk is not, so fall back to a selected textarea the
+ * user can copy by hand rather than failing silently.
+ */
+function copyCurrentLevel() {
+    const text = currentLevelText();
+    if (!text) return;
+    const level = currentLevel();
+    const size = levelSize(level);
+    const ok = () => setStatus(`Copied "${level.name}" (${size.w}×${size.h}) as text`);
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, () => fallbackCopy(text));
+    } else {
+        fallbackCopy(text);
+    }
+}
+
+function fallbackCopy(text) {
+    const box = el('copyout');
+    const area = el('copytext');
+    area.value = text;
+    box.classList.remove('hidden');
+    area.focus();
+    area.select();
+    setStatus('Press Ctrl/Cmd+C to copy, Escape to close', true);
 }
 
 function save() {
@@ -755,6 +839,11 @@ window.addEventListener('keydown', (event) => {
 
     switch (event.key) {
         case 'Escape':
+            if (!el('copyout').classList.contains('hidden')) {
+                el('copyout').classList.add('hidden');
+                canvas.focus();
+                return;
+            }
             state.pasteAt = null;
             state.selection = null;
             el('selInfo').textContent = '';
@@ -796,6 +885,8 @@ for (const button of document.querySelectorAll('[data-resize]')) {
 el('undo').addEventListener('click', undo);
 el('redo').addEventListener('click', redo);
 el('save').addEventListener('click', save);
+el('copylevel').addEventListener('click', copyCurrentLevel);
+el('copyclose').addEventListener('click', () => el('copyout').classList.add('hidden'));
 el('zoom').addEventListener('input', (e) => {
     state.cell = Number(e.target.value);
     state.zoomPinned = true;      // stop auto-fitting once the zoom is chosen by hand
@@ -859,6 +950,7 @@ window.addEventListener('beforeunload', (event) => {
 });
 
 // Exposed for the test page.
-window.PSMapEditor = { state, loadSource, buildOutput, copySelection, beginPaste, commitPaste, resize, undo, redo, fitZoom };
+window.PSMapEditor = { state, loadSource, buildOutput, currentLevelText, copyCurrentLevel,
+    addMapToSection, copySelection, beginPaste, commitPaste, resize, undo, redo, fitZoom };
 
 })();

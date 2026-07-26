@@ -370,6 +370,89 @@ test('empty sections are reported so the numbering can be explained', () => {
     assert.deepStrictEqual(psgame.orphanLabels(withGrids[0].commandsBefore, true), []);
 });
 
+test('an empty section reports where a new map would go', () => {
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const game = psgame.parseGame(src);
+    const withGrids = game.levels.filter(l => l.grid);
+
+    const empties = psgame.emptySections(withGrids[2].commandsBefore, true);
+    assert.deepStrictEqual(empties.map(e => e.label), ['2', '2']);
+    // Each insertion point is that section's own last command, so a grid lands
+    // directly beneath the heading it belongs to.
+    for (const e of empties) {
+        assert.match(game.lines[e.lastLine].trim(), /^message/i);
+        assert.match(game.lines[e.lastLine - 1].trim(), /^section 2/i);
+    }
+});
+
+test('a map can be inserted into a section that had none', () => {
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const game = psgame.parseGame(src);
+    const target = psgame.emptySections(
+        game.levels.filter(l => l.grid)[2].commandsBefore, true)[0];
+
+    const rows = ['#####', '#.p.#', '#####'];
+    const out = psgame.applyGridEdits(game, [{ insertAfterLine: target.lastLine, rows }]);
+    const after = psgame.parseGame(out);
+
+    assert.strictEqual(after.grids.length, game.grids.length + 1,
+        'the file should have gained exactly one grid');
+    // It lands under the right heading, and the numbering now runs 0,1,2,3.
+    assert.deepStrictEqual(
+        after.levels.filter(l => l.grid).map(l => psgame.labelForCommands(l.commandsBefore)),
+        ['0', '1', '2', '3']);
+    const inserted = after.grids.find(g => g.rows.join('\n') === rows.join('\n'));
+    assert.ok(inserted, 'the inserted rows should be readable back as a grid');
+    // Every pre-existing grid survives untouched.
+    for (const g of game.grids) {
+        assert.ok(after.grids.some(h => h.rows.join('\n') === g.rows.join('\n')),
+            `original grid ${g.rows[0]} went missing`);
+    }
+});
+
+test('inserting and replacing in one pass keeps both correct', () => {
+    // The two operations interleave by line number, so applying them in the
+    // wrong order would corrupt whichever came first in the file.
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const game = psgame.parseGame(src);
+    const target = psgame.emptySections(
+        game.levels.filter(l => l.grid)[2].commandsBefore, true)[0];
+
+    const out = psgame.applyGridEdits(game, [
+        { gridIndex: 0, rows: ['@@@@@', '@@@@@'] },
+        { insertAfterLine: target.lastLine, rows: ['#####', '#.p.#', '#####'] },
+        { gridIndex: 2, rows: ['.........'] },
+    ]);
+    const after = psgame.parseGame(out);
+    assert.strictEqual(after.grids.length, 4);
+    assert.deepStrictEqual(after.grids[0].rows, ['@@@@@', '@@@@@']);
+    assert.deepStrictEqual(after.grids[2].rows, ['#####', '#.p.#', '#####']);
+    assert.deepStrictEqual(after.grids[3].rows, ['.........']);
+});
+
+test('inserting preserves CRLF line endings', () => {
+    const crlf = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8')
+        .replace(/\n/g, '\r\n');
+    const game = psgame.parseGame(crlf);
+    const target = psgame.emptySections(
+        game.levels.filter(l => l.grid)[2].commandsBefore, true)[0];
+    const out = psgame.applyGridEdits(game, [{ insertAfterLine: target.lastLine, rows: ['###'] }]);
+    assert.ok(!/[^\r]\n/.test(out), 'a bare LF crept into a CRLF file');
+    assert.strictEqual(psgame.parseGame(out).grids.length, game.grids.length + 1);
+});
+
+test('an insert with no rows is ignored', () => {
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const game = psgame.parseGame(src);
+    assert.strictEqual(psgame.applyGridEdits(game, [{ insertAfterLine: 5, rows: [] }]), src);
+});
+
+test('an edit with neither a gridIndex nor an insert point is rejected', () => {
+    const game = psgame.parseGame(SOKOBAN);
+    assert.throws(() => psgame.applyGridEdits(game, [{ rows: ['##'] }]),
+        /gridIndex or an insertAfterLine/);
+});
+
 test('a LEVEL command outranks the SECTION it sits under', () => {
     const cmds = [
         { verb: 'section', text: 'Chapter One' },

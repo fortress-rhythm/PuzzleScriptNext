@@ -396,9 +396,31 @@ function labelForCommands(commands) {
  * so all of them are.
  */
 function orphanLabels(commands, ownsFollowingGrid) {
-    const marks = (commands || [])
-        .filter(c => (c.verb === 'level' || c.verb === 'section') && c.text);
-    return (ownsFollowingGrid ? marks.slice(0, -1) : marks).map(c => c.text);
+    return emptySections(commands, ownsFollowingGrid).map(s => s.label);
+}
+
+/**
+ * The same empty sections, but with the line a new grid would go after.
+ *
+ * A heading owns every command up to the next heading, and its map belongs
+ * directly beneath those - so the insertion point is the last command line of
+ * the run, and a grid inserted there lands where an author would have typed it.
+ */
+function emptySections(commands, ownsFollowingGrid) {
+    const list = commands || [];
+    const runs = [];
+    for (const c of list) {
+        const isHeading = (c.verb === 'level' || c.verb === 'section') && c.text;
+        if (isHeading) {
+            runs.push({ label: c.text, lastLine: c.line });
+        } else if (runs.length) {
+            // Commands under the current heading extend its run.
+            runs[runs.length - 1].lastLine = c.line;
+        }
+        // Commands before any heading belong to no section, and are ignored.
+    }
+    // When a grid follows, the final heading owns it and is not empty.
+    return ownsFollowingGrid ? runs.slice(0, -1) : runs;
 }
 
 /**
@@ -569,23 +591,44 @@ function findPaletteName(game) {
  * a level works without touching neighbouring levels.
  */
 function applyGridEdits(game, edits) {
-    const byIndex = new Map();
-    for (const e of edits) byIndex.set(e.gridIndex, e.rows);
-
-    // Work back-to-front so earlier line indices stay valid.
     const lines = game.lines.slice();
     const endings = game.endings.slice();
     const grids = game.grids;
-    const ordered = [...byIndex.keys()].sort((a, b) => b - a);
 
-    for (const gi of ordered) {
-        const grid = grids[gi];
-        if (!grid) throw new Error(`No such grid index ${gi} (file has ${grids.length})`);
-        const rows = byIndex.get(gi);
-        const indent = grid.indent || '';
-        const replacement = rows.map(r => indent + r);
-        const start = grid.lines[0];
-        const count = grid.lines.length;
+    // Two kinds of operation, both expressed as a line range to splice:
+    // replacing an existing grid, or inserting a new one into a section that
+    // has none yet. Sorting by start line descending keeps every index valid
+    // as we go, whichever kind it is.
+    const ops = [];
+    for (const e of edits) {
+        if (e.gridIndex !== undefined && e.gridIndex !== null) {
+            const grid = grids[e.gridIndex];
+            if (!grid) {
+                throw new Error(`No such grid index ${e.gridIndex} (file has ${grids.length})`);
+            }
+            ops.push({
+                start: grid.lines[0],
+                count: grid.lines.length,
+                indent: grid.indent || '',
+                rows: e.rows,
+            });
+        } else if (e.insertAfterLine !== undefined && e.insertAfterLine !== null) {
+            if (!e.rows || !e.rows.length) continue;
+            ops.push({
+                start: e.insertAfterLine + 1,
+                count: 0,
+                indent: '',
+                rows: e.rows,
+            });
+        } else {
+            throw new Error('An edit needs either a gridIndex or an insertAfterLine');
+        }
+    }
+    ops.sort((a, b) => b.start - a.start);
+
+    for (const op of ops) {
+        const replacement = op.rows.map(r => op.indent + r);
+        const { start, count } = op;
 
         // Reuse the original rows' line endings where we can, so a same-size
         // edit produces a minimal diff; new rows get the file's usual ending.
@@ -629,6 +672,7 @@ const PSGAME_API = {
     buildLayerIndex,
     labelForCommands,
     orphanLabels,
+    emptySections,
 };
 
 // Usable both as a CommonJS module (the psmap CLI) and as a plain <script> in

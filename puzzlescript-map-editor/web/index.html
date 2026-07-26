@@ -51,6 +51,7 @@
     <div class="stage-head">
       <span id="levelTitle" class="level-title"></span>
       <span id="sizeBadge" class="badge"></span>
+      <button id="copylevel" title="Copy this level as text, ready to paste into a LEVELS section">Copy level</button>
       <span class="spacer"></span>
       <div class="resize" aria-label="Resize level">
         <span>rows</span>
@@ -68,6 +69,14 @@
 
     <div class="canvas-wrap">
       <canvas id="canvas" tabindex="0"></canvas>
+    </div>
+
+    <div id="copyout" class="copyout hidden">
+      <div class="copyout-head">
+        <span>Select all and copy</span>
+        <button id="copyclose">Close</button>
+      </div>
+      <textarea id="copytext" readonly spellcheck="false"></textarea>
     </div>
 
     <div class="statusbar">

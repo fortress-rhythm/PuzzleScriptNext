@@ -190,6 +190,40 @@ button.big { padding: 10px 18px; font-size: 15px; }
     padding: 2px 9px;
 }
 
+#copylevel { padding: 3px 9px; font-size: 12px; }
+
+/* Manual-copy fallback for pages opened straight off disk, where the async
+   clipboard API is unavailable. */
+.copyout {
+    flex: none;
+    border-top: 1px solid var(--line);
+    background: var(--panel);
+    padding: 8px 14px 10px;
+}
+.copyout-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--dim);
+    margin-bottom: 6px;
+}
+.copyout textarea {
+    width: 100%;
+    height: 120px;
+    resize: vertical;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 8px;
+    white-space: pre;
+    overflow: auto;
+}
+
 .resize { display: flex; align-items: center; gap: 3px; }
 .resize span { font-size: 10px; color: var(--dim); margin: 0 3px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
 .resize button { padding: 3px 6px; font-family: var(--mono); font-size: 11px; }
@@ -251,13 +285,13 @@ canvas:focus { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent
 /* A SECTION in the file with no level grid under it yet. Listed so the numbering
    you see here matches the numbering in your source, but not selectable. */
 .level-item.empty {
-    cursor: default;
-    opacity: 0.55;
+    opacity: 0.6;
     border-style: dashed;
     border-color: var(--line);
 }
-.level-item.empty:hover { background: transparent; }
+.level-item.empty:hover { opacity: 1; border-color: var(--accent); background: var(--panel-2); }
 .level-item.empty .lv-meta { font-style: italic; }
+.level-item.empty:hover .lv-meta { color: var(--accent); font-style: normal; }
 
 /* ---------------------------------------------------------------- welcome */
 

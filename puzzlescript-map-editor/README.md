@@ -85,6 +85,17 @@ because it means the level will not compile.
 Resize from any edge with the row and column buttons. **Download .txt** writes
 the whole game back out with only the level grids changed.
 
+**Sections with no map yet.** A `SECTION` heading with nothing under it is
+normal while a game is being built out, and those appear in the level list
+dashed, in their proper place in the numbering. Click one and it gets a
+background-filled map the size of the level you were last looking at; the grid
+is spliced in directly beneath that section's own commands when you save.
+
+**Copy level** puts the current level on the clipboard as plain text, ready to
+paste into a `LEVELS` section or straight into the PuzzleScript editor to try
+it out. On a page opened straight off disk the browser blocks scripted clipboard
+access, so the text appears in a box for you to copy by hand instead.
+
 The editor is plain HTML and JavaScript with no build step, so `web/index.html`
 also works opened directly from disk — only the "Try the example" button needs
 a server.
