@@ -26,7 +26,8 @@ const state = {
     glyphOrder: [],
     background: '.',
 
-    levels: [],          // working copies: { rows: [string], name, commands }
+    levels: [],          // working copies: { rows: [string], name, gridIndex }
+    outline: [],         // display order, including sections with no map yet
     current: 0,
 
     tool: 'select',
@@ -140,19 +141,32 @@ function loadSource(text, fileName) {
     state.background = findBackgroundChar(glyphs, game.grids);
     state.ink = state.glyphOrder[0] || '.';
 
+    // The level list mirrors the file's own order, including SECTION headings
+    // that have no map under them yet. Leaving those out is what made a map
+    // labelled with the wrong section number look like a loading bug.
     state.levels = [];
+    state.outline = [];
     let index = 0;
     for (const level of game.levels) {
+        for (const label of psgame.orphanLabels(level.commandsBefore, !!level.grid)) {
+            state.outline.push({ kind: 'empty', label: label });
+        }
         if (!level.grid) continue;
-        const named = (level.commandsBefore.find(c => c.verb === 'level') || {}).text;
-        const section = (level.commandsBefore.find(c => c.verb === 'section') || {}).text;
         state.levels.push({
             rows: level.grid.rows.slice(),
-            name: named || section || `Level ${index + 1}`,
+            name: psgame.labelForCommands(level.commandsBefore) || `Level ${index + 1}`,
             gridIndex: index,
             edited: false,
         });
+        state.outline.push({ kind: 'level', index: index });
         index++;
+    }
+    // Headings trailing the last map own nothing, so all of them are empty.
+    const last = game.levels[game.levels.length - 1];
+    if (last) {
+        for (const label of psgame.orphanLabels(last.commandsAfter, false)) {
+            state.outline.push({ kind: 'empty', label: label });
+        }
     }
 
     state.current = 0;
@@ -250,7 +264,21 @@ function setInk(ch) {
 function buildLevelList() {
     const host = el('levels');
     host.innerHTML = '';
-    state.levels.forEach((level, i) => {
+
+    for (const row of state.outline) {
+        if (row.kind === 'empty') {
+            // A SECTION with no map yet. Shown, but nothing to edit.
+            const item = document.createElement('div');
+            item.className = 'level-item empty';
+            item.innerHTML = '<span class="lv-name"></span><span class="lv-meta">no map yet</span>';
+            item.querySelector('.lv-name').textContent = row.label;
+            item.title = `Section "${row.label}" has no level grid in the file yet`;
+            host.appendChild(item);
+            continue;
+        }
+
+        const i = row.index;
+        const level = state.levels[i];
         const size = levelSize(level);
         const button = document.createElement('button');
         button.className = 'level-item' + (level.edited ? ' edited' : '');
@@ -260,7 +288,7 @@ function buildLevelList() {
         button.querySelector('.lv-name').textContent = level.name;
         button.addEventListener('click', () => selectLevel(i));
         host.appendChild(button);
-    });
+    }
 }
 
 function selectLevel(i) {
@@ -318,8 +346,8 @@ function refreshChrome() {
     for (const button of document.querySelectorAll('.tool')) {
         button.setAttribute('aria-pressed', String(button.dataset.tool === state.tool));
     }
-    const list = el('levels').children[state.current];
-    if (list) list.classList.toggle('edited', !!level.edited);
+    const row = el('levels').querySelector('.level-item[aria-pressed="true"]');
+    if (row) row.classList.toggle('edited', !!level.edited);
 }
 
 function draw() {

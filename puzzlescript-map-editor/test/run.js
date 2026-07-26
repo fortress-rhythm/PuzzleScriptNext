@@ -338,6 +338,56 @@ test('level tab names are legal Excel sheet names', () => {
     assert.ok(name.startsWith('L03'));
 });
 
+test('a map is labelled by the nearest heading, not the first', () => {
+    // Empty SECTIONs leave their commands stacked in front of the next grid.
+    // Taking the first of that stack labels the map several headings too early.
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const game = psgame.parseGame(src);
+    const withGrids = game.levels.filter(l => l.grid);
+
+    assert.strictEqual(withGrids.length, 3, 'three maps in the fixture');
+    assert.deepStrictEqual(
+        withGrids.map(l => psgame.labelForCommands(l.commandsBefore)),
+        ['0', '1', '3'],
+        'the third map sits under "section 3", after two empty "section 2" headings');
+
+    // The stack really is there - this is not a fixture that trivially passes.
+    assert.strictEqual(withGrids[2].commandsBefore.filter(c => c.verb === 'section').length, 3);
+});
+
+test('empty sections are reported so the numbering can be explained', () => {
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const game = psgame.parseGame(src);
+    const withGrids = game.levels.filter(l => l.grid);
+
+    // Two placeholder "2" headings sit before the third map.
+    assert.deepStrictEqual(
+        psgame.orphanLabels(withGrids[2].commandsBefore, true), ['2', '2']);
+    // Headings after the last map own nothing at all.
+    const last = game.levels[game.levels.length - 1];
+    assert.deepStrictEqual(psgame.orphanLabels(last.commandsAfter, false), ['4', '5']);
+    // And a heading that does own a grid is not reported as an orphan.
+    assert.deepStrictEqual(psgame.orphanLabels(withGrids[0].commandsBefore, true), []);
+});
+
+test('a LEVEL command outranks the SECTION it sits under', () => {
+    const cmds = [
+        { verb: 'section', text: 'Chapter One' },
+        { verb: 'level', text: 'The Bridge' },
+    ];
+    assert.strictEqual(psgame.labelForCommands(cmds), 'The Bridge');
+    assert.strictEqual(psgame.labelForCommands([]), '');
+    assert.strictEqual(psgame.labelForCommands([{ verb: 'message', text: 'hi' }]), '');
+});
+
+test('worksheet tabs use the nearest heading too', () => {
+    const src = fs.readFileSync(path.join(FIXTURES, 'emptysections.txt'), 'utf8');
+    const { game } = sheet.analyse(src);
+    const tabs = game.levels.filter(l => l.grid)
+        .map((l, i) => sheet.levelTabName(i, l));
+    assert.deepStrictEqual(tabs, ['L00 0', 'L01 1', 'L02 3']);
+});
+
 // ---------------------------------------------------------------------------
 // REXPaint
 // ---------------------------------------------------------------------------

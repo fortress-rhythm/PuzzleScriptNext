@@ -371,6 +371,37 @@ function groupLevels(blocks) {
 }
 
 /**
+ * The name a grid should carry: the nearest LEVEL command in front of it, or
+ * failing that the nearest SECTION.
+ *
+ * "Nearest" is the whole point. A SECTION with no map under it yet is legal and
+ * common while a game is being built out, and those orphaned commands stack up
+ * in front of the *next* grid. Taking the first of that stack labels a map with
+ * the name of an empty section several headings earlier.
+ */
+function labelForCommands(commands) {
+    const list = commands || [];
+    for (let i = list.length - 1; i >= 0; i--) {
+        const c = list[i];
+        if ((c.verb === 'level' || c.verb === 'section') && c.text) return c.text;
+    }
+    return '';
+}
+
+/**
+ * The LEVEL/SECTION headings in this list that own no map.
+ *
+ * Within `commandsBefore` the last heading owns the grid that follows, so every
+ * earlier one is an empty section. In `commandsAfter` there is no grid at all,
+ * so all of them are.
+ */
+function orphanLabels(commands, ownsFollowingGrid) {
+    const marks = (commands || [])
+        .filter(c => (c.verb === 'level' || c.verb === 'section') && c.text);
+    return (ownsFollowingGrid ? marks.slice(0, -1) : marks).map(c => c.text);
+}
+
+/**
  * Full parse. Returns everything the editor and the spreadsheet bridge need.
  */
 function parseGame(source) {
@@ -596,6 +627,8 @@ const PSGAME_API = {
     parseSpriteMatrix,
     parseCollisionLayers,
     buildLayerIndex,
+    labelForCommands,
+    orphanLabels,
 };
 
 // Usable both as a CommonJS module (the psmap CLI) and as a plain <script> in

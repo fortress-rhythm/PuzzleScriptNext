@@ -248,6 +248,17 @@ canvas:focus { box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 0 2px var(--accent
 .level-item .lv-meta { font-family: var(--mono); font-size: 10px; color: var(--dim); }
 .level-item.edited .lv-name::after { content: " •"; color: var(--accent); }
 
+/* A SECTION in the file with no level grid under it yet. Listed so the numbering
+   you see here matches the numbering in your source, but not selectable. */
+.level-item.empty {
+    cursor: default;
+    opacity: 0.55;
+    border-style: dashed;
+    border-color: var(--line);
+}
+.level-item.empty:hover { background: transparent; }
+.level-item.empty .lv-meta { font-style: italic; }
+
 /* ---------------------------------------------------------------- welcome */
 
 .welcome {

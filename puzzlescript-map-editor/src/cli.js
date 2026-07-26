@@ -229,7 +229,7 @@ function doInfo(opts) {
     let i = 0;
     for (const level of game.levels) {
         if (!level.grid) continue;
-        const name = (level.commandsBefore.find(c => c.verb === 'level') || {}).text || '';
+        const name = require('./psgame').labelForCommands(level.commandsBefore);
         const ragged = new Set(level.grid.rows.map(r => r.length)).size > 1 ? '  [ragged!]' : '';
         process.stdout.write(
             `  L${String(i).padStart(2, '0')}  ${level.grid.width}x${level.grid.height}`

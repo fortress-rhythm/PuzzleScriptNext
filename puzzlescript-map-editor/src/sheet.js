@@ -12,7 +12,7 @@
 // OBJECTS section, and squares up the cells. The result is a map you can
 // actually read, in a tool that already has the editing model you want.
 
-const { parseGame, buildGlyphTable, findPaletteName } = require('./psgame');
+const { parseGame, buildGlyphTable, findPaletteName, labelForCommands } = require('./psgame');
 const { colorPalettes } = require('./palettes');
 const xlsx = require('./xlsx');
 const csv = require('./csv');
@@ -47,11 +47,7 @@ function findBackgroundChar(game, glyphs, grids) {
  * SECTION command preceding it where one exists.
  */
 function levelTabName(index, level) {
-    let label = '';
-    for (const cmd of level.commandsBefore || []) {
-        if (cmd.verb === 'level' && cmd.text) label = cmd.text;
-        else if (cmd.verb === 'section' && cmd.text && !label) label = cmd.text;
-    }
+    const label = labelForCommands(level.commandsBefore);
     const prefix = `L${String(index).padStart(2, '0')}`;
     if (!label) return prefix;
     // Excel forbids : \ / ? * [ ] in sheet names and caps them at 31 chars.
@@ -121,7 +117,7 @@ function toWorkbook(source, options = {}) {
         const tab = levelTabName(gridIndex, level);
         const cmds = [...level.commandsBefore, ...level.commandsAfter]
             .map(c => `${c.verb.toUpperCase()} ${c.text}`.trim()).join(' | ');
-        const name = (level.commandsBefore.find(c => c.verb === 'level') || {}).text || '';
+        const name = labelForCommands(level.commandsBefore);
         indexRows.push([tab, `${level.grid.width} x ${level.grid.height}`, name, cmds]);
 
         sheets.push(gridSheet(tab, level.grid, glyphAt));
