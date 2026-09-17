@@ -68,6 +68,7 @@
 </select>
 </form>- <a id="runClickLink" title="Compiles and runs the current game in the editor pane (keyboard shortcut: ⌘/Ctrl+Shift+Enter)" href="javascript:void('Run the Game');">RUN</a> 
 - <a title="Rebuilds the program live (keyboard shortcut: ⌘/Ctrl+Enter)" id="rebuildClickLink" href="javascript:void('Rebuild without restarting');">REBUILD</a> - <a id="levelEditorClickLink" title="Toggle the level editor (keyboard shortcut: E)" href="javascript:void('Open Level Editor');">LEVEL EDITOR</a> 
+- <a id="palettePreviewClickLink" title="Preview and export colour palettes" href="javascript:void('Palettes');">PALETTES</a> 
 - <a id="exportClickLink" title="Export a standalone HTML Build of your game" href="javascript:void('Export Standalone HTML Build');">EXPORT</a> 
 - <a id="shareClickLink" title="Generate a shareable link to a playable copy of your game" href="javascript:void('Generate Link To Game');">SHARE</a> 
 - <a href="Documentation/documentation.html" title="How Puzzlescript Works"  target="Puzzle_Script_Documentation">DOCS</a>
@@ -152,6 +153,7 @@
 <script src="js/codemirror/anyword-hint.js"></script>
 <script src="js/codemirror/comment.js"></script>
 <script src="js/colors.js"></script>
+<script src="js/palettes_ui.js"></script>
 <script src="js/graphics.js"></script>
 <script src="js/mobile.js"></script>
 <script src="js/inputoutput.js"></script>
@@ -172,5 +174,14 @@
 <script src="js/FastPriorityQueue.js"></script>
 
 <!--<script src="js/scripts.js"></script>-->
+
+<div id="palettePanel" class="palette-panel hidden">
+  <div class="palette-panel-head">
+    <b>Palettes</b>
+    <span>preview any palette, apply one to the editor, or export a portable prelude block</span>
+    <a href="javascript:void(0)" id="palettePanelClose">close</a>
+  </div>
+  <div id="palettePanelBody"></div>
+</div>
 </body>
 </html>

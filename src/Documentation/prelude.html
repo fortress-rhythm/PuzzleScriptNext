@@ -149,6 +149,37 @@ temp2;blue;
         <li>13 - c64 </li>
         <li>14 - whitingjp </li>
         </ul>
+        <p>This fork adds three more, curated from <a href="https://lospec.com">lospec.com</a>
+        and mapped onto PuzzleScript's 21 colour slots. Where a source palette has no
+        counterpart for a slot, a tonally matched colour was added rather than left wrong;
+        those additions are listed per palette below.
+        <ul>
+        <li>15 - bentenpond &mdash; adapted from
+            <a href="https://lospec.com/palette-list/benten-pond">Benten Pond</a> by Terry Ross,
+            inspired by Kawase Hasui's woodblock print "The Pond at Benten Shrine" (1920s).
+            Cool and green-dominant; the source has no warm mid-tones, so
+            <code>brown</code>, <code>darkbrown</code>, <code>orange</code> and
+            <code>yellow</code> are original additions.</li>
+        <li>16 - dungeon20 &mdash; adapted from
+            <a href="https://lospec.com/palette-list/dungeon-20">Dungeon-20</a> by
+            Meaghan (goldentreesart). A narrow roguelike mood with no greens or pinks at all,
+            so <code>lightred</code>, <code>darkbrown</code>, <code>green</code>,
+            <code>darkgreen</code>, <code>lightgreen</code> and <code>pink</code> are
+            original additions. The least faithful of the three &mdash; use it when you want the
+            mood, not when you want every colour name to mean what it says.</li>
+        <li>17 - oekakinl &mdash; adapted from
+            <a href="https://lospec.com/palette-list/oekakinl">Oekaki.nl</a> by P-Tux7.
+            The only one of the three with a true <code>#000000</code> and
+            <code>#ffffff</code>, and the closest fit overall;
+            <code>darkred</code>, <code>darkgreen</code> and <code>lightbrown</code>
+            are original additions.</li>
+        </ul>
+        <p>These three are fork-only. A game that writes <code>color_palette bentenpond</code>
+        will not run on stock PuzzleScript, which has never heard the name. To distribute such
+        a game, use the editor's <b>PALETTES</b> panel to export the palette as a full
+        <code>color_palette</code> override block &mdash; that form spells out every colour and
+        works on any build. The same three blocks are kept in
+        <code>src/demo/palette-refs.txt</code>.
         <p>You can also refer to them by their numerical index.
           For example, to use the Game Boy palette, you can use either "gameboycolour" or "2".</p>
           <p>Having selected a palette, you can modify individual colours by specifying a colour name and a hex code to set it, as shown here.</p>

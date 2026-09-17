@@ -3007,7 +3007,10 @@ function twiddleMetaData(state, command = null) {
 			newmetadata[key]=val;
 		}
         parseTwiddle(newmetadata);
-        newmetadata.color_palette ||= colorPalettes.arnecolors;
+        // Copied for the same reason as in parseTwiddle: this object ends up on
+        // state.metadata, and anything that writes a colour into it would
+        // otherwise be writing into the shared built-in palette.
+        newmetadata.color_palette ||= Object.assign({}, colorPalettes.arnecolors);
         state.metadata=newmetadata;
         state.default_metadata = deepClone(newmetadata);
 	} else {
@@ -3162,9 +3165,14 @@ function twiddleMetaData(state, command = null) {
             const palette = (args[0] in colorPalettesAliases) ? colorPalettesAliases[args[0]] : args[0];
             if (!(palette in colorPalettes)) {
                 logError(`Palette "${palette}" not found, defaulting to arnecolors.`, 0);
-                newmetadata.color_palette = colorPalettes.arnecolors;
+                newmetadata.color_palette = Object.assign({}, colorPalettes.arnecolors);
             } else {
-                newmetadata.color_palette = colorPalettes[palette];
+                // Copy, never alias. The per-colour overrides below write into
+                // this object, and colorPalettes entries are shared globals -
+                // aliasing means one game's overrides permanently repaint the
+                // built-in palette for every game compiled afterwards in the
+                // same session.
+                newmetadata.color_palette = Object.assign({}, colorPalettes[palette]);
             }
             for (let i = 1; i < args.length; i += 2) {
                 const colorName = args[i];
