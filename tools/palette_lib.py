@@ -443,6 +443,44 @@ def load_builtins(path="src/js/colors.js", exclude=()):
     return out
 
 
+FORK_START = "--- palette-set extension"
+FORK_END = "--- end palette-set extension"
+
+
+def fork_palettes(path="src/js/colors.js"):
+    """The names of the fork's own palettes, read from colors.js's own markers.
+
+    Keeping this as a hardcoded tuple in the curation tool was a small trap: it
+    is the list that has to change on exactly the occasion nobody is thinking
+    about it, the moment a palette is added. colors.js already brackets the
+    fork's entries with comment markers so an upstream merge stays a clean
+    diff, so the file can answer the question itself.
+    """
+    try:
+        text = open(path, encoding="utf-8").read()
+    except OSError:
+        return ()
+    names = []
+    idx = 0
+    while True:
+        a = text.find(FORK_START, idx)
+        if a < 0:
+            break
+        b = text.find(FORK_END, a)
+        if b < 0:
+            break
+        block = text[a:b]
+        for m in re.finditer(r"(?:^|\n)\s*(?:\d+\s*:\s*\"(\w+)\"|(\w+)\s*:\s*\{)", block):
+            names.append(m.group(1) or m.group(2))
+        idx = b + 1
+    seen, out = set(), []
+    for n in names:
+        if n not in seen:
+            seen.add(n)
+            out.append(n)
+    return tuple(out)
+
+
 def find_colors_js(start=None):
     """Locate src/js/colors.js from wherever the tool was invoked."""
     here = os.path.abspath(start or os.path.dirname(os.path.abspath(__file__)))

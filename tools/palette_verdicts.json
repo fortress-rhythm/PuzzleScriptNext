@@ -10,5 +10,9 @@
   "oekakinl": {
     "note": "shipped at index 17; most legible of the three, safest default",
     "verdict": "accept"
+  },
+  "soggysepiacrt20": {
+    "note": "shipped at index 18; 17/21 sourced, blues and yellow added, best CVD of the four",
+    "verdict": "accept"
   }
 }

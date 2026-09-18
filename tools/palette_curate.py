@@ -42,7 +42,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from palette_lib import (  # noqa: E402
     ALIAS_OF, ANCHOR, ANCHOR_SOURCE, ARNE, RAMPS, SINGLETS, SLOTS, CVD,
     NEUTRAL_CHROMA, SLOT_FAMILY, analyse, chroma, classify, contrast, delta_e,
-    derive_anchors, dist, family, find_colors_js, hsl, lab, lab_mix,
+    derive_anchors, dist, family, find_colors_js, fork_palettes, hsl, lab,
+    lab_mix,
     lab_to_hex, load_builtins,
     load_candidates, relight, rgb, simulate,
 )
@@ -53,7 +54,12 @@ VERDICT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 # The fork's own palettes live in colors.js now, so they have to be kept out of
 # the calibration corpus - grading a candidate against a corpus that contains
 # this work would be grading it against itself.
-FORK_PALETTES = ("bentenpond", "dungeon20", "oekakinl")
+#
+# Read from colors.js's own fork markers rather than listed here, because a
+# hardcoded list is one that goes stale on exactly the occasion nobody is
+# thinking about it: the moment a palette is added.
+def FORK_PALETTES(colors_js=None):
+    return fork_palettes(colors_js or find_colors_js())
 
 
 # ----------------------------------------------------------------------- fitting
@@ -649,7 +655,7 @@ def rate(mapping, prov, corpus_stats, mode="fit-colourname"):
 
 
 def corpus_stats(colors_js=None):
-    builtins = load_builtins(colors_js or find_colors_js(), exclude=FORK_PALETTES)
+    builtins = load_builtins(colors_js or find_colors_js(), exclude=FORK_PALETTES(colors_js))
     stats = {"contrast": [], "cvd": [], "separation": [], "names": list(builtins)}
     for name, mapping in builtins.items():
         r = analyse(mapping)
@@ -802,7 +808,8 @@ def cmd_audit(stats, builtins, colors_js):
     for name, mapping in everything.items():
         res = analyse(mapping)
         even = sum(res["ramp_evenness"].values()) / len(res["ramp_evenness"])
-        mark = " *" if name in FORK_PALETTES else ""
+        forks = FORK_PALETTES(colors_js)
+        mark = " *" if name in forks else ""
         print(f"  {name:<16}{len(res['ramp_faults']):>7}{even:>7.2f}"
               f"{res['unique']:>5}/21{len(res['low_contrast']):>7}"
               f"{res['cvd_total']:>6}{mark}")
@@ -879,7 +886,7 @@ def cmd_anchors(colors_js):
     print("  disagrees about the name at all.\n")
     print(f"  {'slot':<11}{'anchor':<9}{'from':<15}{'spread':>7}   "
           f"{'arnecolors':<11}{'dE':>4}")
-    builtins = load_builtins(colors_js, exclude=FORK_PALETTES)
+    builtins = load_builtins(colors_js, exclude=FORK_PALETTES(colors_js))
     fresh = derive_anchors(builtins) if builtins else {}
     drift = []
     for slot in SLOTS:

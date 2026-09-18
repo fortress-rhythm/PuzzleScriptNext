@@ -144,11 +144,15 @@ def test_anchors():
     check(not faults, "the anchor table obeys the ramp rule it enforces",
           str(faults))
 
-    builtins = P.load_builtins(P.find_colors_js(), exclude=PC.FORK_PALETTES)
+    forks = PC.FORK_PALETTES()
+    builtins = P.load_builtins(P.find_colors_js(), exclude=forks)
     if builtins:
         check(len(builtins) == 14, "the calibration corpus is the 14 inherited "
               "palettes", f"got {len(builtins)}: {sorted(builtins)}")
-        for name in PC.FORK_PALETTES:
+        check(set(forks) == set(PA.SOURCES),
+              "colors.js's fork markers agree with palette_analysis.SOURCES",
+              f"markers {sorted(forks)} vs SOURCES {sorted(PA.SOURCES)}")
+        for name in forks:
             check(name not in builtins,
                   "fork palettes stay out of the calibration corpus", name)
         fresh = P.derive_anchors(builtins)
@@ -231,7 +235,8 @@ def test_rating():
     section("rating")
     stats, _ = PC.corpus_stats(P.find_colors_js())
     for key in ("contrast", "cvd", "separation"):
-        check(len(stats[key]) == 14, f"corpus stats has 14 {key} values")
+        check(len(stats[key]) == 14, f"corpus stats has 14 {key} values",
+              f"got {len(stats[key])}")
 
     for name, hexes in all_palettes()[:40]:
         if not hexes:
@@ -396,8 +401,10 @@ def test_curated_palettes():
 def test_audit_corpus():
     section("the shipped corpus")
     everything = P.load_builtins(P.find_colors_js())
-    check(len(everything) == 17, "colors.js holds 17 palettes",
-          f"got {len(everything)}")
+    expected = 14 + len(PA.SOURCES)
+    check(len(everything) == expected,
+          f"colors.js holds the 14 inherited plus {len(PA.SOURCES)} fork palettes",
+          f"got {len(everything)}, expected {expected}")
     for name, mapping in everything.items():
         res = P.analyse(mapping)
         check(res["unique"] <= 21, f"{name}: distinct count sane")
@@ -406,7 +413,7 @@ def test_audit_corpus():
     # The ramp rule is only worth enforcing if the palettes that ship mostly
     # obey it. If this ever fails, the rule is wrong, not the palettes.
     clean = sum(1 for m in everything.values() if not P.ramp_faults(m))
-    check(clean >= 12, "most shipped palettes obey the ramp rule",
+    check(clean >= len(everything) - 5, "most shipped palettes obey the ramp rule",
           f"only {clean}/{len(everything)} are clean")
 
 

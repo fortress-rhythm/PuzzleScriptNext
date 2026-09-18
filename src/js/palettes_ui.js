@@ -283,4 +283,8 @@ var paletteCredits = {
     oekakinl:
         'palette adapted from "Oekaki.nl" by P-Tux7 (lospec.com/palette-list/oekakinl). '
         + 'darkred, darkgreen and lightbrown are original additions.',
+    soggysepia:
+        'palette adapted from "Soggy Sepia CRT-20" by Digi / @Digitress '
+        + '(lospec.com/palette-list/soggy-sepia-crt-20). The source has no blue at all, '
+        + 'so the three blues and yellow are original additions.',
 };

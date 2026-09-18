@@ -5,8 +5,8 @@
 // test suite verifies this file against colors.js whenever PuzzleScriptNext is
 // checked out beside this repo, and skips the check when it is not.
 //
-// The last three are fork-only: PuzzleScript Next's palette-set extension adds
-// them at indices 15-17, and stock PuzzleScript has never heard the names.
+// The last four are fork-only: PuzzleScript Next's palette-set extension adds
+// them at indices 15-18, and stock PuzzleScript has never heard the names.
 // Carrying them here costs nothing and means a game written against the fork
 // renders in its own colours rather than silently in arnecolors.
 
@@ -452,6 +452,32 @@ const colorPalettes = {
         "darkblue": "#24313d",
         "purple": "#6b0b48",
         "pink": "#f1a8ca"
+    },
+    "soggysepia": {
+        "black": "#0a0707",
+        "white": "#e2ded5",
+        "grey": "#372e38",
+        "darkgrey": "#241a21",
+        "lightgrey": "#c4b8a6",
+        "gray": "#372e38",
+        "darkgray": "#241a21",
+        "lightgray": "#c4b8a6",
+        "red": "#b87258",
+        "darkred": "#3c1a13",
+        "lightred": "#ddbdac",
+        "brown": "#493e2d",
+        "darkbrown": "#30231a",
+        "lightbrown": "#a08e76",
+        "orange": "#d3a690",
+        "yellow": "#d8d4a2",
+        "green": "#88aa58",
+        "darkgreen": "#374e22",
+        "lightgreen": "#b5ca90",
+        "blue": "#7378af",
+        "lightblue": "#babee7",
+        "darkblue": "#232648",
+        "purple": "#887294",
+        "pink": "#b5a6bc"
     }
 };
 
@@ -472,7 +498,8 @@ const colorPalettesAliases = {
     "14": "whitingjp",
     "15": "bentenpond",
     "16": "dungeon20",
-    "17": "oekakinl"
+    "17": "oekakinl",
+    "18": "soggysepia"
 };
 
 /**

@@ -12,7 +12,7 @@ to build, this one says what exists and how to add the next one.
 
 | | |
 |---|---|
-| `src/js/colors.js` | Three palettes at indices 15–17, inside a labelled fork block |
+| `src/js/colors.js` | Four palettes at indices 15–18, inside a labelled fork block |
 | `tools/palette_analysis.py` | Derivation, the three checks, and the code generators |
 | `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
 | `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
@@ -28,6 +28,7 @@ The palettes:
 | 15 | `bentenpond` | [Benten Pond](https://lospec.com/palette-list/benten-pond) | Terry Ross |
 | 16 | `dungeon20` | [Dungeon-20](https://lospec.com/palette-list/dungeon-20) | Meaghan (goldentreesart) |
 | 17 | `oekakinl` | [Oekaki.nl](https://lospec.com/palette-list/oekakinl) | P-Tux7 |
+| 18 | `soggysepia` | [Soggy Sepia CRT-20](https://lospec.com/palette-list/soggy-sepia-crt-20) | Digi (@Digitress) |
 
 Indices continue at 15 and the inherited fourteen are untouched, so an upstream
 merge stays a clean diff.
@@ -51,14 +52,14 @@ anywhere. This is what you distribute.
 
 Author with the short form; export the long one when you publish. The
 **PALETTES** panel does the conversion, and `src/demo/palette-refs.txt` holds all
-three ready to paste.
+four ready to paste.
 
 The two forms now render identically in `puzzlescript-map-editor/` too. They
 did not before: the map editor read the base palette name and dropped every
 override, so the one representation meant to be portable was the one it drew in
 the wrong colours. It also never consulted its own numeric aliases, so
 `color_palette 3` fell back to arnecolors. Both are fixed, it carries all
-seventeen palettes now, and its test suite checks that copy against
+eighteen palettes now, and its test suite checks that copy against
 `src/js/colors.js` slot by slot whenever the two are checked out together.
 
 One detail that is easy to get wrong by hand: the block must also set
@@ -83,11 +84,16 @@ In the editor toolbar, next to LEVEL EDITOR.
 palette and regenerating is the whole mechanism, which is why it is reversible
 and why it cannot corrupt a game.
 
-## Adding a fourth palette
+## Adding another palette
 
 `doc/palette-curation.md` covers the stage before this one — finding candidates,
 rating them and deciding. Its tooling replaces steps 1-3 below with a fitted,
 rated draft you correct; steps 4 and 5 are unchanged either way.
+
+Two things now notice on their own when you add one, so neither needs editing:
+the calibration corpus reads the fork block's own comment markers in
+`colors.js` rather than carrying a list, and `puzzlescript-map-editor`'s test
+suite fails until the new palette is copied into its vendored table.
 
 1. Add the source hex to `SOURCES` in `tools/palette_analysis.py`.
 2. `uv run tools/palette_analysis.py` — the raw hue-clustering pass plus the
@@ -123,7 +129,7 @@ A fourth check was added later, in `tools/palette_lib.py`, and applies to both
 tools: within a ramp, **luminance must increase at every step**. `lightred`
 darker than `red` is a mapping error, and contrast and colourblindness both
 measure pairs in isolation, so neither notices a ramp running backwards. Ten of
-the fourteen inherited palettes have no such fault, and all three palettes above
+the fourteen inherited palettes have no such fault, and all four palettes above
 have none; `palette_curate.py audit` lists the exceptions, one of which
 (`proteus_night`'s `lightgreen`, a near-black navy) looks like an inherited
 copy-paste error rather than a stylistic choice.
@@ -138,19 +144,20 @@ near-black, `purple` `#342a97` is blue-violet, `pink` is magenta, `lightbrown`
 it is the most typical colour for only seven of the twenty-one slots.
 `palette_curate.py anchors` prints what the corpus actually means by each name.
 
-## How these three came out
+## How these four came out
 
-Measured against the fourteen shipped palettes, which span **26–75**
+Measured against the fourteen inherited palettes, which span **26–75**
 low-contrast pairs and **0–13** colourblind collapses:
 
-| palette | sourced | distinct | contrast < 1.3 | CVD collapses |
-|---|---|---|---|---|
-| `oekakinl` | 18/21 | 21/21 | 28 | 4 |
-| `dungeon20` | 15/21 | 21/21 | 35 | 7 |
-| `bentenpond` | 17/21 | 21/21 | 37 | 10 |
+| palette | sourced | distinct | contrast < 1.3 | CVD collapses | ramp faults |
+|---|---|---|---|---|---|
+| `oekakinl` | 18/21 | 21/21 | 28 | 4 | 0 |
+| `dungeon20` | 15/21 | 21/21 | 35 | 7 | 0 |
+| `bentenpond` | 17/21 | 21/21 | 37 | 10 | 0 |
+| `soggysepia` | 17/21 | 21/21 | 40 | 2 | 0 |
 
-All three are inside the shipped range, and all three are better than EGA on
-distinctness (16/21) and than proteus_mellow on contrast (75).
+All four are inside the inherited range, all four have distinct values for every
+slot, and none has a ramp that runs backwards.
 
 - **`oekakinl` is the most legible** and the safest default. Its numbers sit
   beside arnecolors (29 / 5), it has true black and white, and only three slots
@@ -166,6 +173,41 @@ distinctness (16/21) and than proteus_mellow on contrast (75).
   mood, not a general palette. Use it for the atmosphere, and do not assume
   `green` means anything characteristic of Dungeon-20, because nothing in
   Dungeon-20 is green.
+- **`soggysepia` is the most robust under colour blindness**, and the reason is
+  worth understanding rather than trusting. Two collapses is the lowest of the
+  four, but that is not because the palette is especially colourful — it is
+  because it separates by *lightness* far more than by hue, and lightness
+  survives simulation. Its four source ramps are eight evenly-stepped tones
+  each. The flip side is that under deuteranopia the whole warm half — reds,
+  browns, orange, greens — reads as one sepia range, and only the blues stand
+  apart. Objects distinguished by lightness will be fine; objects distinguished
+  by warm hue alone will not.
+
+### soggysepia in particular
+
+The source is four eight-step phosphor ramps: sepia, red, green, purple. Two
+things about it shaped the mapping.
+
+**Every ramp jumps from about L 30 to L 51.** That hole is the palette's CRT
+character and no mapping hides it — whichever five colours carry `black` to
+`white`, one step is roughly twice the others, so grey-ramp evenness comes out
+around 0.16. For scale, `ega` ships at 0.16 and `proteus_mellow` at 0.27.
+
+**There is no blue anywhere.** A CRT palette with red, green and purple ramps
+and no blue is a conspicuous gap, so the three blues are built to the source's
+own plan — three steps at its lightnesses and its chroma, pushed to hue 235 so
+they stay clear of the purple ramp instead of collapsing into it. `yellow` is
+the fourth addition: the source's only yellow-ish colours are the pale top of
+its green ramp, 31° of hue away, and calling a fourth green `yellow` in a
+palette that already has three is the failure the rubric exists to catch.
+
+The one warm ramp had to be either `red` or `brown` and could not be both —
+taking three of each from it leaves one of the two with no dark end. So `red` is
+the warm ramp proper, spanning its full range, and `brown` is the sepia ramp's
+middle, which is genuinely brown (hue 25–36) rather than a neutral pressed into
+service. The greys then take the purple ramp's near-neutral dark end and the
+sepia ramp's light end: shadows lean faintly plum, highlights faintly warm, and
+at chroma under 11 all five still read as neutral.
 
 No further hand-tuning is recommended before use. The additions already sit in
 each palette's own saturation range, and the remaining flags are inherent to the
