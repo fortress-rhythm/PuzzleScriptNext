@@ -1,0 +1,116 @@
+{
+  "name": "ruststorm",
+  "index": 20,
+  "title": "Rust Gold 8 + Storms and Cyan",
+  "author": "Trigo Mathmancer and Digi (@Digitress)",
+  "url": "https://lospec.com/palette-list/rust-gold-8",
+  "note": "pooled from Rust Gold 8 by Trigo Mathmancer and Storms and Cyan by Digi / @Digitress (lospec.com/palette-list/storms-and-cyan) - a rust-and-gold warm half against a seven-step cyan ramp",
+  "commentary": [
+    "The same warm half against a seven-step cyan ramp, which is the widest-spanning single ramp of any source here: L 0 to L 90. It buys a blue ramp outright and pays for it everywhere else - Storms and Cyan contributes one non-blue colour, so white, lightgrey, the greens, purple and pink are all additions. Eight of twenty-one, the most of any palette in this set, and the docs say so rather than hiding it.",
+    "Neither source has a light neutral at all: the warm half tops out at L 58 and the cyans are cyan. white and lightgrey are the two additions that make the grey ramp usable, and without them white would be a mid-brown at L 40."
+  ],
+  "colors": [
+    "#f6cd26",
+    "#ac6b26",
+    "#563226",
+    "#331c17",
+    "#bb7f57",
+    "#725956",
+    "#393939",
+    "#202020",
+    "#00000e",
+    "#001933",
+    "#003f51",
+    "#007f8e",
+    "#00aeb8",
+    "#00bebc",
+    "#00cdc9",
+    "#00fdff"
+  ],
+  "slots": {
+    "black": [
+      "#00000e",
+      "sourced"
+    ],
+    "white": [
+      "#ffe2de",
+      "added"
+    ],
+    "grey": [
+      "#725956",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#393939",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#b39794",
+      "added"
+    ],
+    "red": [
+      "#775043",
+      "added"
+    ],
+    "darkred": [
+      "#4a271c",
+      "added"
+    ],
+    "lightred": [
+      "#bb7f57",
+      "sourced"
+    ],
+    "brown": [
+      "#563226",
+      "sourced"
+    ],
+    "darkbrown": [
+      "#331c17",
+      "sourced"
+    ],
+    "lightbrown": [
+      "#ac6b26",
+      "sourced"
+    ],
+    "orange": [
+      "#e79e57",
+      "added"
+    ],
+    "yellow": [
+      "#f6cd26",
+      "sourced"
+    ],
+    "green": [
+      "#557a45",
+      "added"
+    ],
+    "darkgreen": [
+      "#325624",
+      "added"
+    ],
+    "lightgreen": [
+      "#8fb37c",
+      "added"
+    ],
+    "blue": [
+      "#007f8e",
+      "sourced"
+    ],
+    "lightblue": [
+      "#00cdc9",
+      "sourced"
+    ],
+    "darkblue": [
+      "#001933",
+      "sourced"
+    ],
+    "purple": [
+      "#5b4470",
+      "added"
+    ],
+    "pink": [
+      "#c49ad2",
+      "added"
+    ]
+  }
+}

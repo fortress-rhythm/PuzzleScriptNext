@@ -27,6 +27,7 @@ palette with one colour, the palette that is all greys, the palette with two
 colours at the same lightness.
 """
 
+import json
 import os
 import random
 import re
@@ -355,6 +356,93 @@ def test_parsers(tmp):
           "a slug collision is reported rather than silently overwriting")
 
 
+# --------------------------------------------------------------- the folder
+
+def test_palette_folder(tmp):
+    section("the palettes/ folder")
+    import copy
+    d = P.find_palette_dir()
+    check(os.path.isdir(d), "palettes/ is there", d)
+
+    pals = P.load_palette_dir(d)
+    check(len(pals) >= 1, "at least one palette file", f"got {len(pals)}")
+    check(list(pals) == sorted(pals, key=lambda n: pals[n]["index"]),
+          "palettes come back in alias-index order")
+
+    for name, p in pals.items():
+        check(set(p["slots"]) == set(P.SLOTS), f"{name}: all 21 slots")
+        check(all(v[1] in ("sourced", "added") for v in p["slots"].values()),
+              f"{name}: every slot is sourced or added")
+        check(p["title"] and p["author"] and p["url"],
+              f"{name}: has a title, an author and a URL",
+              "credit is the condition these are used under")
+        mapping = {s: h for s, (h, _) in p["slots"].items()}
+        check(not P.ramp_faults(mapping), f"{name}: ramps climb")
+
+    # A palette file is also a candidate file: the same JSON the curation tool
+    # reads from a Lospec download. Scoring what already ships is how `audit`
+    # and `score` stay comparable.
+    cands, errors = P.load_candidates([d])
+    check(not errors, "every palette file parses as a candidate too", str(errors))
+    check(len(cands) == len(pals), "one candidate per palette file")
+
+    # The validator is the thing standing between a typo and a broken
+    # colors.js, so each kind of breakage gets a test.
+    good = json.load(open(pals[list(pals)[0]]["path"], encoding="utf-8"))
+
+    def rejects(mutate, label, filename=None):
+        doc = copy.deepcopy(good)
+        mutate(doc)
+        path = os.path.join(tmp, (filename or doc.get("name", "x")) + ".json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+        try:
+            P.read_palette_file(path)
+        except ValueError:
+            check(True, label)
+        else:
+            check(False, label, "was accepted")
+
+    rejects(lambda d: d["slots"].pop("green"), "a missing slot is rejected")
+    rejects(lambda d: d["slots"].update(greeen=["#112233", "sourced"]),
+            "a misspelled slot is rejected")
+    rejects(lambda d: d["slots"].update(green=["112233", "sourced"]),
+            "a colour without its # is rejected")
+    rejects(lambda d: d["slots"].update(green=["#112233", "guessed"]),
+            "an invented provenance word is rejected")
+    rejects(lambda d: d["slots"].update(green=["#112233", "sourced"]),
+            "a slot claiming to be sourced that is not in the source is rejected")
+    rejects(lambda d: d.update(colours=d.pop("colors")),
+            "a misspelled top-level key is rejected")
+    rejects(lambda d: d.update(index="15"), "a non-integer index is rejected")
+    rejects(lambda d: d.update(name="somethingelse"),
+            "a name that disagrees with the filename is rejected",
+            filename=good["name"])
+
+
+def test_generated_from_folder():
+    section("the generated files come from the folder")
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    written, unchanged = PA.write_generated(root, dry_run=True)
+    check(not written,
+          "every generated file already matches palettes/",
+          "stale: " + ", ".join(written)
+          + " - run: uv run tools/palette_analysis.py --write")
+    check(unchanged, "at least one generated file was actually compared")
+
+    # The alias table, the palette bodies and the map editor's copy are three
+    # generated things that have to agree about which number is which palette.
+    # They were in three different orders before palettes/ existed.
+    pals = P.load_palette_dir()
+    js = open(P.find_colors_js(), encoding="utf-8").read()
+    for name, p in pals.items():
+        check(f'{p["index"]} : "{name}"' in js,
+              f"{name} is alias {p['index']} in colors.js")
+    indices = [p["index"] for p in pals.values()]
+    check(len(set(indices)) == len(indices), "no two palettes share an index")
+    check(indices == sorted(indices), "indices are emitted in order")
+
+
 # ------------------------------------------------- the generated files in git
 
 def test_generated_files():
@@ -385,7 +473,7 @@ def test_generated_files():
 
 
 def test_curated_palettes():
-    section("the three shipped palettes")
+    section(f"the {len(PA.SOURCES)} shipped palettes")
     for name in PA.SOURCES:
         mapping, prov, spares = PA.curated(name)
         check(set(mapping) == set(P.SLOTS), f"{name} covers the 21 slots")
@@ -526,6 +614,8 @@ def main():
         test_fit_determinism()
         test_rating()
         test_parsers(tmp)
+        test_palette_folder(tmp)
+        test_generated_from_folder()
         test_generated_files()
         test_curated_palettes()
         test_audit_corpus()

@@ -1,0 +1,132 @@
+{
+  "name": "gloryrust",
+  "index": 23,
+  "title": "End of All Glory + FairyRust_8x",
+  "author": "SurrealEmber and KRYPTOCCULTIST",
+  "url": "https://lospec.com/palette-list/end-of-all-glory",
+  "note": "pooled from End of All Glory by SurrealEmber and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - eight colours that reach both ends End of All Glory never gets to",
+  "commentary": [
+    "End of All Glory with eight colours of FairyRust_8x pooled in, and a good illustration of what a union is for: it is not that FairyRust is a better palette, it is that its eight colours land exactly where End of All Glory has nothing. A true dark for black, a true white, a genuinely light blue, and a mauve to relight into pink.",
+    "The knock-on is the nicest part. Once white comes from FairyRust, End of All Glory's one cream is free to be yellow, so the addition the standalone needed disappears. Nothing here is invented at all except darkbrown and pink."
+  ],
+  "colors": [
+    "#a5be89",
+    "#6aa074",
+    "#457968",
+    "#3f5c63",
+    "#44425f",
+    "#5d6271",
+    "#7f8f8d",
+    "#abb7aa",
+    "#e5dbbc",
+    "#8dadab",
+    "#74819c",
+    "#5b537d",
+    "#493556",
+    "#452744",
+    "#342028",
+    "#522b34",
+    "#753636",
+    "#9c5642",
+    "#b68260",
+    "#d4b188",
+    "#cb8965",
+    "#ba5d48",
+    "#973737",
+    "#6c2d39",
+    "#141a0d",
+    "#4b2d28",
+    "#744e65",
+    "#7f7397",
+    "#8ab0d8",
+    "#aad8f7",
+    "#daedfe",
+    "#f2f9ff"
+  ],
+  "slots": {
+    "black": [
+      "#141a0d",
+      "sourced"
+    ],
+    "white": [
+      "#f2f9ff",
+      "sourced"
+    ],
+    "grey": [
+      "#7f8f8d",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#3f5c63",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#abb7aa",
+      "sourced"
+    ],
+    "red": [
+      "#973737",
+      "sourced"
+    ],
+    "darkred": [
+      "#522b34",
+      "sourced"
+    ],
+    "lightred": [
+      "#ba5d48",
+      "sourced"
+    ],
+    "brown": [
+      "#9c5642",
+      "sourced"
+    ],
+    "darkbrown": [
+      "#743422",
+      "added"
+    ],
+    "lightbrown": [
+      "#b68260",
+      "sourced"
+    ],
+    "orange": [
+      "#cb8965",
+      "sourced"
+    ],
+    "yellow": [
+      "#e5dbbc",
+      "sourced"
+    ],
+    "green": [
+      "#6aa074",
+      "sourced"
+    ],
+    "darkgreen": [
+      "#457968",
+      "sourced"
+    ],
+    "lightgreen": [
+      "#a5be89",
+      "sourced"
+    ],
+    "blue": [
+      "#74819c",
+      "sourced"
+    ],
+    "lightblue": [
+      "#aad8f7",
+      "sourced"
+    ],
+    "darkblue": [
+      "#44425f",
+      "sourced"
+    ],
+    "purple": [
+      "#493556",
+      "sourced"
+    ],
+    "pink": [
+      "#c197b0",
+      "added"
+    ]
+  }
+}

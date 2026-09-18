@@ -10,17 +10,30 @@ to build, this one says what exists and how to add the next one.
 
 ## What is here
 
-| | |
-|---|---|
-| `src/js/colors.js` | Ten palettes at indices 15–24, inside a labelled fork block |
-| `tools/palette_analysis.py` | Derivation, the checks, and the code generators |
-| `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
-| `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
-| `src/Documentation/prelude.html` | User-facing list with credits |
-| `tools/palette_lib.py` | Shared colour maths, used by both tools |
-| `tools/palette_curate.py` | Rating *candidate* palettes — see `doc/palette-curation.md` |
-| `tools/palette_test.py` | Checks for both tools, including that the generated files above still match their generators |
-| `tools/sync_map_editor.py` | Keeps the vendored map editor in step with its own repository — see `doc/map-editor-sync.md` |
+| | | generated? |
+|---|---|---|
+| `palettes/` | **The palettes.** One JSON file each — source colours, the 21-slot mapping, provenance, credit. See `doc/palette-folder.md` | no, this is the source |
+| `src/js/colors.js` | Ten palettes at indices 15–24, inside a labelled fork block | yes, from `palettes/` |
+| `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks | yes, from `palettes/` |
+| `puzzlescript-map-editor/src/palettes.js` | The map editor's own copy of the table | yes, from `palettes/` |
+| `tools/palette_analysis.py` | Reads `palettes/`: derivation, the checks, and `--write` | no |
+| `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export | no |
+| `src/Documentation/prelude.html` | User-facing list with credits | no |
+| `tools/palette_lib.py` | Shared colour maths and the `palettes/` reader, used by both tools | no |
+| `tools/palette_curate.py` | Rating *candidate* palettes — see `doc/palette-curation.md` | no |
+| `tools/palette_test.py` | Checks for both tools, including that every generated file above still matches `palettes/` | no |
+| `tools/sync_map_editor.py` | Keeps the vendored map editor in step with its own repository — see `doc/map-editor-sync.md` | no |
+
+The three generated files are rewritten by one command:
+
+```sh
+uv run tools/palette_analysis.py --write     # regenerate all three
+uv run tools/palette_analysis.py --check     # what would it change? exit 1 if anything
+```
+
+It only ever replaces the text between the `palette-set extension` comment
+markers already in them, so an upstream merge still sees a clean diff, and the
+test suite runs `--check` — a hand-edit to a generated file fails the checks.
 
 The palettes:
 
@@ -100,40 +113,45 @@ and why it cannot corrupt a game.
 
 `doc/palette-curation.md` covers the stage before this one — finding candidates,
 rating them and deciding. Its tooling replaces steps 1-3 below with a fitted,
-rated draft you correct; steps 4 to 6 are unchanged either way.
+rated draft you correct; steps 4 and 5 are the same either way.
 
 Two things notice on their own and need no editing: the calibration corpus
 reads the fork block's own comment markers in `colors.js` rather than carrying
 a list, and the **PALETTES** panel enumerates whatever `colorPalettesAliases`
 holds, so a new entry appears in it without any UI change.
 
-1. Add the source hex to `SOURCES` in `tools/palette_analysis.py`.
+The palettes themselves live in `palettes/`, one JSON file each. Everything
+below is about that folder; `doc/palette-folder.md` is the format and the
+reasoning.
+
+1. Write `palettes/<name>.json` — the source colours, the 21-slot mapping, and
+   a credit. `doc/palette-folder.md` is the format;
+   `palette_curate.py emit-curated <file> --write` drafts one for you from a
+   downloaded palette, with the next free alias index already filled in.
 2. `uv run tools/palette_analysis.py` — the raw hue-clustering pass plus the
    checks, with the fourteen inherited palettes printed underneath as a
    baseline.
-3. Read the clustering against the slot list and write the result into
-   `CURATED`, with a comment for every slot the source cannot supply. The
-   clusterer gets ramps right but has no judgement: it will cheerfully make a
-   pale cream your `darkbrown`.
-4. Regenerate both outputs — they are generated, never hand-edited:
+3. Read the clustering against the slot list and correct the mapping, putting a
+   line in `commentary` for every slot the source cannot supply. The clusterer
+   gets ramps right but has no judgement: it will cheerfully make a pale cream
+   your `darkbrown`.
+4. Regenerate everything derived from it — those files are generated, never
+   hand-edited:
    ```sh
-   uv run tools/palette_analysis.py --emit-js    # paste into colors.js
-   uv run tools/palette_analysis.py --emit-refs > src/demo/palette-refs.txt
-   uv run tools/palette_test.py                  # confirms they match
+   uv run tools/palette_analysis.py --write   # colors.js, the alias table, the
+                                              # prelude blocks, the map editor
+   uv run tools/palette_test.py               # confirms they match
    ```
-5. Add an alias index in `colors.js`, and a credit in `prelude.html` and in
-   `paletteCredits` in `palettes_ui.js`. The panel itself needs no change.
-6. Copy the new entry into `puzzlescript-map-editor/src/palettes.js` and add
-   its alias there too, or the map editor draws the game in arnecolors and says
-   the palette is unknown. Its own test suite catches this, but only when the
-   two repositories are checked out together:
-   ```sh
-   cd puzzlescript-map-editor && npm test   # fails until the copy is made
-   ```
-   The same file lives in the standalone `puzzlescript-map-editor` repository.
-   Edit it there and run `uv run tools/sync_map_editor.py` to copy it here;
-   `doc/map-editor-sync.md` explains why the copy exists and what catches you
-   when it drifts.
+   That includes `puzzlescript-map-editor/src/palettes.js` and its alias table.
+   The map editor needs the entry or it draws the game in arnecolors and says
+   the palette is unknown; its own test suite catches that, but only when the
+   two repositories are checked out together. `--write` also updates the
+   standalone `puzzlescript-map-editor` checkout when it sits beside this one,
+   because that copy is the canonical one — `doc/map-editor-sync.md` explains
+   why the copy exists and what catches you when it drifts.
+5. Add a credit in `prelude.html` and in `paletteCredits` in `palettes_ui.js`.
+   These are the only two hand-edits left: everything else, the alias index
+   included, comes from the palette file. The panel itself needs no change.
 
 ### The rubric
 

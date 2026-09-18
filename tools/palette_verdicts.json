@@ -1,30 +1,42 @@
 {
   "bentenpond": {
-    "note": "shipped at index 15; beautiful, 10 CVD collapses, check objects distinguished only by colour",
+    "note": "shipped at index 15; 17/21 sourced, 37 low-contrast pairs, 10 CVD collapses - the most of the set. Beautiful, and the reason the docs say a score cannot tell you a palette is worth using. Check that objects distinguished only by colour are also distinguished by shape.",
     "verdict": "accept"
   },
   "berrysepia": {
-    "note": "shipped at index 24; replaces soggysepia's three synthesised blues with real ones",
+    "note": "shipped at index 24; 19/21 sourced, 36 low-contrast pairs, 2 CVD collapses. Replaces soggysepia's three synthesised blues with real ones from Berry Nebula; everything warm, green and neutral is still Soggy Sepia's.",
     "verdict": "accept"
   },
   "dungeon20": {
-    "note": "shipped at index 16; worst slot fit, taken for the mood not the coverage",
+    "note": "shipped at index 16; 15/21 sourced, 35 low-contrast pairs, 7 CVD collapses. The narrowest source here - no green, pink, light red or dark brown anywhere - so six slots are additions. Taken for the mood, not the coverage, and the only palette `compare` says is genuinely better off under fit-palette.",
     "verdict": "accept"
   },
   "endofallglory": {
-    "note": "shipped at index 22; most complete source of the set, but compressed range",
+    "note": "shipped at index 22; 17/21 sourced, 36 low-contrast pairs, 2 CVD collapses, ramp evenness 0.88 - the most even of anything that ships, inherited palettes included. Twenty-four colours across eight hue families, but nothing darker than L 15 or lighter than L 88, so black is a plum and white is a cream.",
     "verdict": "accept"
   },
   "gloryrust": {
-    "note": "shipped at index 23; pooled with FairyRust_8x, which reaches both ends End of All Glory never does",
+    "note": "shipped at index 23; 19/21 sourced, 29 low-contrast pairs, 2 CVD collapses. End of All Glory pooled with FairyRust_8x, which reaches both ends it never does; once white comes from FairyRust its one cream is free to be yellow, so only darkbrown and pink are additions.",
     "verdict": "accept"
   },
   "oekakinl": {
-    "note": "shipped at index 17; most legible of the three, safest default",
+    "note": "shipped at index 17; 18/21 sourced, 28 low-contrast pairs, 4 CVD collapses. The most legible single-source palette of the set and the safest default: true #000000 and #ffffff, and three additions that are all just a darker step the source never takes.",
     "verdict": "accept"
   },
-  "soggysepiacrt20": {
-    "note": "shipped at index 18; 17/21 sourced, blues and yellow added, best CVD of the four",
+  "rustfairy": {
+    "note": "shipped at index 19; 12/21 sourced, 26 low-contrast pairs - the best contrast of anything that ships - and zero CVD collapses. The trade is visible: fewest sourced slots but nothing collides, because a colour you place yourself can be placed where nothing else is.",
+    "verdict": "accept"
+  },
+  "rustfairyochre": {
+    "note": "shipped at index 21; 17/21 sourced, 30 low-contrast pairs, 1 CVD collapse. Three sources, twenty-eight colours, and a real grey ramp from Ochre Ruin. Separates by lightness rather than hue, because the whole thing sits at chroma 3-17.",
+    "verdict": "accept"
+  },
+  "ruststorm": {
+    "note": "shipped at index 20; 11/21 sourced - the fewest of the set - 27 low-contrast pairs, zero CVD collapses. Storms and Cyan buys a blue ramp spanning L 0 to L 90 and contributes one non-blue colour, so eight slots are additions and the docs say so.",
+    "verdict": "accept"
+  },
+  "soggysepia": {
+    "note": "shipped at index 18; 17/21 sourced, 40 low-contrast pairs, 2 CVD collapses. Four phosphor ramps with a deliberate hole across the middle, which is why its evenness reads 0.44 and cannot be mapped away. Blues and yellow added; berrysepia at index 24 is this palette with real blues.",
     "verdict": "accept"
   }
 }

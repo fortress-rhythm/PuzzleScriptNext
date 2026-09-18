@@ -375,6 +375,9 @@ const colorPalettes = {
         "purple": "#7037d9",
         "pink": "#ec2b8f"
     },
+    // --- palette-set extension: palettes (fork-only, indices 15-24) ---------
+    // Generated from PuzzleScriptNext's palettes/ folder by its
+    // tools/palette_analysis.py --write. Edit the palette files there.
     "bentenpond": {
         "black": "#292f25",
         "white": "#d8d2ae",
@@ -635,6 +638,7 @@ const colorPalettes = {
         "purple": "#6e5181",
         "pink": "#b5a6bc"
     }
+// --- end palette-set extension: palettes -------------------------------
 };
 
 const colorPalettesAliases = {
@@ -652,6 +656,8 @@ const colorPalettesAliases = {
     "12": "proteus_night",
     "13": "c64",
     "14": "whitingjp",
+    // --- palette-set extension: aliases ------------------------------------
+    // Same source, same generator; see above.
     "15": "bentenpond",
     "16": "dungeon20",
     "17": "oekakinl",
@@ -662,6 +668,7 @@ const colorPalettesAliases = {
     "22": "endofallglory",
     "23": "gloryrust",
     "24": "berrysepia"
+// --- end palette-set extension: aliases --------------------------------
 };
 
 /**
