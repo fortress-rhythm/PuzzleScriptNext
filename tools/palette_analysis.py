@@ -67,6 +67,25 @@ SOURCES = {
                   070905 0f130b 242c13 374e22 88aa58 b5ca90 c7d7ac dbe6ca
                   070509 0f0b13 241a21 372e38 887294 b5a6bc c7bdce dbd6e0""".split(),
     },
+    "endofallglory": {
+        "title": "End of All Glory",
+        "author": "SurrealEmber",
+        "url": "https://lospec.com/palette-list/end-of-all-glory",
+        "note": "twenty-four colours covering eight of the nine hue families, with no pink and nothing darker than L 15 or lighter than L 88",
+        "hex": """a5be89 6aa074 457968 3f5c63 44425f 5d6271 7f8f8d abb7aa e5dbbc 8dadab
+                  74819c 5b537d 493556 452744 342028 522b34 753636 9c5642 b68260 d4b188
+                  cb8965 ba5d48 973737 6c2d39""".split(),
+    },
+    "gloryrust": {
+        "title": "End of All Glory + FairyRust_8x",
+        "author": "SurrealEmber and KRYPTOCCULTIST",
+        "url": "https://lospec.com/palette-list/end-of-all-glory",
+        "note": "pooled from End of All Glory by SurrealEmber and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - eight colours that reach both ends End of All Glory never gets to",
+        "hex": """a5be89 6aa074 457968 3f5c63 44425f 5d6271 7f8f8d abb7aa e5dbbc 8dadab
+                  74819c 5b537d 493556 452744 342028 522b34 753636 9c5642 b68260 d4b188
+                  cb8965 ba5d48 973737 6c2d39 141a0d 4b2d28 744e65 7f7397 8ab0d8 aad8f7
+                  daedfe f2f9ff""".split(),
+    },
     "rustfairy": {
         "title": "Rust Gold 8 + FairyRust_8x",
         "author": "Trigo Mathmancer and KRYPTOCCULTIST",
@@ -223,6 +242,62 @@ CURATED = {
     # eight colours, no green, no blue, no purple, no pink. Every one of its
     # useful partners covers a different one of those gaps, so which partner you
     # pick is which palette you get, not a matter of better or worse.
+    "endofallglory": {
+        # The most complete source in the set: twenty-four colours across eight
+        # of the nine hue families. What it does not have is range. Nothing is
+        # darker than L 15 or lighter than L 88, so `black` is a dark plum and
+        # `white` is a cream, and there is exactly one colour above L 75 - which
+        # means that colour is either `white` or `yellow` and the other has to
+        # be made. `white` wins: a palette whose white is L 73 looks dingy in
+        # every game that uses it, and `yellow` is used less.
+        "black": ("#342028", "sourced"), "darkgrey": ("#3f5c63", "sourced"),
+        "grey": ("#7f8f8d", "sourced"), "lightgrey": ("#abb7aa", "sourced"),
+        "white": ("#e5dbbc", "sourced"),
+        "darkred": ("#522b34", "sourced"), "red": ("#973737", "sourced"),
+        "lightred": ("#ba5d48", "sourced"),
+        # The source's warm colours run red into orange with the browns in the
+        # middle, so `brown` and `lightbrown` are its own and only the dark end
+        # is relit - taking a maroon for `darkbrown` would have been a lie.
+        "darkbrown": ("#743422", "added"), "brown": ("#9c5642", "sourced"),
+        "lightbrown": ("#b68260", "sourced"),
+        "orange": ("#cb8965", "sourced"),
+        # Its one cream is `white`, so the yellow is stated as an addition
+        # rather than press #d4b188 into service: that is a wheat at L 74, the
+        # same lightness as `lightgreen`, and the two collapse into each other
+        # under both protanopia and deuteranopia.
+        "yellow": ("#e1be94", "added"),
+        "darkgreen": ("#457968", "sourced"), "green": ("#6aa074", "sourced"),
+        "lightgreen": ("#a5be89", "sourced"),
+        # Three blues, bunched at L 29, 38 and 54. The middle one is relit to
+        # open the ramp out; left alone the first step is half the second.
+        "darkblue": ("#44425f", "sourced"), "blue": ("#665d88", "added"),
+        "lightblue": ("#74819c", "sourced"),
+        "purple": ("#493556", "sourced"), "pink": ("#bc98ba", "added"),
+    },
+    "gloryrust": {
+        # The same palette with eight colours of FairyRust_8x pooled in, and a
+        # good illustration of what a union is for: it is not that FairyRust is
+        # a better palette, it is that its eight colours land exactly where End
+        # of All Glory has nothing. A true dark for `black`, a true white, a
+        # genuinely light blue, and a mauve to relight into `pink`.
+        #
+        # The knock-on is the nicest part. Once `white` comes from FairyRust,
+        # End of All Glory's one cream is free to be `yellow`, so the addition
+        # the standalone needed disappears. Nothing here is invented at all.
+        "black": ("#141a0d", "sourced"), "darkgrey": ("#3f5c63", "sourced"),
+        "grey": ("#7f8f8d", "sourced"), "lightgrey": ("#abb7aa", "sourced"),
+        "white": ("#f2f9ff", "sourced"),
+        "darkred": ("#522b34", "sourced"), "red": ("#973737", "sourced"),
+        "lightred": ("#ba5d48", "sourced"),
+        "darkbrown": ("#743422", "added"), "brown": ("#9c5642", "sourced"),
+        "lightbrown": ("#b68260", "sourced"),
+        "orange": ("#cb8965", "sourced"), "yellow": ("#e5dbbc", "sourced"),
+        "darkgreen": ("#457968", "sourced"), "green": ("#6aa074", "sourced"),
+        "lightgreen": ("#a5be89", "sourced"),
+        "darkblue": ("#44425f", "sourced"), "blue": ("#74819c", "sourced"),
+        "lightblue": ("#aad8f7", "sourced"),
+        "purple": ("#493556", "sourced"), "pink": ("#c197b0", "added"),
+    },
     "rustfairy": {
         # Rust Gold's warm half against FairyRust's cool one. FairyRust's blues
         # are all pale - L 70 and up - so the blue ramp's dark end comes from

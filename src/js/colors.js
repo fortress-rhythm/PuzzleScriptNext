@@ -24,7 +24,9 @@ colorPalettesAliases = {
 	18 : "soggysepia",
 	19 : "rustfairy",
 	20 : "ruststorm",
-	21 : "rustfairyochre"
+	21 : "rustfairyochre",
+	22 : "endofallglory",
+	23 : "gloryrust"
 // --- end palette-set extension ---------------------------------------------
 };
 
@@ -622,6 +624,66 @@ whitingjp : {
 	darkblue		: "#191d29",
 	purple			: "#744e65",
 	pink			: "#e0b5ce"
+	},
+	// End of All Glory - SurrealEmber - https://lospec.com/palette-list/end-of-all-glory
+	// twenty-four colours covering eight of the nine hue families, with no pink and nothing darker than L 15 or lighter than L 88.
+	// Not in the source, added to fill PuzzleScript's fixed slots: darkbrown, yellow, blue, pink.
+	// Source colours with no slot to occupy: #5d6271, #8dadab, #5b537d, #452744, #753636, #d4b188, #6c2d39.
+	endofallglory : {
+	black   		: "#342028",
+	white			: "#e5dbbc",
+	grey			: "#7f8f8d",
+	darkgrey		: "#3f5c63",
+	lightgrey		: "#abb7aa",
+	gray			: "#7f8f8d",
+	darkgray		: "#3f5c63",
+	lightgray		: "#abb7aa",
+	red				: "#973737",
+	darkred			: "#522b34",
+	lightred		: "#ba5d48",
+	brown			: "#9c5642",
+	darkbrown		: "#743422",
+	lightbrown		: "#b68260",
+	orange			: "#cb8965",
+	yellow 			: "#e1be94",
+	green			: "#6aa074",
+	darkgreen		: "#457968",
+	lightgreen		: "#a5be89",
+	blue			: "#665d88",
+	lightblue		: "#74819c",
+	darkblue		: "#44425f",
+	purple			: "#493556",
+	pink			: "#bc98ba"
+	},
+	// End of All Glory + FairyRust_8x - SurrealEmber and KRYPTOCCULTIST - https://lospec.com/palette-list/end-of-all-glory
+	// pooled from End of All Glory by SurrealEmber and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - eight colours that reach both ends End of All Glory never gets to.
+	// Not in the source, added to fill PuzzleScript's fixed slots: darkbrown, pink.
+	// Source colours with no slot to occupy: #5d6271, #8dadab, #5b537d, #452744, #342028, #753636, #d4b188, #6c2d39, #4b2d28, #744e65, #7f7397, #8ab0d8, #daedfe.
+	gloryrust : {
+	black   		: "#141a0d",
+	white			: "#f2f9ff",
+	grey			: "#7f8f8d",
+	darkgrey		: "#3f5c63",
+	lightgrey		: "#abb7aa",
+	gray			: "#7f8f8d",
+	darkgray		: "#3f5c63",
+	lightgray		: "#abb7aa",
+	red				: "#973737",
+	darkred			: "#522b34",
+	lightred		: "#ba5d48",
+	brown			: "#9c5642",
+	darkbrown		: "#743422",
+	lightbrown		: "#b68260",
+	orange			: "#cb8965",
+	yellow 			: "#e5dbbc",
+	green			: "#6aa074",
+	darkgreen		: "#457968",
+	lightgreen		: "#a5be89",
+	blue			: "#74819c",
+	lightblue		: "#aad8f7",
+	darkblue		: "#44425f",
+	purple			: "#493556",
+	pink			: "#c197b0"
 	}
 // --- end palette-set extension ---------------------------------------------
 

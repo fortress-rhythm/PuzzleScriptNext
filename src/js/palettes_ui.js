@@ -300,4 +300,13 @@ var paletteCredits = {
         'palette pooled from "Rust Gold 8" by Trigo Mathmancer, "FairyRust_8x" by '
         + 'KRYPTOCCULTIST and "Ochre Ruin" by Quemis (lospec.com/palette-list/ochre-ruin). '
         + 'red is the only original addition.',
+    endofallglory:
+        'palette adapted from "End of All Glory" by SurrealEmber '
+        + '(lospec.com/palette-list/end-of-all-glory). The source reaches neither a '
+        + 'true black nor a true white, so darkbrown, yellow, blue and pink are '
+        + 'original additions.',
+    gloryrust:
+        'palette pooled from "End of All Glory" by SurrealEmber and "FairyRust_8x" by '
+        + 'KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x). darkbrown and pink '
+        + 'are original additions.',
 };

@@ -5,8 +5,8 @@
 // test suite verifies this file against colors.js whenever PuzzleScriptNext is
 // checked out beside this repo, and skips the check when it is not.
 //
-// The last seven are fork-only: PuzzleScript Next's palette-set extension adds
-// them at indices 15-21, and stock PuzzleScript has never heard the names.
+// The last nine are fork-only: PuzzleScript Next's palette-set extension adds
+// them at indices 15-23, and stock PuzzleScript has never heard the names.
 // Carrying them here costs nothing and means a game written against the fork
 // renders in its own colours rather than silently in arnecolors.
 
@@ -556,6 +556,58 @@ const colorPalettes = {
         "darkblue": "#191d29",
         "purple": "#744e65",
         "pink": "#e0b5ce"
+    },
+    "endofallglory": {
+        "black": "#342028",
+        "white": "#e5dbbc",
+        "grey": "#7f8f8d",
+        "darkgrey": "#3f5c63",
+        "lightgrey": "#abb7aa",
+        "gray": "#7f8f8d",
+        "darkgray": "#3f5c63",
+        "lightgray": "#abb7aa",
+        "red": "#973737",
+        "darkred": "#522b34",
+        "lightred": "#ba5d48",
+        "brown": "#9c5642",
+        "darkbrown": "#743422",
+        "lightbrown": "#b68260",
+        "orange": "#cb8965",
+        "yellow": "#e1be94",
+        "green": "#6aa074",
+        "darkgreen": "#457968",
+        "lightgreen": "#a5be89",
+        "blue": "#665d88",
+        "lightblue": "#74819c",
+        "darkblue": "#44425f",
+        "purple": "#493556",
+        "pink": "#bc98ba"
+    },
+    "gloryrust": {
+        "black": "#141a0d",
+        "white": "#f2f9ff",
+        "grey": "#7f8f8d",
+        "darkgrey": "#3f5c63",
+        "lightgrey": "#abb7aa",
+        "gray": "#7f8f8d",
+        "darkgray": "#3f5c63",
+        "lightgray": "#abb7aa",
+        "red": "#973737",
+        "darkred": "#522b34",
+        "lightred": "#ba5d48",
+        "brown": "#9c5642",
+        "darkbrown": "#743422",
+        "lightbrown": "#b68260",
+        "orange": "#cb8965",
+        "yellow": "#e5dbbc",
+        "green": "#6aa074",
+        "darkgreen": "#457968",
+        "lightgreen": "#a5be89",
+        "blue": "#74819c",
+        "lightblue": "#aad8f7",
+        "darkblue": "#44425f",
+        "purple": "#493556",
+        "pink": "#c197b0"
     }
 };
 
@@ -580,7 +632,9 @@ const colorPalettesAliases = {
     "18": "soggysepia",
     "19": "rustfairy",
     "20": "ruststorm",
-    "21": "rustfairyochre"
+    "21": "rustfairyochre",
+    "22": "endofallglory",
+    "23": "gloryrust"
 };
 
 /**

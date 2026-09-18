@@ -12,7 +12,7 @@ to build, this one says what exists and how to add the next one.
 
 | | |
 |---|---|
-| `src/js/colors.js` | Seven palettes at indices 15–21, inside a labelled fork block |
+| `src/js/colors.js` | Nine palettes at indices 15–23, inside a labelled fork block |
 | `tools/palette_analysis.py` | Derivation, the checks, and the code generators |
 | `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
 | `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
@@ -32,8 +32,10 @@ The palettes:
 | 19 | `rustfairy` | Rust Gold 8 + FairyRust_8x | Trigo Mathmancer, KRYPTOCCULTIST |
 | 20 | `ruststorm` | Rust Gold 8 + [Storms and Cyan](https://lospec.com/palette-list/storms-and-cyan) | Trigo Mathmancer, Digi (@Digitress) |
 | 21 | `rustfairyochre` | Rust Gold 8 + FairyRust_8x + [Ochre Ruin](https://lospec.com/palette-list/ochre-ruin) | Trigo Mathmancer, KRYPTOCCULTIST, Quemis |
+| 22 | `endofallglory` | [End of All Glory](https://lospec.com/palette-list/end-of-all-glory) | SurrealEmber |
+| 23 | `gloryrust` | End of All Glory + FairyRust_8x | SurrealEmber, KRYPTOCCULTIST |
 
-The last three are **unions**: pooled from more than one source palette. Nothing
+Four of them (`rustfairy`, `ruststorm`, `rustfairyochre`, `gloryrust`) are **unions**: pooled from more than one source palette. Nothing
 is blended — a union is exactly the colours of its parts, which is what keeps
 the result attributable to the people who made them.
 
@@ -59,14 +61,14 @@ anywhere. This is what you distribute.
 
 Author with the short form; export the long one when you publish. The
 **PALETTES** panel does the conversion, and `src/demo/palette-refs.txt` holds all
-seven ready to paste.
+nine ready to paste.
 
 The two forms now render identically in `puzzlescript-map-editor/` too. They
 did not before: the map editor read the base palette name and dropped every
 override, so the one representation meant to be portable was the one it drew in
 the wrong colours. It also never consulted its own numeric aliases, so
 `color_palette 3` fell back to arnecolors. Both are fixed, it carries all
-twenty-one palettes now, and its test suite checks that copy against
+twenty-three palettes now, and its test suite checks that copy against
 `src/js/colors.js` slot by slot whenever the two are checked out together.
 
 One detail that is easy to get wrong by hand: the block must also set
@@ -145,7 +147,7 @@ A fourth check was added later, in `tools/palette_lib.py`, and applies to both
 tools: within a ramp, **luminance must increase at every step**. `lightred`
 darker than `red` is a mapping error, and contrast and colourblindness both
 measure pairs in isolation, so neither notices a ramp running backwards. Ten of
-the fourteen inherited palettes have no such fault, and all seven palettes above
+the fourteen inherited palettes have no such fault, and all nine palettes above
 have none; `palette_curate.py audit` lists the exceptions, one of which
 (`proteus_night`'s `lightgreen`, a near-black navy) looks like an inherited
 copy-paste error rather than a stylistic choice.
@@ -160,7 +162,7 @@ near-black, `purple` `#342a97` is blue-violet, `pink` is magenta, `lightbrown`
 it is the most typical colour for only seven of the twenty-one slots.
 `palette_curate.py anchors` prints what the corpus actually means by each name.
 
-## How these seven came out
+## How these nine came out
 
 Measured against the fourteen inherited palettes, which span **26–75**
 low-contrast pairs and **0–13** colourblind collapses:
@@ -174,8 +176,10 @@ low-contrast pairs and **0–13** colourblind collapses:
 | `dungeon20` | 15/21 | 21/21 | 35 | 7 | 0 |
 | `bentenpond` | 17/21 | 21/21 | 37 | 10 | 0 |
 | `soggysepia` | 17/21 | 21/21 | 40 | 2 | 0 |
+| `endofallglory` | 17/21 | 21/21 | 36 | 2 | 0 |
+| `gloryrust` | 19/21 | 21/21 | 29 | 2 | 0 |
 
-All seven are inside the inherited range, all seven have distinct values for
+All nine are inside the inherited range, all nine have distinct values for
 every slot, and none has a ramp that runs backwards.
 
 The two columns pull against each other, which is the honest summary of the
@@ -246,6 +250,60 @@ additions, the most of any palette here, because Storms and Cyan contributes
 exactly one non-blue colour. Neither source has a light neutral at all — the
 warm half tops out at L 58 — so without an added `white` and `lightgrey` the
 grey ramp would end at a mid-brown.
+
+### endofallglory against gloryrust
+
+The clearest case in the set for what pooling buys, because the two share a
+source and differ only in what was available to fill four slots.
+
+**End of All Glory is the most complete source here** — twenty-four colours
+across eight of the nine hue families, missing only pink. What it lacks is not
+hue but *range*: nothing is darker than L 15 or lighter than L 88. So `black` is
+a dark plum, `white` is a cream, and there is exactly one colour above L 75,
+which means that colour is either `white` or `yellow` and the other has to be
+made. `white` won — a palette whose white sits at L 73 looks dingy in every game
+that uses it.
+
+`FairyRust_8x` is eight colours, and was chosen over better-scoring partners
+because of *where* those eight land rather than how many there are:
+
+| partner | union score | what it actually supplies |
+|---|---|---|
+| Soggy Sepia CRT-20 | **86.3** | true black and white, but no blue at all — `lightblue` stays at L 54 |
+| Storms and Cyan | 85.0 | true black and bright cyan, but no light neutral — `white` is a pale sage at L 73 |
+| **FairyRust_8x** | 83.7 | a true dark, a true white **at L 98**, a light blue **at L 84**, and a mauve for `pink` |
+
+FairyRust scored third and was still the right pick. It is the only partner that
+reaches both ends *and* the blue gap, and it does it with eight colours rather
+than thirty-two. This is the case the rating exists to lose: the score ranks a
+reading queue, and reading the three showed that two of them left a named slot
+doing something it cannot do.
+
+What the pooling changed, slot for slot:
+
+| | standalone | pooled |
+|---|---|---|
+| `black` | `#342028` (L 15, a plum) | `#141a0d` (L 8) |
+| `white` | `#e5dbbc` (L 88, a cream) | `#f2f9ff` (L 98) |
+| `yellow` | **added** — the cream was spent on `white` | `#e5dbbc`, freed |
+| `blue` | **added** — three blues bunched at L 29/38/54 | `#74819c`, the ramp opened by the new `lightblue` |
+| `lightblue` | `#74819c` (L 54 — not light) | `#aad8f7` (L 84) |
+
+Five slots, and the knock-on is the part worth noticing: once `white` comes from
+FairyRust, End of All Glory's cream is free to be `yellow`, and once `lightblue`
+reaches L 84 the middle blue no longer needs relighting. **Two of the four
+additions disappear because of colours that were added somewhere else.** Sourced
+goes 17 → 19, low-contrast pairs 36 → 29, and nothing is invented but
+`darkbrown` and `pink`, neither of which exists in either source.
+
+Both keep the same two colourblind collapses — `lightbrown` against `orange`,
+and `lightgrey` against `lightgreen`. Those are End of All Glory's own, between
+four colours both mappings keep, so pooling cannot help: **a union fixes the
+ends, it does not fix the middle.**
+
+Use `gloryrust` unless you specifically want the compressed range — the
+standalone never reaching true black or white is a look, and a game built around
+it will read as one continuous dusk.
 
 ### soggysepia in particular
 

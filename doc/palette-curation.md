@@ -33,7 +33,7 @@ directory works; every command takes paths.
 
 The only step that is not optional is looking at the sheet. A score orders a
 reading queue; it cannot tell you a palette is beautiful. Benten Pond scores
-worst of the seven shipped palettes on every reading and was still the right
+worst of the nine shipped palettes on every reading and was still the right
 adoption.
 
 ## Where things go
@@ -76,7 +76,7 @@ So: Python is a build-time tool for this repository, not a dependency of the
 engine, the editor, the map editor, or anything you ship. A game author never
 runs it. If you only want to *use* the palettes, the PALETTES panel does
 preview, apply and export without touching a terminal, and
-`src/demo/palette-refs.txt` has all seven ready to paste.
+`src/demo/palette-refs.txt` has all nine ready to paste.
 
 You need Python only to rate a new candidate palette or to regenerate the
 generated files, and only `uv` — the scripts are dependency-free with PEP 723
