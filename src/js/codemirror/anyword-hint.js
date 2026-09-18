@@ -134,6 +134,21 @@
             "mastersystem", "gameboycolour", "amiga", "arnecolors", "famicom", "atari", "pastel", "ega", "amstrad", "proteus_mellow", "proteus_rich", "proteus_night", "c64", "whitingjp"
         ]
 
+        // Inserts a placeholder attribution comment above `custom_font`, so crediting
+        // the font's author becomes something the editor prompts for, rather than
+        // something a game author has to remember unprompted. See the convention
+        // shown in Documentation/prelude.html's custom_font example.
+        function insertCustomFontHint(cm, data, completion) {
+            var from = completion.from || data.from;
+            var to = completion.to || data.to;
+            var snippet =
+                "(<font name> by <author name>: <source url>)\n" +
+                "(License: <license name, or a link to the license text>)\n" +
+                "custom_font ";
+            cm.replaceRange(snippet, from, to, "complete");
+            cm.setCursor(CodeMirror.Pos(from.line + 2, "custom_font ".length));
+        }
+
         function renderHint(elt,data,cur){
             var t1=cur.text;
             var t2=cur.extra;
@@ -408,9 +423,13 @@
                         var mytag = tag;
                         if (mytag==="COLOR"){
                             mytag = "COLOR-"+m.toUpperCase();
-                        }                    
+                        }
 
-                        list.push({text:m,extra:extra,tag:mytag,render:renderHint});
+                        var hintEntry = {text:m,extra:extra,tag:mytag,render:renderHint};
+                        if (m === "custom_font") {
+                            hintEntry.hint = insertCustomFontHint;
+                        }
+                        list.push(hintEntry);
                     }
                 }
             }
