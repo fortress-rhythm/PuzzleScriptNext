@@ -20,6 +20,7 @@ to build, this one says what exists and how to add the next one.
 | `tools/palette_lib.py` | Shared colour maths, used by both tools |
 | `tools/palette_curate.py` | Rating *candidate* palettes — see `doc/palette-curation.md` |
 | `tools/palette_test.py` | Checks for both tools, including that the generated files above still match their generators |
+| `tools/sync_map_editor.py` | Keeps the vendored map editor in step with its own repository — see `doc/map-editor-sync.md` |
 
 The palettes:
 
@@ -127,8 +128,10 @@ holds, so a new entry appears in it without any UI change.
    ```sh
    cd puzzlescript-map-editor && npm test   # fails until the copy is made
    ```
-   The same file lives in the standalone `puzzlescript-map-editor` repository;
-   change it there and mirror it here, or the two drift.
+   The same file lives in the standalone `puzzlescript-map-editor` repository.
+   Edit it there and run `uv run tools/sync_map_editor.py` to copy it here;
+   `doc/map-editor-sync.md` explains why the copy exists and what catches you
+   when it drifts.
 
 ### The rubric
 

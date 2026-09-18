@@ -419,6 +419,33 @@ def test_audit_corpus():
 
 # ------------------------------------------------------------------ end to end
 
+def test_vendored_map_editor():
+    """The vendored puzzlescript-map-editor must match its own repository.
+
+    The palette drift check above compares `src/palettes.js` against
+    `colors.js`, which catches the *data* going out of step. It does not catch
+    the copy going out of step: edit `src/psgame.js` in one of the two and
+    nothing anywhere fails, because they are plain duplicated files with no
+    submodule or subtree linking them. This is that check.
+
+    Skips when only this repository is checked out, the same way the demo-game
+    sweep does.
+    """
+    section("vendored map editor")
+    import subprocess
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    script = os.path.join(root, "tools", "sync_map_editor.py")
+    if not os.path.exists(script):
+        return
+    r = subprocess.run([sys.executable, script, "--check"],
+                       capture_output=True, text=True, cwd=root)
+    if "nothing to compare" in r.stdout:
+        return
+    check(r.returncode == 0,
+          "the vendored map editor matches its standalone repository",
+          r.stdout.strip().replace("\n", "\n      "))
+
+
 def test_reports_run(tmp):
     section("reports run without crashing")
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -502,6 +529,7 @@ def main():
         test_generated_files()
         test_curated_palettes()
         test_audit_corpus()
+        test_vendored_map_editor()
         test_reports_run(tmp)
         test_combos_improve()
 
