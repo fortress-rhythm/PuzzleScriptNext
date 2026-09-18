@@ -1,0 +1,120 @@
+{
+  "name": "oekakinl",
+  "index": 17,
+  "title": "Oekaki.nl",
+  "author": "P-Tux7",
+  "url": "https://lospec.com/palette-list/oekakinl",
+  "note": "default palette of the oekaki drawing site Oekaki.nl",
+  "commentary": [
+    "The only single-source candidate with true #000000 and #ffffff.",
+    "Three genuine gaps - darkred, darkgreen and lightbrown - each a darker step the source never goes to."
+  ],
+  "colors": [
+    "#000000",
+    "#909090",
+    "#e6e4d5",
+    "#ffffff",
+    "#9ac3e0",
+    "#3c8ee7",
+    "#3842a1",
+    "#24313d",
+    "#384d51",
+    "#4d7d23",
+    "#8fb332",
+    "#f0cb69",
+    "#ffdcc7",
+    "#d97d3c",
+    "#90642d",
+    "#4c4334",
+    "#6b0b48",
+    "#a4313f",
+    "#c96c7f",
+    "#f1a8ca"
+  ],
+  "slots": {
+    "black": [
+      "#000000",
+      "sourced"
+    ],
+    "white": [
+      "#ffffff",
+      "sourced"
+    ],
+    "grey": [
+      "#909090",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#384d51",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#e6e4d5",
+      "sourced"
+    ],
+    "red": [
+      "#a4313f",
+      "sourced"
+    ],
+    "darkred": [
+      "#6b1f28",
+      "added"
+    ],
+    "lightred": [
+      "#c96c7f",
+      "sourced"
+    ],
+    "brown": [
+      "#90642d",
+      "sourced"
+    ],
+    "darkbrown": [
+      "#4c4334",
+      "sourced"
+    ],
+    "lightbrown": [
+      "#dba54b",
+      "added"
+    ],
+    "orange": [
+      "#d97d3c",
+      "sourced"
+    ],
+    "yellow": [
+      "#f0cb69",
+      "sourced"
+    ],
+    "green": [
+      "#4d7d23",
+      "sourced"
+    ],
+    "darkgreen": [
+      "#33561a",
+      "added"
+    ],
+    "lightgreen": [
+      "#8fb332",
+      "sourced"
+    ],
+    "blue": [
+      "#3c8ee7",
+      "sourced"
+    ],
+    "lightblue": [
+      "#9ac3e0",
+      "sourced"
+    ],
+    "darkblue": [
+      "#24313d",
+      "sourced"
+    ],
+    "purple": [
+      "#6b0b48",
+      "sourced"
+    ],
+    "pink": [
+      "#f1a8ca",
+      "sourced"
+    ]
+  }
+}

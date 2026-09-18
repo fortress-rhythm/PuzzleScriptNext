@@ -21,6 +21,15 @@ Feel free to:
 * PM me on Discord (@Davidus of Polyomino)
 * email me directly (david@polyomino.com).
 
+## This fork's own additions
+
+Documented separately, in [`doc/`](doc/README.md) — start with that index. The
+largest is the **palette set**: ten curated colour palettes at
+`color_palette` indices 15–24, a **PALETTES** panel in the editor, portable
+prelude blocks for games that must run on stock PuzzleScript, and the tooling
+to rate and adopt more. The palettes themselves live in
+[`palettes/`](palettes/), one file each.
+
 ## New Features and Fixes
 The latest version is Release v-26c02. 
 This release updates `stable`.

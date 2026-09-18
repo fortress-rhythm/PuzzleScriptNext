@@ -1,0 +1,126 @@
+{
+  "name": "endofallglory",
+  "index": 22,
+  "title": "End of All Glory",
+  "author": "SurrealEmber",
+  "url": "https://lospec.com/palette-list/end-of-all-glory",
+  "note": "twenty-four colours covering eight of the nine hue families, with no pink and nothing darker than L 15 or lighter than L 88",
+  "commentary": [
+    "The most complete source in the set: twenty-four colours across eight of the nine hue families. What it does not have is range. Nothing is darker than L 15 or lighter than L 88, so black is a dark plum and white is a cream, and there is exactly one colour above L 75 - which means that colour is either white or yellow and the other has to be made. white wins: a palette whose white is L 73 looks dingy in every game that uses it, and yellow is used less.",
+    "The source's warm colours run red into orange with the browns in the middle, so brown and lightbrown are its own and only the dark end is relit - taking a maroon for darkbrown would have been a lie.",
+    "Its one cream is white, so the yellow is stated as an addition rather than press #d4b188 into service: that is a wheat at L 74, the same lightness as lightgreen, and the two collapse into each other under both protanopia and deuteranopia.",
+    "Three blues, bunched at L 29, 38 and 54. The middle one is relit to open the ramp out; left alone the first step is half the second."
+  ],
+  "colors": [
+    "#a5be89",
+    "#6aa074",
+    "#457968",
+    "#3f5c63",
+    "#44425f",
+    "#5d6271",
+    "#7f8f8d",
+    "#abb7aa",
+    "#e5dbbc",
+    "#8dadab",
+    "#74819c",
+    "#5b537d",
+    "#493556",
+    "#452744",
+    "#342028",
+    "#522b34",
+    "#753636",
+    "#9c5642",
+    "#b68260",
+    "#d4b188",
+    "#cb8965",
+    "#ba5d48",
+    "#973737",
+    "#6c2d39"
+  ],
+  "slots": {
+    "black": [
+      "#342028",
+      "sourced"
+    ],
+    "white": [
+      "#e5dbbc",
+      "sourced"
+    ],
+    "grey": [
+      "#7f8f8d",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#3f5c63",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#abb7aa",
+      "sourced"
+    ],
+    "red": [
+      "#973737",
+      "sourced"
+    ],
+    "darkred": [
+      "#522b34",
+      "sourced"
+    ],
+    "lightred": [
+      "#ba5d48",
+      "sourced"
+    ],
+    "brown": [
+      "#9c5642",
+      "sourced"
+    ],
+    "darkbrown": [
+      "#743422",
+      "added"
+    ],
+    "lightbrown": [
+      "#b68260",
+      "sourced"
+    ],
+    "orange": [
+      "#cb8965",
+      "sourced"
+    ],
+    "yellow": [
+      "#e1be94",
+      "added"
+    ],
+    "green": [
+      "#6aa074",
+      "sourced"
+    ],
+    "darkgreen": [
+      "#457968",
+      "sourced"
+    ],
+    "lightgreen": [
+      "#a5be89",
+      "sourced"
+    ],
+    "blue": [
+      "#665d88",
+      "added"
+    ],
+    "lightblue": [
+      "#74819c",
+      "sourced"
+    ],
+    "darkblue": [
+      "#44425f",
+      "sourced"
+    ],
+    "purple": [
+      "#493556",
+      "sourced"
+    ],
+    "pink": [
+      "#bc98ba",
+      "added"
+    ]
+  }
+}

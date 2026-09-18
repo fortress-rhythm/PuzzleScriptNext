@@ -1,0 +1,121 @@
+{
+  "name": "bentenpond",
+  "index": 15,
+  "title": "Benten Pond",
+  "author": "Terry Ross",
+  "url": "https://lospec.com/palette-list/benten-pond",
+  "note": "inspired by \"The Pond at Benten Shrine\", a 1920s woodblock print by Kawase Hasui",
+  "commentary": [
+    "One warm-neutral olive ramp carries black->white. It is tinted, but a tinted neutral still reads as neutral, and these five slots are the ones a game leans on constantly.",
+    "The source has no saturated warm mid-tones at all - its only warm colours are the red ramp and one pale peach. Rather than press a teal into service as \"brown\", brown, darkbrown, orange and yellow are picked to sit inside the palette's own muted range (S about 0.5, matching its reds)."
+  ],
+  "colors": [
+    "#083b42",
+    "#155355",
+    "#4e8276",
+    "#63a37c",
+    "#292f25",
+    "#494738",
+    "#736f52",
+    "#a5a27f",
+    "#d8d2ae",
+    "#304733",
+    "#336339",
+    "#4c8149",
+    "#8dab6d",
+    "#bf5f43",
+    "#e3938b",
+    "#f1d6c5",
+    "#a2333a",
+    "#193762",
+    "#7cacac",
+    "#573c5d",
+    "#825f77"
+  ],
+  "slots": {
+    "black": [
+      "#292f25",
+      "sourced"
+    ],
+    "white": [
+      "#d8d2ae",
+      "sourced"
+    ],
+    "grey": [
+      "#736f52",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#494738",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#a5a27f",
+      "sourced"
+    ],
+    "red": [
+      "#bf5f43",
+      "sourced"
+    ],
+    "darkred": [
+      "#a2333a",
+      "sourced"
+    ],
+    "lightred": [
+      "#e3938b",
+      "sourced"
+    ],
+    "brown": [
+      "#7a5734",
+      "added"
+    ],
+    "darkbrown": [
+      "#3d2f22",
+      "added"
+    ],
+    "lightbrown": [
+      "#f1d6c5",
+      "sourced"
+    ],
+    "orange": [
+      "#c9793f",
+      "added"
+    ],
+    "yellow": [
+      "#d9b45e",
+      "added"
+    ],
+    "green": [
+      "#4c8149",
+      "sourced"
+    ],
+    "darkgreen": [
+      "#304733",
+      "sourced"
+    ],
+    "lightgreen": [
+      "#8dab6d",
+      "sourced"
+    ],
+    "blue": [
+      "#193762",
+      "sourced"
+    ],
+    "lightblue": [
+      "#7cacac",
+      "sourced"
+    ],
+    "darkblue": [
+      "#083b42",
+      "sourced"
+    ],
+    "purple": [
+      "#573c5d",
+      "sourced"
+    ],
+    "pink": [
+      "#825f77",
+      "sourced"
+    ]
+  }
+}

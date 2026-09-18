@@ -8,33 +8,61 @@ This tool is for the pile you have not chosen from yet.
 
 ---
 
-## Ten-minute version
+## Two minutes, with nothing to download
 
+`tools/candidates-example/` holds three real palettes in three formats, so
+every command has something to run on before you have candidates of your own.
 Run everything from the repository root.
 
 ```sh
-mkdir -p tools/candidates            # drop .hex / .gpl / .pal / .json in here
-uv run tools/palette_test.py                                    # says all passed
-uv run tools/palette_curate.py score   tools/candidates/        # rank them
-uv run tools/palette_curate.py compare tools/candidates/        # does the mode matter?
-uv run tools/palette_curate.py combos  tools/candidates/        # any pair better together?
-uv run tools/palette_curate.py sheet   tools/candidates/ -o tools/candidates/sheet.html
-open tools/candidates/sheet.html                                # LOOK at them
-uv run tools/palette_curate.py show    tools/candidates/best.hex
-uv run tools/palette_curate.py verdict best accept -m "why"
-uv run tools/palette_curate.py emit-curated tools/candidates/best.hex
+uv run tools/palette_test.py                                     # says all passed
+uv run tools/palette_curate.py score   tools/candidates-example/ # rank them
+uv run tools/palette_curate.py compare tools/candidates-example/ # does the mode matter?
+uv run tools/palette_curate.py sheet   tools/candidates-example/ -o sheet.html
 ```
 
-Then continue at step 4 of `doc/palette-set.md`.
+`sheet` prints a `file://` link; open that. **That step is the one that is not
+optional.** A score orders a reading queue; it cannot tell you a palette is
+beautiful. Benten Pond scores worst of the ten shipped palettes on every
+reading and was still the right adoption.
+
+## Ten-minute version, with candidates of your own
+
+```sh
+mkdir -p tools/candidates            # put .hex / .gpl / .pal / .json in here
+uv run tools/palette_curate.py score   tools/candidates/         # rank them
+uv run tools/palette_curate.py compare tools/candidates/         # does the mode matter?
+uv run tools/palette_curate.py combos  tools/candidates/         # any pair better together?
+uv run tools/palette_curate.py sheet   tools/candidates/ -o tools/candidates/sheet.html
+uv run tools/palette_curate.py show    tools/candidates/yours.hex
+uv run tools/palette_curate.py verdict yours accept -m "why"
+uv run tools/palette_curate.py emit-curated tools/candidates/yours.hex --write
+```
+
+`yours` is a placeholder for a file you actually have. The slug `verdict` wants
+is the one `score` prints in its first column, which is the filename slugified
+— so `benten-pond.hex` is `bentenpond`. A verdict for a name nothing matches is
+still recorded, because this is your notebook rather than a database, but the
+tool says so on stderr; `verdict <slug> clear` undoes it.
+
+`emit-curated --write` puts a draft in `palettes/`. Correct it, then:
+
+```sh
+uv run tools/palette_analysis.py --write     # colors.js, the prelude blocks,
+uv run tools/palette_test.py                 # and the map editor's copy
+```
+
+Then finish at step 5 of `doc/palette-set.md` — two credits that are not
+generated.
 
 Nothing is special about `tools/candidates/` except that it is `.gitignore`d,
 so downloaded palettes and generated sheets do not end up in a commit. Any
 directory works; every command takes paths.
 
-The only step that is not optional is looking at the sheet. A score orders a
-reading queue; it cannot tell you a palette is beautiful. Benten Pond scores
-worst of the ten shipped palettes on every reading and was still the right
-adoption.
+There is no `open` in these examples because there is no portable `open`: it is
+macOS's, Linux has `xdg-open`, Windows `start`. `sheet` and `preview` print a
+`file://` URL instead, which most terminals make clickable and all of them let
+you copy.
 
 ## Where things go
 
@@ -46,21 +74,31 @@ your desktop, point at your desktop.
 
 | what | where | in git? |
 |---|---|---|
-| `score`, `compare`, `show`, `combos`, `audit`, `anchors` | stdout — redirect if you want a file; `score --json` for machine-readable | no |
-| `emit-curated`, `block` | stdout — made to be read, corrected, and pasted | no |
+| `score`, `compare`, `show`, `combos`, `audit`, `anchors`, `block` | stdout — redirect if you want a file; `score --json` for machine-readable | no |
+| `emit-curated` | stdout, or `palettes/<slug>.json` with `--write` | **yes**, with `--write` — that is the point of it |
 | `sheet` | the `-o` path; defaults to `./palette-sheet.html` | no, if you keep it in `tools/candidates/` |
 | `union` | the `-o` path, a `.gpl` file | no — it is a candidate, not a decision |
 | `preview` | the `-o` path; defaults to `./palette-preview.html` | no |
-| `sync_map_editor.py` | the vendored copy under `puzzlescript-map-editor/` | **yes** — see `doc/map-editor-sync.md` |
 | `verdict` | `tools/palette_verdicts.json`, always | **yes** — it is the record of your decisions |
 | `fetch` | the `-o` directory; defaults to `./candidates` | no |
+| `palette_analysis.py --write` | `src/js/colors.js`, `src/demo/palette-refs.txt`, the map editor's `src/palettes.js` | **yes** — all three are generated from `palettes/` |
+| `sync_map_editor.py` | the vendored copy under `puzzlescript-map-editor/` | **yes** — see `doc/map-editor-sync.md` |
 
-`tools/palette_verdicts.json` is the only file the tool writes on its own, and
-the only one meant to be committed. Nothing writes to `src/`: `emit-curated`
-prints a draft for you to correct and paste into `palette_analysis.py`, and
-`--emit-js` prints a block for you to paste into `colors.js`. That is
-deliberate — a tool that edited the engine's palette table directly would make
-a curation mistake indistinguishable from a bug.
+Two of these write into the repository and it is worth being clear about which.
+
+`emit-curated --write` and `verdict` are **the curation tool writing down a
+decision**: a draft palette file and a note about it. Neither touches `src/`.
+`emit-curated` will not overwrite a palette that already exists.
+
+`palette_analysis.py --write` is **the generator**, and it does write into
+`src/`. It was a paste step until the `palettes/` folder existed, on the
+reasoning that a tool editing the engine's palette table would make a curation
+mistake indistinguishable from a bug. What changed is that there is now a
+source file to make the mistake in: `--write` only ever replaces the text
+between comment markers already in the generated files, the mistake stays
+visible in `palettes/` where it was made, and the checks fail if a generated
+file and its source disagree. A paste step was not preventing anything — it was
+just where the third-order drift came from. See `doc/palette-folder.md`.
 
 ## Using it like any other command-line tool
 
@@ -135,13 +173,15 @@ create.
 
 | | |
 |---|---|
-| `tools/palette_lib.py` | Shared colour maths — the slot list, WCAG contrast, the CVD matrices, CIELab, the ramp checks, the anchor lexicon, the file parsers |
+| `palettes/` | The ten curated palettes, one JSON file each. The source everything else is generated from — `doc/palette-folder.md` |
+| `tools/palette_lib.py` | Shared colour maths — the slot list, WCAG contrast, the CVD matrices, CIELab, the ramp checks, the anchor lexicon, the file parsers, the `palettes/` reader |
 | `tools/palette_curate.py` | The curation CLI: fit, rate, look at, combine, record |
-| `tools/palette_verdicts.json` | Your decisions. The tool never writes anything else |
+| `tools/palette_analysis.py` | Reads `palettes/`, reports on it, and generates every derived file from it |
+| `tools/palette_verdicts.json` | Your decisions. The curation tool writes nothing else |
 | `tools/candidates-example/` | Three palettes in the three input formats, to run against |
 | `tools/palette_test.py` | The checks. `uv run tools/palette_test.py` |
 
-`palette_analysis.py` now imports its maths from `palette_lib.py` rather than
+`palette_analysis.py` imports its maths from `palette_lib.py` rather than
 carrying its own copy. Two tools that disagreed about what "deuteranopia" meant
 would produce numbers that could not be compared, which is the whole point of
 scoring a candidate against the shipped corpus. Its output is unchanged, except
@@ -161,7 +201,9 @@ uv run tools/palette_curate.py audit                        check what already s
 uv run tools/palette_curate.py preview --fork -o p.html     LOOK at what already ships
 uv run tools/palette_curate.py anchors                      the slot-name lexicon
 uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
-uv run tools/palette_curate.py emit-curated candidates/foo.hex
+uv run tools/palette_curate.py emit-curated candidates/foo.hex --write
+uv run tools/palette_curate.py block bentenpond            a shipped palette's
+                                                           prelude block
 ```
 
 Reads `.hex`, `.gpl`, `.pal`, `.json`, and any text file with hex codes in it —
@@ -311,7 +353,7 @@ candidate. Colours are deduplicated across sources, first occurrence winning.
 what keeps the result attributable to the people who made them — and it is why
 `union` is a separate step rather than something `combos` does silently.
 
-One thing measurement kept showing while the three shipped unions were being
+One thing measurement kept showing while the five shipped unions were being
 fitted, and worth expecting: **almost every colourblind collapse in a pooled
 palette is a lightness collision, not a hue problem.** Two slots landing within
 a few L of each other look like different colours normally and like one colour
@@ -386,7 +428,7 @@ weighting and read the components instead.
 Contrast, CVD and separation are scored as **percentiles against the fourteen
 inherited palettes**, not against an absolute ideal, because the absolute
 numbers mean nothing on their own: the rubric's 1.3 floor flags twenty-six pairs
-in `famicom`, which has shipped since 1983. The fork's own three are excluded
+in `famicom`, which has shipped since 1983. The fork's own ten are excluded
 from that corpus — grading this work against a corpus containing this work
 would flatter it in exactly one direction.
 
@@ -399,10 +441,11 @@ pairs in isolation, so neither notices a ramp running backwards.
 
 `audit` checks this against the palettes that already ship, which is the right
 way round: if the inherited palettes broke the rule routinely, the rule would be
-wrong rather than they. They do not. Ten of the fourteen have zero faults, all
-three fork palettes have zero, and the exceptions are real defects:
+wrong rather than they. They do not. Eleven of the fourteen have zero faults,
+all ten fork palettes have zero, and the exceptions are real defects:
 
 ```
+pastel           brown: lightbrown is 0.0 L darker than brown  (duplicate hex)
 pastel           green: lightgreen is 15.2 L darker than green
 ega              grey:  grey is 0.0 L darker than darkgrey     (duplicate hex)
 ega              brown: brown is 0.0 L darker than darkbrown   (duplicate hex)
@@ -427,7 +470,7 @@ uv run tools/palette_test.py
 ```
 
 Dependency-free and self-contained, like the tools, so there is no framework to
-install. About 5,200 assertions over the real palettes, the three example
+install. About 5,500 assertions over the real palettes, the three example
 candidates, and sixty generated ones weighted towards the awkward cases — the
 one-colour palette, the all-greys palette, the palette whose colours are all at
 the same lightness.
@@ -447,8 +490,14 @@ promises:
   shipped colour
 - `ANCHOR` itself obeys the ramp rule it enforces
 - the calibration corpus is exactly 14 palettes, with the fork's three excluded
-- **`src/demo/palette-refs.txt` matches `--emit-refs`**, and every curated
-  colour appears in `colors.js` — the generated files in git cannot drift
+- **every palette file is well-formed** — all 21 slots, real colours, a
+  provenance word the emitters understand, and a `sourced` slot that really is
+  in the source. Each way of breaking one has its own check
+- **every generated file still matches `palettes/`** — `--write` is run in
+  dry-run mode and must report nothing to change, so hand-editing `colors.js`,
+  `palette-refs.txt` or the map editor's copy fails the checks
+- **the alias index agrees everywhere** — no two palettes share one, and
+  `colors.js` gives each the number its palette file claims
 - all five input formats parse the same palette identically
 - duplicate palettes collapse; colliding slugs are disambiguated, not merged
 
@@ -498,8 +547,8 @@ it produces a pale green called `yellow`, which is worse than admitting the gap.
 
 ## Adding a palette, with the tool
 
-This replaces steps 1–3 of *Adding a fourth palette* in `doc/palette-set.md`;
-steps 4 and 5 are unchanged.
+This is the whole process; `doc/palette-set.md` step 5 is the only part of it
+that is not here.
 
 1. Get the palette into a folder — Lospec download button, or `fetch` if the
    network allows.
@@ -508,20 +557,27 @@ steps 4 and 5 are unchanged.
    not `sourced` says why, and those are the lines that need a human.
 4. `combos` if a candidate is close but short — it pools two palettes and
    re-fits, rather than grafting slot by slot, and only reports pairs that score
-   better than either alone.
+   better than either alone. `union` makes the pooled file.
 5. `verdict <slug> accept|reject|maybe -m "why"`. The note is the point; the
    verdict is just a filter. `sheet` shows them.
-6. `emit-curated` drafts the `CURATED` and `SOURCES` blocks for
-   `palette_analysis.py`, with every non-sourced slot's reason as a comment.
-   **Correct it, then paste it.** That is step 3 of the old process made cheap,
-   not automated away.
-7. Continue at step 4 of `doc/palette-set.md`: regenerate both outputs, add the
-   alias index and the credit.
+6. `emit-curated <file> --write` drafts `palettes/<slug>.json`, with the
+   fitter's reason for every non-sourced slot in `slot_notes` and the next free
+   alias index filled in. **Correct it.** That is step 3 of the old process
+   made cheap, not automated away: the TODOs are real, and the mapping is a
+   first draft that gets things like oranges wrong.
+7. `uv run tools/palette_analysis.py --write` regenerates `colors.js`, the
+   prelude blocks and the map editor's copy. `uv run tools/palette_test.py`
+   confirms it. Then `doc/palette-set.md` step 5 — two credit lines that are
+   not generated, in `prelude.html` and `palettes_ui.js`.
 
 ## What changed underneath
 
-Two behaviour changes in `palette_analysis.py`, both deliberate:
+Three behaviour changes in `palette_analysis.py`, all deliberate:
 
+- **The palettes moved out of it, into `palettes/`.** It reads them now rather
+  than carrying them, and `--write` generates every derived file from them
+  instead of printing blocks to paste. `doc/palette-folder.md` is the whole
+  story. `--emit-js` and `--emit-refs` still print what they always did.
 - The maths moved to `palette_lib.py`. Output of `--emit-js`, `--emit-refs` and
   the default report is byte-identical; `--json` gains `cvd_total`,
   `ramp_faults` and `ramp_evenness`.

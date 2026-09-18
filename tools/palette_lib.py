@@ -1,8 +1,8 @@
 """
 Shared colour machinery for the palette tools.
 
-`palette_analysis.py` (the three shipped palettes, their derivation and the
-generators) and `palette_curate.py` (rating arbitrary candidates) both import
+`palette_analysis.py` (the shipped palettes in `palettes/`, their derivation
+and the generators) and `palette_curate.py` (rating arbitrary candidates) both import
 from here. The point is that there is exactly one copy of the CVD matrices, the
 slot list and the WCAG maths: two tools that disagreed about what "contrast" or
 "deuteranopia" meant would produce numbers that could not be compared, which
@@ -490,6 +490,123 @@ def find_colors_js(start=None):
             return cand
         here = os.path.dirname(here)
     return "src/js/colors.js"
+
+
+def find_palette_dir(start=None):
+    """Locate the `palettes/` folder from wherever the tool was invoked."""
+    here = os.path.abspath(start or os.path.dirname(os.path.abspath(__file__)))
+    for _ in range(5):
+        cand = os.path.join(here, "palettes")
+        if os.path.isdir(cand):
+            return cand
+        here = os.path.dirname(here)
+    return "palettes"
+
+
+PALETTE_KEYS = ("name", "index", "title", "author", "url", "note",
+                "commentary", "slot_notes", "colors", "slots")
+
+
+def read_palette_file(path):
+    """One curated palette file, validated.
+
+    The validation is here rather than in a checker because a malformed file
+    would otherwise reach the emitters and be discovered as a broken colors.js,
+    which is a much worse place to find out. Everything it rejects is something
+    that cannot be rendered: a missing slot, a colour that is not a colour, a
+    provenance word nothing downstream understands.
+    """
+    with open(path, encoding="utf-8") as f:
+        doc = json.load(f)
+
+    # A misspelled key is silent otherwise: "colours" instead of "colors"
+    # leaves the source colour list empty, and the only symptom is every
+    # sourced slot failing the check below for a reason that is not the reason.
+    strange = [k for k in doc if k not in PALETTE_KEYS]
+    if strange:
+        raise ValueError(f"{path}: {', '.join(strange)} is not a palette key; "
+                         "expected " + ", ".join(PALETTE_KEYS))
+
+    stem = os.path.splitext(os.path.basename(path))[0]
+    name = doc.get("name") or stem
+    if name != stem:
+        raise ValueError(f"{path}: 'name' is {name!r} but the file is {stem}.json")
+    if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+        raise ValueError(f"{path}: {name!r} is not usable as a color_palette name")
+    if not isinstance(doc.get("index"), int):
+        raise ValueError(f"{path}: 'index' must be the integer alias number")
+
+    slots = doc.get("slots") or {}
+    missing = [s for s in SLOTS if s not in slots]
+    if missing:
+        raise ValueError(f"{path}: no colour for {', '.join(missing)}")
+    extra = [s for s in slots if s not in SLOTS]
+    if extra:
+        raise ValueError(f"{path}: {', '.join(extra)} is not one of the 21 slots")
+
+    clean = {}
+    for slot, v in slots.items():
+        if isinstance(v, str):
+            v = [v, "sourced"]
+        hexval, prov = (list(v) + ["sourced"])[:2]
+        if not re.fullmatch(r"#[0-9a-f]{6}", str(hexval).lower()):
+            raise ValueError(f"{path}: {slot} is {hexval!r}, not a #rrggbb colour")
+        if prov not in ("sourced", "added"):
+            raise ValueError(f"{path}: {slot} is marked {prov!r}; "
+                             "it is either 'sourced' or 'added'")
+        clean[slot] = (str(hexval).lower(), prov)
+
+    colors = ["#" + str(c).lstrip("#").lower() for c in (doc.get("colors") or [])]
+    for c in colors:
+        if not re.fullmatch(r"#[0-9a-f]{6}", c):
+            raise ValueError(f"{path}: {c!r} in 'colors' is not a #rrggbb colour")
+
+    # A slot claiming to be the source's must actually be in it. This is the
+    # check that keeps "sourced 17/21" an honest number rather than a hope.
+    lied = sorted(s for s, (h, p) in clean.items()
+                  if p == "sourced" and h not in colors)
+    if lied:
+        raise ValueError(f"{path}: {', '.join(lied)} claim to be sourced but are "
+                         "not in 'colors' - mark them 'added' or add the colour")
+
+    return {
+        "name": name,
+        "index": doc["index"],
+        "title": doc.get("title") or name,
+        "author": doc.get("author") or "",
+        "url": doc.get("url") or "",
+        "note": doc.get("note") or "",
+        "commentary": list(doc.get("commentary") or []),
+        "slot_notes": dict(doc.get("slot_notes") or {}),
+        "colors": colors,
+        "slots": clean,
+        "path": path,
+    }
+
+
+def load_palette_dir(path=None):
+    """Every curated palette, ordered by the alias index it ships under.
+
+    Ordering by `index` rather than by filename is what keeps colors.js, the
+    reference blocks and the alias table in one order. They were in three
+    different orders before this folder existed, because each was generated
+    from a different traversal.
+    """
+    path = path or find_palette_dir()
+    if not os.path.isdir(path):
+        return {}
+    out = []
+    for n in sorted(os.listdir(path)):
+        if n.endswith(".json") and not n.startswith("."):
+            out.append(read_palette_file(os.path.join(path, n)))
+    seen = {}
+    for p in out:
+        if p["index"] in seen:
+            raise ValueError(f"{p['name']} and {seen[p['index']]} both claim "
+                             f"alias index {p['index']}")
+        seen[p["index"]] = p["name"]
+    return {p["name"]: p for p in sorted(out, key=lambda p: p["index"])}
+
 
 
 # ------------------------------------------------------------------- ingestion

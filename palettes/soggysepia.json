@@ -1,0 +1,135 @@
+{
+  "name": "soggysepia",
+  "index": 18,
+  "title": "Soggy Sepia CRT-20",
+  "author": "Digi (@Digitress)",
+  "url": "https://lospec.com/palette-list/soggy-sepia-crt-20",
+  "note": "four eight-step phosphor ramps - sepia, red, green and purple - each with a deliberate gap across the middle",
+  "commentary": [
+    "The source is four eight-step ramps - sepia, red, green, purple - and every one of them jumps from about L 30 straight to L 51. That hole is the palette's CRT character and there is no mapping that hides it: whichever five colours carry black->white, one step will be twice the others. Reported evenness around 0.16 is therefore the source's, not the mapping's; ega ships at 0.16 and proteus_mellow at 0.27.",
+    "The greys take the purple ramp's near-neutral dark end and the sepia ramp's light end, so the shadows lean faintly plum and the highlights faintly warm. That is a phosphor palette behaving like one, and at chroma under 11 all five still read as neutral.",
+    "The one warm ramp has to be either red or brown, not both - taking three reds and three browns from it leaves one of the two with no dark end. So red is the warm ramp proper, spanning its full range, and brown is the sepia ramp's middle, which is genuinely brown (hue 25-36) rather than a neutral pressed into service.",
+    "Four additions, and the blues are the interesting ones. A CRT palette with red, green and purple phosphor ramps and no blue at all is a conspicuous gap, so the blue ramp is built to the same plan as the others - three steps at the source's own lightnesses and chroma, pushed to hue 235 so it stays clear of the purple ramp rather than collapsing into it.",
+    "The source's only yellow-ish colours are the pale top of its green ramp, 31 degrees of hue away. Calling a fourth green \"yellow\" in a palette that already has three is the failure this rubric exists to catch, so the yellow is stated as an addition instead."
+  ],
+  "colors": [
+    "#0a0707",
+    "#140f0f",
+    "#30231a",
+    "#493e2d",
+    "#a08e76",
+    "#c4b8a6",
+    "#d2cabd",
+    "#e2ded5",
+    "#0d0505",
+    "#190b0b",
+    "#3c1a13",
+    "#5b2e22",
+    "#b87258",
+    "#d3a690",
+    "#ddbdac",
+    "#e9d6ca",
+    "#070905",
+    "#0f130b",
+    "#242c13",
+    "#374e22",
+    "#88aa58",
+    "#b5ca90",
+    "#c7d7ac",
+    "#dbe6ca",
+    "#070509",
+    "#0f0b13",
+    "#241a21",
+    "#372e38",
+    "#887294",
+    "#b5a6bc",
+    "#c7bdce",
+    "#dbd6e0"
+  ],
+  "slots": {
+    "black": [
+      "#0a0707",
+      "sourced"
+    ],
+    "white": [
+      "#e2ded5",
+      "sourced"
+    ],
+    "grey": [
+      "#372e38",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#241a21",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#c4b8a6",
+      "sourced"
+    ],
+    "red": [
+      "#b87258",
+      "sourced"
+    ],
+    "darkred": [
+      "#3c1a13",
+      "sourced"
+    ],
+    "lightred": [
+      "#ddbdac",
+      "sourced"
+    ],
+    "brown": [
+      "#493e2d",
+      "sourced"
+    ],
+    "darkbrown": [
+      "#30231a",
+      "sourced"
+    ],
+    "lightbrown": [
+      "#a08e76",
+      "sourced"
+    ],
+    "orange": [
+      "#d3a690",
+      "sourced"
+    ],
+    "yellow": [
+      "#d8d4a2",
+      "added"
+    ],
+    "green": [
+      "#88aa58",
+      "sourced"
+    ],
+    "darkgreen": [
+      "#374e22",
+      "sourced"
+    ],
+    "lightgreen": [
+      "#b5ca90",
+      "sourced"
+    ],
+    "blue": [
+      "#7378af",
+      "added"
+    ],
+    "lightblue": [
+      "#babee7",
+      "added"
+    ],
+    "darkblue": [
+      "#232648",
+      "added"
+    ],
+    "purple": [
+      "#887294",
+      "sourced"
+    ],
+    "pink": [
+      "#b5a6bc",
+      "sourced"
+    ]
+  }
+}

@@ -1,0 +1,128 @@
+{
+  "name": "rustfairyochre",
+  "index": 21,
+  "title": "Rust Gold 8 + FairyRust_8x + Ochre Ruin",
+  "author": "Trigo Mathmancer, KRYPTOCCULTIST and Quemis",
+  "url": "https://lospec.com/palette-list/rust-gold-8",
+  "note": "pooled from Rust Gold 8 by Trigo Mathmancer, FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) and Ochre Ruin by Quemis (lospec.com/palette-list/ochre-ruin)",
+  "commentary": [
+    "Three sources, twenty-eight colours, and the only one of the three Rust Gold unions that needs a single addition beyond orange and pink. Ochre Ruin's nine neutrals give a real grey ramp, FairyRust the blues and purples, Rust Gold the warm half.",
+    "The cost is that almost everything is muted: Ochre Ruin sits at chroma 3-17 throughout, so the palette separates by lightness rather than hue, and the slots that do collide collide hard. darkgreen was the source's own #30322d until measurement showed it two L from darkred and collapsing under both protanopia and deuteranopia; relighting it off the palette's own teal-green costs one sourced slot and removes three of the four collapses. That trade is the one judgement call in this mapping worth arguing with."
+  ],
+  "colors": [
+    "#f6cd26",
+    "#ac6b26",
+    "#563226",
+    "#331c17",
+    "#bb7f57",
+    "#725956",
+    "#393939",
+    "#202020",
+    "#141a0d",
+    "#4b2d28",
+    "#744e65",
+    "#7f7397",
+    "#8ab0d8",
+    "#aad8f7",
+    "#daedfe",
+    "#f2f9ff",
+    "#0a151f",
+    "#191d29",
+    "#1d272f",
+    "#5e7b75",
+    "#1b181c",
+    "#54403f",
+    "#7e6668",
+    "#b7a691",
+    "#30322d",
+    "#515650",
+    "#9ba28c",
+    "#e7daba"
+  ],
+  "slots": {
+    "black": [
+      "#0a151f",
+      "sourced"
+    ],
+    "white": [
+      "#f2f9ff",
+      "sourced"
+    ],
+    "grey": [
+      "#515650",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#1d272f",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#b7a691",
+      "sourced"
+    ],
+    "red": [
+      "#875e51",
+      "added"
+    ],
+    "darkred": [
+      "#4b2d28",
+      "sourced"
+    ],
+    "lightred": [
+      "#bb7f57",
+      "sourced"
+    ],
+    "brown": [
+      "#563226",
+      "sourced"
+    ],
+    "darkbrown": [
+      "#331c17",
+      "sourced"
+    ],
+    "lightbrown": [
+      "#ac6b26",
+      "sourced"
+    ],
+    "orange": [
+      "#cf8943",
+      "added"
+    ],
+    "yellow": [
+      "#e7daba",
+      "sourced"
+    ],
+    "green": [
+      "#5e7b75",
+      "sourced"
+    ],
+    "darkgreen": [
+      "#334e49",
+      "added"
+    ],
+    "lightgreen": [
+      "#9ba28c",
+      "sourced"
+    ],
+    "blue": [
+      "#7f7397",
+      "sourced"
+    ],
+    "lightblue": [
+      "#8ab0d8",
+      "sourced"
+    ],
+    "darkblue": [
+      "#191d29",
+      "sourced"
+    ],
+    "purple": [
+      "#744e65",
+      "sourced"
+    ],
+    "pink": [
+      "#e0b5ce",
+      "added"
+    ]
+  }
+}

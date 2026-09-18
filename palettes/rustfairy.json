@@ -1,0 +1,116 @@
+{
+  "name": "rustfairy",
+  "index": 19,
+  "title": "Rust Gold 8 + FairyRust_8x",
+  "author": "Trigo Mathmancer and KRYPTOCCULTIST",
+  "url": "https://lospec.com/palette-list/rust-gold-8",
+  "note": "pooled from Rust Gold 8 by Trigo Mathmancer and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - one warm half and one cool one, neither of which has a green",
+  "commentary": [
+    "Rust Gold's warm half against FairyRust's cool one. FairyRust's blues are all pale - L 70 and up - so the blue ramp's dark end comes from its lavender instead, relit; the two together give an even ramp where neither palette could give one alone.",
+    "The warm ramp is the awkward part. Both sources' dark warms cluster at L 13-25, so taking three reds and three browns from them straight puts four slots within two L of each other and they collapse into one another under protanopia. darkbrown and brown are therefore relit to open the ramp out. That is the whole difference between four colourblind collapses and none."
+  ],
+  "colors": [
+    "#f6cd26",
+    "#ac6b26",
+    "#563226",
+    "#331c17",
+    "#bb7f57",
+    "#725956",
+    "#393939",
+    "#202020",
+    "#141a0d",
+    "#4b2d28",
+    "#744e65",
+    "#7f7397",
+    "#8ab0d8",
+    "#aad8f7",
+    "#daedfe",
+    "#f2f9ff"
+  ],
+  "slots": {
+    "black": [
+      "#202020",
+      "sourced"
+    ],
+    "white": [
+      "#f2f9ff",
+      "sourced"
+    ],
+    "grey": [
+      "#725956",
+      "sourced"
+    ],
+    "darkgrey": [
+      "#393939",
+      "sourced"
+    ],
+    "lightgrey": [
+      "#d5b8b4",
+      "added"
+    ],
+    "red": [
+      "#8f6658",
+      "added"
+    ],
+    "darkred": [
+      "#4b2d28",
+      "sourced"
+    ],
+    "lightred": [
+      "#bb7f57",
+      "sourced"
+    ],
+    "brown": [
+      "#684235",
+      "added"
+    ],
+    "darkbrown": [
+      "#402823",
+      "added"
+    ],
+    "lightbrown": [
+      "#ac6b26",
+      "sourced"
+    ],
+    "orange": [
+      "#cf8943",
+      "added"
+    ],
+    "yellow": [
+      "#f6cd26",
+      "sourced"
+    ],
+    "green": [
+      "#4f6b3a",
+      "added"
+    ],
+    "darkgreen": [
+      "#141a0d",
+      "sourced"
+    ],
+    "lightgreen": [
+      "#93b077",
+      "added"
+    ],
+    "blue": [
+      "#7f7397",
+      "sourced"
+    ],
+    "lightblue": [
+      "#8ab0d8",
+      "sourced"
+    ],
+    "darkblue": [
+      "#4c4162",
+      "added"
+    ],
+    "purple": [
+      "#744e65",
+      "sourced"
+    ],
+    "pink": [
+      "#c197b0",
+      "added"
+    ]
+  }
+}

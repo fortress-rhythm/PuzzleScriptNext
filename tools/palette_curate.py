@@ -46,8 +46,8 @@ from palette_lib import (  # noqa: E402
     NEUTRAL_CHROMA, SLOT_FAMILY, analyse, chroma, classify, contrast, delta_e,
     derive_anchors, dist, family, find_colors_js, fork_palettes, hsl, lab,
     lab_mix,
-    lab_to_hex, load_builtins,
-    load_candidates, relight, rgb, simulate,
+    find_palette_dir, lab_to_hex, load_builtins,
+    load_candidates, load_palette_dir, relight, rgb, simulate,
 )
 
 VERDICT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -669,6 +669,44 @@ def corpus_stats(colors_js=None):
 
 # ------------------------------------------------------------------- verdicts
 
+def _nothing_found(paths):
+    """Why there is nothing to rate, and what to do about it.
+
+    An empty directory is the overwhelmingly likely reason - the first thing
+    the docs tell you to do is create one - and "no candidate palettes found"
+    does not distinguish that from a typo in the path, a folder of .png files,
+    or a directory that is not there at all. Each of those wants a different
+    next move, so say which one happened.
+    """
+    for p in paths:
+        if not os.path.exists(p):
+            print(f"{p}: no such file or directory", file=sys.stderr)
+        elif os.path.isdir(p):
+            n = sum(len(f) for _, _, f in os.walk(p))
+            print(f"{p}: {'empty' if not n else f'{n} files, none of them a palette'}",
+                  file=sys.stderr)
+    print("\nreadable formats: .hex .gpl .pal .json, or any text file with "
+          "#rrggbb codes in it\n"
+          "  Lospec palette pages have .hex/.gpl/.pal download buttons; "
+          "put the file in the folder\n"
+          "  and point this at the folder.\n\n"
+          "  to try the tool out first, there are three real palettes in "
+          "tools/candidates-example/:\n"
+          "    uv run tools/palette_curate.py score tools/candidates-example/",
+          file=sys.stderr)
+
+
+def _file_url(path):
+    """A clickable file:// URL for a report just written.
+
+    The docs used to say `open sheet.html`, which is a macOS command. Printing
+    the URL works on every terminal that linkifies, and on the ones that do not
+    it is still the string to paste into a browser - which is better than a
+    command that does not exist saying `open: command not found`.
+    """
+    return "file://" + os.path.abspath(path)
+
+
 def load_verdicts():
     try:
         with open(VERDICT_FILE, encoding="utf-8") as f:
@@ -1012,6 +1050,7 @@ def cmd_preview(names, out, colors_js, fork_only=False):
     with open(out, "w", encoding="utf-8") as f:
         f.write(preview_html(everything, fork, colors_js))
     print(f"wrote {out}  ({len(everything)} palettes)")
+    print(f"  {_file_url(out)}")
     return 0
 
 
@@ -1178,33 +1217,96 @@ def cmd_combos(rows, stats, limit=8):
             print(f"      {slot:<11} {base['mapping'][slot]} -> {mapping[slot]}")
 
 
-def cmd_emit_curated(r):
-    """A CURATED block for palette_analysis.py, ready to be argued with.
+def curated_doc(r):
+    """The candidate as a palettes/ file: the draft a human then corrects.
 
-    This is step 3 of the five-step process in doc/palette-set.md made cheap:
-    the tool drafts, you correct. Every non-sourced slot carries its reason as
-    a comment, because those are precisely the lines that need a human.
+    The fitter's provenance has four words - sourced, added, derived, standin -
+    and a palette file has two. `derived` and `standin` both mean "this colour
+    is not the source's, or is not the source's under this name", which is
+    exactly what `added` records, and the per-slot note says which it was. The
+    distinction matters while fitting and not at all afterwards.
     """
-    src = r
-    print(f'    "{src["slug"]}": {{')
-    for ramp, slots in list(RAMPS.items()) + [("singles", SINGLETS)]:
-        gaps = [s for s in slots if r["prov"][s] != "sourced"]  # incl. stand-ins
-        if gaps:
-            print(f"        # {ramp}: " + "; ".join(
-                f"{s} {r['prov'][s]} - {r['notes'].get(s, '')}" for s in gaps))
-        line = "        " + " ".join(
-            f'"{s}": ("{r["mapping"][s]}", '
-            f'"{"sourced" if r["prov"][s] in ("sourced", "standin") else "added"}"),'
-            for s in slots)
-        print(line)
-    print("    },")
-    print(f'\n# SOURCES entry:\n    "{src["slug"]}": {{')
-    print(f'        "title": "{src["name"]}",')
-    print(f'        "author": "{src.get("author") or "TODO"}",')
-    print(f'        "url": "{src.get("url") or "TODO"}",')
-    print(f'        "note": "TODO",')
-    print(f'        "hex": """{" ".join(c.lstrip("#") for c in src["hex"])}""".split(),')
-    print("    },")
+    slots = {}
+    notes = {}
+    for s in SLOTS:
+        prov = "sourced" if r["prov"][s] == "sourced" else "added"
+        slots[s] = [r["mapping"][s], prov]
+        if r["prov"][s] != "sourced":
+            notes[s] = f"{r['prov'][s]}: {r['notes'].get(s, '')}".strip(": ")
+    doc = {
+        "name": r["slug"],
+        "index": None,
+        "title": r["name"],
+        "author": r.get("author") or "TODO",
+        "url": r.get("url") or "TODO",
+        "note": "TODO - one line on what the palette is",
+        "commentary": ["TODO - why each non-sourced slot is what it is. "
+                       "The fitter's own reasons are in slot_notes below; "
+                       "keep the ones you agree with and delete this line."],
+        "slot_notes": notes,
+        "colors": list(r["hex"]),
+        "slots": slots,
+    }
+    return doc
+
+
+def cmd_emit_curated(r, write_dir=None):
+    """A draft palette file, ready to be argued with.
+
+    This is step 3 of the process in doc/palette-set.md made cheap: the tool
+    drafts, you correct. Every non-sourced slot carries the fitter's reason,
+    because those are precisely the lines that need a human.
+
+    With --write it lands in palettes/ as a file rather than on stdout as a
+    thing to paste. It still needs correcting either way - what changes is that
+    a correction is an edit to a palette rather than an edit to a tool.
+    """
+    doc = curated_doc(r)
+    if write_dir:
+        shipped = load_palette_dir()
+        if r["slug"] in shipped:
+            print(f"{r['slug']}: palettes/{r['slug']}.json already exists; "
+                  "not overwriting", file=sys.stderr)
+            return 1
+        doc["index"] = max((p["index"] for p in shipped.values()), default=14) + 1
+        os.makedirs(write_dir, exist_ok=True)
+        path = os.path.join(write_dir, f"{r['slug']}.json")
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump(doc, f, indent=2, ensure_ascii=False)
+            f.write("\n")
+        print(f"wrote {path}  (index {doc['index']})")
+        print("  fill in the TODOs, then: "
+              "uv run tools/palette_analysis.py --write")
+        return 0
+    json.dump(doc, sys.stdout, indent=2, ensure_ascii=False)
+    print()
+    return 0
+
+
+def emit_shipped_block(p):
+    """The portable prelude block for a palette in palettes/.
+
+    Same text as the entry in src/demo/palette-refs.txt. That file has all of
+    them and is the thing to keep open while writing; this is for when you want
+    one and would rather not scroll.
+    """
+    mapping = {s: h for s, (h, _) in p["slots"].items()}
+    added = [s for s in SLOTS if p["slots"][s][1] != "sourced"]
+    order = ["black", "white", "grey", "darkgrey", "lightgrey",
+             "gray", "darkgray", "lightgray",
+             "red", "darkred", "lightred", "brown", "darkbrown", "lightbrown",
+             "orange", "yellow", "green", "darkgreen", "lightgreen",
+             "blue", "lightblue", "darkblue", "purple", "pink"]
+    pairs = " ".join(f"{k} {mapping[ALIAS_OF.get(k, k)]}" for k in order)
+    out = [f"({p['title']} - {p['author']}", f" {p['url']}"]
+    if p["note"]:
+        out.append(f" {p['note']}.")
+    if added:
+        out.append(" Original additions, not from the source palette: "
+                   + ", ".join(added) + ".")
+    out.append(")")
+    out.append(f"color_palette arnecolors {pairs}")
+    return "\n".join(out)
 
 
 def cmd_block(r):
@@ -1427,21 +1529,30 @@ def main():
     ap = argparse.ArgumentParser(
         description="Rate and curate candidate palettes for PuzzleScript's 21 slots.",
         epilog="""\
-the usual run, from the repository root:
+to see it work, with no setup at all:
 
-  mkdir -p tools/candidates             put .hex / .gpl / .pal / .json in here
-  palette_curate.py score   tools/candidates/
-  palette_curate.py compare tools/candidates/
+  palette_curate.py score tools/candidates-example/
+  palette_curate.py sheet tools/candidates-example/ -o sheet.html
+
+then open the file:// link it prints. Three real palettes live in that folder,
+in three formats, so every command below has something to run on.
+
+the usual run, once you have candidates of your own:
+
+  mkdir -p tools/candidates              put .hex / .gpl / .pal / .json in here
+  palette_curate.py score   tools/candidates/          rank them
+  palette_curate.py compare tools/candidates/          does the fitting mode matter?
   palette_curate.py sheet   tools/candidates/ -o tools/candidates/sheet.html
-  palette_curate.py show    tools/candidates/best.hex
-  palette_curate.py verdict best accept -m "why"
-  palette_curate.py emit-curated tools/candidates/best.hex
+  palette_curate.py show    tools/candidates/<one>     one in full, with reasons
+  palette_curate.py verdict <slug> accept -m "why"     <slug> as `score` prints it
+  palette_curate.py emit-curated tools/candidates/<one> --write
 
-then continue at step 4 of doc/palette-set.md.
+`--write` puts a draft in palettes/. Correct it, then
+`palette_analysis.py --write` regenerates colors.js, the prelude blocks and the
+map editor's copy from it. doc/palette-set.md step 5 for the rest.
 
-Everything prints to stdout except `sheet` (-o) and `verdict`, which writes
-tools/palette_verdicts.json. Nothing is written to src/ - emit-curated prints a
-draft for you to correct and paste.
+Everything prints to stdout except `sheet` and `preview` (-o), `emit-curated
+--write`, and `verdict`, which writes tools/palette_verdicts.json.
 
 The score orders a reading queue; it cannot tell you a palette is good. Look at
 the sheet. Full notes in doc/palette-curation.md.
@@ -1449,14 +1560,17 @@ the sheet. Full notes in doc/palette-curation.md.
         formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
+    parsers = {}
     for name, helptext in [("score", "rank candidates"),
                            ("compare", "both modes side by side"),
                            ("show", "one candidate in full"),
                            ("combos", "which candidate fills another's gaps"),
-                           ("emit-curated", "draft a CURATED block"),
+                           ("emit-curated", "draft a palettes/ file"),
                            ("block", "portable color_palette block")]:
-        p = sub.add_parser(name, help=helptext)
-        p.add_argument("paths", nargs="+", help="palette files or directories")
+        p = parsers[name] = sub.add_parser(name, help=helptext)
+        p.add_argument("paths", nargs="+", help="palette files or directories"
+                       + (", or a shipped palette's name"
+                          if name == "block" else ""))
         p.add_argument("--colors-js", default=None)
         p.add_argument("--json", action="store_true",
                        help="machine-readable output, for jq and friends")
@@ -1465,6 +1579,10 @@ the sheet. Full notes in doc/palette-curation.md.
                             "say, and a missing hue is synthesised. fit-palette: "
                             "only the source's own colours are used, and a "
                             "missing hue becomes another family renamed")
+
+    parsers["emit-curated"].add_argument(
+        "--write", action="store_true",
+        help="write it into palettes/ instead of printing it")
 
     p = sub.add_parser("sheet", help="HTML contact sheet for human review")
     p.add_argument("paths", nargs="+")
@@ -1490,7 +1608,7 @@ the sheet. Full notes in doc/palette-curation.md.
     p.add_argument("--name", default=None, help="name for the pooled palette")
 
     p = sub.add_parser("verdict", help="record a curation decision")
-    p.add_argument("slug")
+    p.add_argument("slug", help="the candidate's slug, as `score` prints it")
     p.add_argument("verdict", choices=["accept", "reject", "maybe", "clear"])
     p.add_argument("-m", "--note", default="")
 
@@ -1503,9 +1621,23 @@ the sheet. Full notes in doc/palette-curation.md.
     if args.cmd == "verdict":
         v = load_verdicts()
         if args.verdict == "clear":
-            v.pop(args.slug, None)
+            if args.slug not in v:
+                print(f"no verdict recorded for {args.slug}", file=sys.stderr)
+                return 1
+            v.pop(args.slug)
             print(f"cleared {args.slug}")
         else:
+            # A verdict is keyed by slug and the tool has no list of slugs, so
+            # a typo used to be recorded in full and committed. It still
+            # records - this is your notebook, not a database - but it says
+            # when the name matches nothing it can see, because
+            # `verdict best accept` after copying the docs verbatim is a
+            # decision about a palette that does not exist.
+            known = set(load_palette_dir()) | set(v)
+            if args.slug not in known:
+                print(f"note: nothing here is called {args.slug!r}. Recording "
+                      "it anyway;\n      undo with: palette_curate.py verdict "
+                      f"{args.slug} clear", file=sys.stderr)
             v[args.slug] = {"verdict": args.verdict, "note": args.note}
             print(f"{args.slug}: {args.verdict}"
                   + (f"  ({args.note})" if args.note else ""))
@@ -1536,11 +1668,32 @@ the sheet. Full notes in doc/palette-curation.md.
         cmd_anchors(colors_js)
         return 0
 
+    if args.cmd == "block":
+        shipped = load_palette_dir()
+        named = [p for p in args.paths
+                 if not os.path.exists(p) and p in shipped]
+        if named:
+            # The common reason to want a prelude block is to publish a game
+            # using a palette this fork already ships, which has nothing to do
+            # with curating a candidate. Taking a name here means
+            # `block bentenpond` works without first finding a file.
+            for n in named:
+                print(emit_shipped_block(shipped[n]))
+                print()
+            args.paths = [p for p in args.paths if p not in named]
+            if not args.paths:
+                return 0
+        unknown = [p for p in args.paths if not os.path.exists(p)]
+        if unknown and shipped:
+            print(f"{', '.join(unknown)}: not a file, and not one of "
+                  + ", ".join(shipped), file=sys.stderr)
+            return 1
+
     cands, errors = load_candidates(args.paths)
     for f, e in errors:
         print(f"{os.path.basename(f)}: {e}", file=sys.stderr)
     if not cands:
-        print("no candidate palettes found", file=sys.stderr)
+        _nothing_found(args.paths)
         return 1
 
     rows = evaluate(cands, stats, getattr(args, "mode", "fit-colourname"))
@@ -1559,8 +1712,10 @@ the sheet. Full notes in doc/palette-curation.md.
     elif args.cmd == "combos":
         cmd_combos(rows, stats)
     elif args.cmd == "emit-curated":
+        out = find_palette_dir() if args.write else None
         for r in rows:
-            cmd_emit_curated(r)
+            if cmd_emit_curated(r, out):
+                return 1
     elif args.cmd == "block":
         for r in rows:
             cmd_block(r)
@@ -1568,6 +1723,7 @@ the sheet. Full notes in doc/palette-curation.md.
         with open(args.out, "w", encoding="utf-8") as f:
             f.write(sheet_html(rows, stats, load_verdicts()))
         print(f"wrote {args.out}  ({len(rows)} candidates)")
+        print(f"  {_file_url(args.out)}")
     return 0
 
 

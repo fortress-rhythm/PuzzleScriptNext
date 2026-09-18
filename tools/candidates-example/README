@@ -12,8 +12,9 @@ documented by example:
 These particular three are the palettes the fork already adopted at indices
 15-17, which makes them a useful regression check rather than a neutral sample:
 the fitter's output can be read against the hand-curated mapping in
-`tools/palette_analysis.py` to see where a human overrode the algorithm, and
-why. They are NOT the tool's recommendations - see doc/palette-curation.md for
+palettes/bentenpond.json, palettes/dungeon20.json and palettes/oekakinl.json to
+see where a human overrode the algorithm, and why - each file's `commentary`
+says. They are NOT the tool's recommendations - see doc/palette-curation.md for
 what the fitter gets wrong on each.
 
 A .pal (JASC-PAL) file works too; there simply is not one here.
