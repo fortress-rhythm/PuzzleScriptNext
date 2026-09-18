@@ -16,9 +16,16 @@ Deliberately dependency-free so `uv run` needs no resolution step.
 """
 
 import argparse
-import colorsys
 import json
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from palette_lib import (  # noqa: E402
+    ALIAS_OF, CVD, SLOTS, analyse, contrast, dist, hsl, luminance,
+    load_builtins, rgb, simulate,
+)
 
 # --------------------------------------------------------------------- sources
 
@@ -50,82 +57,61 @@ SOURCES = {
                   4d7d23 8fb332 f0cb69 ffdcc7 d97d3c 90642d 4c4334 6b0b48 a4313f
                   c96c7f f1a8ca""".split(),
     },
+    "soggysepia": {
+        "title": "Soggy Sepia CRT-20",
+        "author": "Digi (@Digitress)",
+        "url": "https://lospec.com/palette-list/soggy-sepia-crt-20",
+        "note": "four eight-step phosphor ramps - sepia, red, green and purple - each with a deliberate gap across the middle",
+        "hex": """0a0707 140f0f 30231a 493e2d a08e76 c4b8a6 d2cabd e2ded5
+                  0d0505 190b0b 3c1a13 5b2e22 b87258 d3a690 ddbdac e9d6ca
+                  070905 0f130b 242c13 374e22 88aa58 b5ca90 c7d7ac dbe6ca
+                  070509 0f0b13 241a21 372e38 887294 b5a6bc c7bdce dbd6e0""".split(),
+    },
+    "endofallglory": {
+        "title": "End of All Glory",
+        "author": "SurrealEmber",
+        "url": "https://lospec.com/palette-list/end-of-all-glory",
+        "note": "twenty-four colours covering eight of the nine hue families, with no pink and nothing darker than L 15 or lighter than L 88",
+        "hex": """a5be89 6aa074 457968 3f5c63 44425f 5d6271 7f8f8d abb7aa e5dbbc 8dadab
+                  74819c 5b537d 493556 452744 342028 522b34 753636 9c5642 b68260 d4b188
+                  cb8965 ba5d48 973737 6c2d39""".split(),
+    },
+    "gloryrust": {
+        "title": "End of All Glory + FairyRust_8x",
+        "author": "SurrealEmber and KRYPTOCCULTIST",
+        "url": "https://lospec.com/palette-list/end-of-all-glory",
+        "note": "pooled from End of All Glory by SurrealEmber and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - eight colours that reach both ends End of All Glory never gets to",
+        "hex": """a5be89 6aa074 457968 3f5c63 44425f 5d6271 7f8f8d abb7aa e5dbbc 8dadab
+                  74819c 5b537d 493556 452744 342028 522b34 753636 9c5642 b68260 d4b188
+                  cb8965 ba5d48 973737 6c2d39 141a0d 4b2d28 744e65 7f7397 8ab0d8 aad8f7
+                  daedfe f2f9ff""".split(),
+    },
+    "rustfairy": {
+        "title": "Rust Gold 8 + FairyRust_8x",
+        "author": "Trigo Mathmancer and KRYPTOCCULTIST",
+        "url": "https://lospec.com/palette-list/rust-gold-8",
+        "note": "pooled from Rust Gold 8 by Trigo Mathmancer and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - one warm half and one cool one, neither of which has a green",
+        "hex": """f6cd26 ac6b26 563226 331c17 bb7f57 725956 393939 202020 141a0d 4b2d28
+                  744e65 7f7397 8ab0d8 aad8f7 daedfe f2f9ff""".split(),
+    },
+    "ruststorm": {
+        "title": "Rust Gold 8 + Storms and Cyan",
+        "author": "Trigo Mathmancer and Digi (@Digitress)",
+        "url": "https://lospec.com/palette-list/rust-gold-8",
+        "note": "pooled from Rust Gold 8 by Trigo Mathmancer and Storms and Cyan by Digi / @Digitress (lospec.com/palette-list/storms-and-cyan) - a rust-and-gold warm half against a seven-step cyan ramp",
+        "hex": """f6cd26 ac6b26 563226 331c17 bb7f57 725956 393939 202020 00000e 001933
+                  003f51 007f8e 00aeb8 00bebc 00cdc9 00fdff""".split(),
+    },
+    "rustfairyochre": {
+        "title": "Rust Gold 8 + FairyRust_8x + Ochre Ruin",
+        "author": "Trigo Mathmancer, KRYPTOCCULTIST and Quemis",
+        "url": "https://lospec.com/palette-list/rust-gold-8",
+        "note": "pooled from Rust Gold 8 by Trigo Mathmancer, FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) and Ochre Ruin by Quemis (lospec.com/palette-list/ochre-ruin)",
+        "hex": """f6cd26 ac6b26 563226 331c17 bb7f57 725956 393939 202020 141a0d 4b2d28
+                  744e65 7f7397 8ab0d8 aad8f7 daedfe f2f9ff 0a151f 191d29 1d272f 5e7b75
+                  1b181c 54403f 7e6668 b7a691 30322d 515650 9ba28c e7daba""".split(),
+    },
 }
-
-# PuzzleScript's 21 real slots. gray/darkgray/lightgray are spelling aliases and
-# are emitted alongside their grey twins, not treated as extra colours.
-SLOTS = [
-    "black", "white", "grey", "darkgrey", "lightgrey",
-    "red", "darkred", "lightred",
-    "brown", "darkbrown", "lightbrown",
-    "orange", "yellow",
-    "green", "darkgreen", "lightgreen",
-    "blue", "lightblue", "darkblue",
-    "purple", "pink",
-]
-
-# Fallback source, used verbatim wherever a candidate cannot supply a slot.
-ARNE = {
-    "black": "#000000", "white": "#FFFFFF", "grey": "#9d9d9d",
-    "darkgrey": "#697175", "lightgrey": "#cccccc",
-    "red": "#be2633", "darkred": "#732930", "lightred": "#e06f8b",
-    "brown": "#a46422", "darkbrown": "#493c2b", "lightbrown": "#eeb62f",
-    "orange": "#eb8931", "yellow": "#f7e26b",
-    "green": "#44891a", "darkgreen": "#2f484e", "lightgreen": "#a3ce27",
-    "blue": "#1d57f7", "lightblue": "#B2DCEF", "darkblue": "#1B2632",
-    "purple": "#342a97", "pink": "#de65e2",
-}
-
-# ------------------------------------------------------------------- colour ops
-
-def rgb(h):
-    h = h.lstrip("#")
-    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
-
-
-def hsl(h):
-    r, g, b = (c / 255 for c in rgb(h))
-    hh, ll, ss = colorsys.rgb_to_hls(r, g, b)
-    return hh * 360, ss, ll
-
-
-def luminance(h):
-    def chan(c):
-        c /= 255
-        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
-    r, g, b = rgb(h)
-    return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
-
-
-def contrast(a, b):
-    la, lb = luminance(a), luminance(b)
-    hi, lo = max(la, lb), min(la, lb)
-    return (hi + 0.05) / (lo + 0.05)
-
-
-def dist(a, b):
-    return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
-
-
-CVD = {
-    "protanopia": [[0.152286, 1.052583, -0.204868],
-                   [0.114503, 0.786281, 0.099216],
-                   [-0.003882, -0.048116, 1.051998]],
-    "deuteranopia": [[0.367322, 0.860646, -0.227968],
-                     [0.280085, 0.672501, 0.047413],
-                     [-0.011820, 0.042940, 0.968881]],
-    "tritanopia": [[1.255528, -0.076749, -0.178779],
-                   [-0.078411, 0.930809, 0.147602],
-                   [0.004733, 0.691367, 0.303900]],
-}
-
-
-def simulate(h, matrix):
-    r, g, b = rgb(h)
-    return tuple(
-        max(0, min(255, row[0] * r + row[1] * g + row[2] * b)) for row in matrix
-    )
-
 
 # ------------------------------------------------------------------- mapping
 #
@@ -202,6 +188,174 @@ CURATED = {
         "darkgreen": ("#33561a", "added"),
         "lightbrown": ("#dba54b", "added"),
     },
+    "soggysepia": {
+        # The source is four eight-step ramps - sepia, red, green, purple -
+        # and every one of them jumps from about L 30 straight to L 51. That
+        # hole is the palette's CRT character and there is no mapping that
+        # hides it: whichever five colours carry black->white, one step will be
+        # twice the others. Reported evenness around 0.16 is therefore the
+        # source's, not the mapping's; ega ships at 0.16 and proteus_mellow at
+        # 0.27.
+        #
+        # The greys take the purple ramp's near-neutral dark end and the sepia
+        # ramp's light end, so the shadows lean faintly plum and the highlights
+        # faintly warm. That is a phosphor palette behaving like one, and at
+        # chroma under 11 all five still read as neutral.
+        "black": ("#0a0707", "sourced"), "darkgrey": ("#241a21", "sourced"),
+        "grey": ("#372e38", "sourced"), "lightgrey": ("#c4b8a6", "sourced"),
+        "white": ("#e2ded5", "sourced"),
+        # The one warm ramp has to be either red or brown, not both - taking
+        # three reds and three browns from it leaves one of the two with no
+        # dark end. So red is the warm ramp proper, spanning its full range,
+        # and brown is the sepia ramp's middle, which is genuinely brown
+        # (hue 25-36) rather than a neutral pressed into service.
+        "darkred": ("#3c1a13", "sourced"), "red": ("#b87258", "sourced"),
+        "lightred": ("#ddbdac", "sourced"),
+        "darkbrown": ("#30231a", "sourced"), "brown": ("#493e2d", "sourced"),
+        "lightbrown": ("#a08e76", "sourced"),
+        "orange": ("#d3a690", "sourced"),
+        "darkgreen": ("#374e22", "sourced"), "green": ("#88aa58", "sourced"),
+        "lightgreen": ("#b5ca90", "sourced"),
+        "purple": ("#887294", "sourced"), "pink": ("#b5a6bc", "sourced"),
+        # Four additions, and the blues are the interesting ones. A CRT palette
+        # with red, green and purple phosphor ramps and no blue at all is a
+        # conspicuous gap, so the blue ramp is built to the same plan as the
+        # others - three steps at the source's own lightnesses and chroma,
+        # pushed to hue 235 so it stays clear of the purple ramp rather than
+        # collapsing into it.
+        "darkblue": ("#232648", "added"), "blue": ("#7378af", "added"),
+        "lightblue": ("#babee7", "added"),
+        # The source's only yellow-ish colours are the pale top of its green
+        # ramp, 31 degrees of hue away. Calling a fourth green "yellow" in a
+        # palette that already has three is the failure this rubric exists to
+        # catch, so the yellow is stated as an addition instead.
+        "yellow": ("#d8d4a2", "added"),
+    },
+    # ---------------------------------------------------------------- unions
+    #
+    # The three below are pooled from more than one source palette. Nothing is
+    # blended: a union is exactly the colours of its parts, which is what keeps
+    # the result attributable to the people who made them. `palette_curate.py
+    # union` writes the pooled file; these are the mappings read off it by hand.
+    #
+    # All three exist because Rust Gold 8 alone cannot carry twenty-one slots -
+    # eight colours, no green, no blue, no purple, no pink. Every one of its
+    # useful partners covers a different one of those gaps, so which partner you
+    # pick is which palette you get, not a matter of better or worse.
+    "endofallglory": {
+        # The most complete source in the set: twenty-four colours across eight
+        # of the nine hue families. What it does not have is range. Nothing is
+        # darker than L 15 or lighter than L 88, so `black` is a dark plum and
+        # `white` is a cream, and there is exactly one colour above L 75 - which
+        # means that colour is either `white` or `yellow` and the other has to
+        # be made. `white` wins: a palette whose white is L 73 looks dingy in
+        # every game that uses it, and `yellow` is used less.
+        "black": ("#342028", "sourced"), "darkgrey": ("#3f5c63", "sourced"),
+        "grey": ("#7f8f8d", "sourced"), "lightgrey": ("#abb7aa", "sourced"),
+        "white": ("#e5dbbc", "sourced"),
+        "darkred": ("#522b34", "sourced"), "red": ("#973737", "sourced"),
+        "lightred": ("#ba5d48", "sourced"),
+        # The source's warm colours run red into orange with the browns in the
+        # middle, so `brown` and `lightbrown` are its own and only the dark end
+        # is relit - taking a maroon for `darkbrown` would have been a lie.
+        "darkbrown": ("#743422", "added"), "brown": ("#9c5642", "sourced"),
+        "lightbrown": ("#b68260", "sourced"),
+        "orange": ("#cb8965", "sourced"),
+        # Its one cream is `white`, so the yellow is stated as an addition
+        # rather than press #d4b188 into service: that is a wheat at L 74, the
+        # same lightness as `lightgreen`, and the two collapse into each other
+        # under both protanopia and deuteranopia.
+        "yellow": ("#e1be94", "added"),
+        "darkgreen": ("#457968", "sourced"), "green": ("#6aa074", "sourced"),
+        "lightgreen": ("#a5be89", "sourced"),
+        # Three blues, bunched at L 29, 38 and 54. The middle one is relit to
+        # open the ramp out; left alone the first step is half the second.
+        "darkblue": ("#44425f", "sourced"), "blue": ("#665d88", "added"),
+        "lightblue": ("#74819c", "sourced"),
+        "purple": ("#493556", "sourced"), "pink": ("#bc98ba", "added"),
+    },
+    "gloryrust": {
+        # The same palette with eight colours of FairyRust_8x pooled in, and a
+        # good illustration of what a union is for: it is not that FairyRust is
+        # a better palette, it is that its eight colours land exactly where End
+        # of All Glory has nothing. A true dark for `black`, a true white, a
+        # genuinely light blue, and a mauve to relight into `pink`.
+        #
+        # The knock-on is the nicest part. Once `white` comes from FairyRust,
+        # End of All Glory's one cream is free to be `yellow`, so the addition
+        # the standalone needed disappears. Nothing here is invented at all.
+        "black": ("#141a0d", "sourced"), "darkgrey": ("#3f5c63", "sourced"),
+        "grey": ("#7f8f8d", "sourced"), "lightgrey": ("#abb7aa", "sourced"),
+        "white": ("#f2f9ff", "sourced"),
+        "darkred": ("#522b34", "sourced"), "red": ("#973737", "sourced"),
+        "lightred": ("#ba5d48", "sourced"),
+        "darkbrown": ("#743422", "added"), "brown": ("#9c5642", "sourced"),
+        "lightbrown": ("#b68260", "sourced"),
+        "orange": ("#cb8965", "sourced"), "yellow": ("#e5dbbc", "sourced"),
+        "darkgreen": ("#457968", "sourced"), "green": ("#6aa074", "sourced"),
+        "lightgreen": ("#a5be89", "sourced"),
+        "darkblue": ("#44425f", "sourced"), "blue": ("#74819c", "sourced"),
+        "lightblue": ("#aad8f7", "sourced"),
+        "purple": ("#493556", "sourced"), "pink": ("#c197b0", "added"),
+    },
+    "rustfairy": {
+        # Rust Gold's warm half against FairyRust's cool one. FairyRust's blues
+        # are all pale - L 70 and up - so the blue ramp's dark end comes from
+        # its lavender instead, relit; the two together give an even ramp where
+        # neither palette could give one alone.
+        #
+        # The warm ramp is the awkward part. Both sources' dark warms cluster at
+        # L 13-25, so taking three reds and three browns from them straight puts
+        # four slots within two L of each other and they collapse into one
+        # another under protanopia. `darkbrown` and `brown` are therefore relit
+        # to open the ramp out. That is the whole difference between four
+        # colourblind collapses and none.
+        "black": ("#202020", "sourced"), "darkgrey": ("#393939", "sourced"), "grey": ("#725956", "sourced"), "lightgrey": ("#d5b8b4", "added"), "white": ("#f2f9ff", "sourced"),
+        "darkred": ("#4b2d28", "sourced"), "red": ("#8f6658", "added"), "lightred": ("#bb7f57", "sourced"),
+        "darkbrown": ("#402823", "added"), "brown": ("#684235", "added"), "lightbrown": ("#ac6b26", "sourced"),
+        "darkgreen": ("#141a0d", "sourced"), "green": ("#4f6b3a", "added"), "lightgreen": ("#93b077", "added"),
+        "darkblue": ("#4c4162", "added"), "blue": ("#7f7397", "sourced"), "lightblue": ("#8ab0d8", "sourced"),
+        "orange": ("#cf8943", "added"), "yellow": ("#f6cd26", "sourced"), "purple": ("#744e65", "sourced"), "pink": ("#c197b0", "added"),
+    },
+    "ruststorm": {
+        # The same warm half against a seven-step cyan ramp, which is the
+        # widest-spanning single ramp of any source here: L 0 to L 90. It buys
+        # a blue ramp outright and pays for it everywhere else - Storms and Cyan
+        # contributes one non-blue colour, so `white`, `lightgrey`, the greens,
+        # `purple` and `pink` are all additions. Eight of twenty-one, the most
+        # of any palette in this set, and the docs say so rather than hiding it.
+        #
+        # Neither source has a light neutral at all: the warm half tops out at
+        # L 58 and the cyans are cyan. `white` and `lightgrey` are the two
+        # additions that make the grey ramp usable, and without them `white`
+        # would be a mid-brown at L 40.
+        "black": ("#00000e", "sourced"), "darkgrey": ("#393939", "sourced"), "grey": ("#725956", "sourced"), "lightgrey": ("#b39794", "added"), "white": ("#ffe2de", "added"),
+        "darkred": ("#4a271c", "added"), "red": ("#775043", "added"), "lightred": ("#bb7f57", "sourced"),
+        "darkbrown": ("#331c17", "sourced"), "brown": ("#563226", "sourced"), "lightbrown": ("#ac6b26", "sourced"),
+        "darkgreen": ("#325624", "added"), "green": ("#557a45", "added"), "lightgreen": ("#8fb37c", "added"),
+        "darkblue": ("#001933", "sourced"), "blue": ("#007f8e", "sourced"), "lightblue": ("#00cdc9", "sourced"),
+        "orange": ("#e79e57", "added"), "yellow": ("#f6cd26", "sourced"), "purple": ("#5b4470", "added"), "pink": ("#c49ad2", "added"),
+    },
+    "rustfairyochre": {
+        # Three sources, twenty-eight colours, and the only one of the set that
+        # needs a single addition. Ochre Ruin's nine neutrals give a real grey
+        # ramp, FairyRust the blues and purples, Rust Gold the warm half.
+        #
+        # The cost is that almost everything is muted: Ochre Ruin sits at chroma
+        # 3-17 throughout, so the palette separates by lightness rather than
+        # hue, and the slots that do collide collide hard. `darkgreen` was the
+        # source's own #30322d until measurement showed it two L from `darkred`
+        # and collapsing under both protanopia and deuteranopia; relighting it
+        # off the palette's own teal-green costs one sourced slot and removes
+        # three of the four collapses. That trade is the one judgement call in
+        # this mapping worth arguing with.
+        "black": ("#0a151f", "sourced"), "darkgrey": ("#1d272f", "sourced"), "grey": ("#515650", "sourced"), "lightgrey": ("#b7a691", "sourced"), "white": ("#f2f9ff", "sourced"),
+        "darkred": ("#4b2d28", "sourced"), "red": ("#875e51", "added"), "lightred": ("#bb7f57", "sourced"),
+        "darkbrown": ("#331c17", "sourced"), "brown": ("#563226", "sourced"), "lightbrown": ("#ac6b26", "sourced"),
+        "darkgreen": ("#334e49", "added"), "green": ("#5e7b75", "sourced"), "lightgreen": ("#9ba28c", "sourced"),
+        "darkblue": ("#191d29", "sourced"), "blue": ("#7f7397", "sourced"), "lightblue": ("#8ab0d8", "sourced"),
+        "orange": ("#cf8943", "added"), "yellow": ("#e7daba", "sourced"), "purple": ("#744e65", "sourced"), "pink": ("#e0b5ce", "added"),
+    },
 }
 
 
@@ -248,41 +402,7 @@ def first_pass(hexes):
     return fam
 
 
-# -------------------------------------------------------------------- checks
-
-def analyse(name, mapping):
-    values = [(s, mapping[s]) for s in SLOTS]
-
-    low_contrast = []
-    for i, (sa, ca) in enumerate(values):
-        for sb, cb in values[i + 1:]:
-            r = contrast(ca, cb)
-            if r < 1.3:
-                low_contrast.append((sa, sb, round(r, 3)))
-
-    cvd_flags = {k: [] for k in CVD}
-    for i, (sa, ca) in enumerate(values):
-        for sb, cb in values[i + 1:]:
-            normal = dist(rgb(ca), rgb(cb))
-            if normal <= 20:
-                continue
-            for kind, matrix in CVD.items():
-                sim = dist(simulate(ca, matrix), simulate(cb, matrix))
-                if sim < 15:
-                    cvd_flags[kind].append((sa, sb, round(normal, 1), round(sim, 1)))
-
-    seen = {}
-    for s, c in values:
-        seen.setdefault(c.lower(), []).append(s)
-    dupes = {c: names for c, names in seen.items() if len(names) > 1}
-
-    return {
-        "unique": len(seen),
-        "low_contrast": sorted(low_contrast, key=lambda t: t[2]),
-        "cvd": cvd_flags,
-        "dupes": dupes,
-    }
-
+# -------------------------------------------------------------------- report
 
 def report(name, src, mapping, prov, spares, res):
     print(f"\n{'=' * 74}\n{src['title']}  ({name})  —  {src['author']}\n{src['url']}\n{'=' * 74}")
@@ -320,52 +440,37 @@ def report(name, src, mapping, prov, spares, res):
             print(f"    ... and {len(flags) - 6} more")
 
 
-def load_builtins(path="src/js/colors.js"):
-    """The 14 shipped palettes, parsed straight out of colors.js.
-
-    The candidates' numbers mean nothing without knowing what normal looks like
-    for this engine - the rubric's 1.3 contrast floor flags a lot of pairs even
-    in palettes that have shipped for years.
-    """
-    import re
-    try:
-        text = open(path, encoding="utf-8").read()
-    except OSError:
-        return {}
-    body = text[text.index("colorPalettes = {"):]
-    out = {}
-    for m in re.finditer(r"(\w+)\s*:\s*\{(.*?)\}", body, re.S):
-        name, block = m.group(1), m.group(2)
-        pairs = dict(re.findall(r"(\w+)\s*:\s*\"(#[0-9a-fA-F]{6})\"", block))
-        if all(s in pairs for s in SLOTS):
-            out[name] = {s: pairs[s] for s in SLOTS}
-    return out
-
-
 def baseline():
-    builtins = load_builtins()
+    """The inherited palettes, as the yardstick the candidates are read against.
+
+    The fork's own three are excluded. They live in colors.js now, so a plain
+    read of the file returns seventeen palettes and the "shipped range" quietly
+    widens to include the very palettes being measured against it - which would
+    make the comparison meaningless in exactly the direction that flatters this
+    work. Fourteen is the number that means anything here.
+    """
+    builtins = load_builtins(exclude=tuple(SOURCES))
     if not builtins:
         return
-    print(f"\n{'=' * 74}\nBASELINE - the 14 shipped palettes, identical checks\n{'=' * 74}")
+    print(f"\n{'=' * 74}\nBASELINE - the {len(builtins)} inherited palettes, "
+          f"identical checks\n{'=' * 74}")
     print(f"  {'palette':<16} {'unique':>6} {'contrast<1.3':>13} {'cvd collapses':>14}")
     rows = []
     for name, mapping in builtins.items():
-        r = analyse(name, mapping)
+        r = analyse(mapping)
         rows.append((name, r["unique"], len(r["low_contrast"]),
                      sum(len(v) for v in r["cvd"].values())))
     for name, u, lc, cv in rows:
         print(f"  {name:<16} {u:>4}/21 {lc:>13} {cv:>14}")
     lo = min(r[2] for r in rows)
     hi = max(r[2] for r in rows)
-    print(f"\n  shipped range: {lo}-{hi} low-contrast pairs, "
+    print(f"\n  inherited range: {lo}-{hi} low-contrast pairs, "
           f"{min(r[3] for r in rows)}-{max(r[3] for r in rows)} CVD collapses")
 
 
 # Emitters. colors.js and the reference file are both generated from CURATED,
 # so the palette can never drift between what the engine uses and what the
 # copy-paste block says.
-
-ALIAS_OF = {"gray": "grey", "darkgray": "darkgrey", "lightgray": "lightgrey"}
 
 # Key order and padding copied from the existing entries in colors.js so the
 # new block is indistinguishable in style from the 14 it sits beside.
@@ -463,7 +568,7 @@ def main():
     out = {}
     for name, src in SOURCES.items():
         mapping, prov, spares = curated(name)
-        res = analyse(name, mapping)
+        res = analyse(mapping)
         out[name] = {
             "meta": {k: src[k] for k in ("title", "author", "url", "note")},
             "mapping": mapping, "provenance": prov, "spares": spares,

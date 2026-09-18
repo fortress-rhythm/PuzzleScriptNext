@@ -33,3 +33,45 @@ color_palette arnecolors black #2e222f white #d6dad3 grey #665964 darkgrey #4438
 )
 color_palette arnecolors black #000000 white #ffffff grey #909090 darkgrey #384d51 lightgrey #e6e4d5 gray #909090 darkgray #384d51 lightgray #e6e4d5 red #a4313f darkred #6b1f28 lightred #c96c7f brown #90642d darkbrown #4c4334 lightbrown #dba54b orange #d97d3c yellow #f0cb69 green #4d7d23 darkgreen #33561a lightgreen #8fb332 blue #3c8ee7 lightblue #9ac3e0 darkblue #24313d purple #6b0b48 pink #f1a8ca
 
+(Soggy Sepia CRT-20 - Digi (@Digitress)
+ https://lospec.com/palette-list/soggy-sepia-crt-20
+ four eight-step phosphor ramps - sepia, red, green and purple - each with a deliberate gap across the middle.
+ Original additions, not from the source palette: yellow, blue, lightblue, darkblue.
+)
+color_palette arnecolors black #0a0707 white #e2ded5 grey #372e38 darkgrey #241a21 lightgrey #c4b8a6 gray #372e38 darkgray #241a21 lightgray #c4b8a6 red #b87258 darkred #3c1a13 lightred #ddbdac brown #493e2d darkbrown #30231a lightbrown #a08e76 orange #d3a690 yellow #d8d4a2 green #88aa58 darkgreen #374e22 lightgreen #b5ca90 blue #7378af lightblue #babee7 darkblue #232648 purple #887294 pink #b5a6bc
+
+(End of All Glory - SurrealEmber
+ https://lospec.com/palette-list/end-of-all-glory
+ twenty-four colours covering eight of the nine hue families, with no pink and nothing darker than L 15 or lighter than L 88.
+ Original additions, not from the source palette: darkbrown, yellow, blue, pink.
+)
+color_palette arnecolors black #342028 white #e5dbbc grey #7f8f8d darkgrey #3f5c63 lightgrey #abb7aa gray #7f8f8d darkgray #3f5c63 lightgray #abb7aa red #973737 darkred #522b34 lightred #ba5d48 brown #9c5642 darkbrown #743422 lightbrown #b68260 orange #cb8965 yellow #e1be94 green #6aa074 darkgreen #457968 lightgreen #a5be89 blue #665d88 lightblue #74819c darkblue #44425f purple #493556 pink #bc98ba
+
+(End of All Glory + FairyRust_8x - SurrealEmber and KRYPTOCCULTIST
+ https://lospec.com/palette-list/end-of-all-glory
+ pooled from End of All Glory by SurrealEmber and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - eight colours that reach both ends End of All Glory never gets to.
+ Original additions, not from the source palette: darkbrown, pink.
+)
+color_palette arnecolors black #141a0d white #f2f9ff grey #7f8f8d darkgrey #3f5c63 lightgrey #abb7aa gray #7f8f8d darkgray #3f5c63 lightgray #abb7aa red #973737 darkred #522b34 lightred #ba5d48 brown #9c5642 darkbrown #743422 lightbrown #b68260 orange #cb8965 yellow #e5dbbc green #6aa074 darkgreen #457968 lightgreen #a5be89 blue #74819c lightblue #aad8f7 darkblue #44425f purple #493556 pink #c197b0
+
+(Rust Gold 8 + FairyRust_8x - Trigo Mathmancer and KRYPTOCCULTIST
+ https://lospec.com/palette-list/rust-gold-8
+ pooled from Rust Gold 8 by Trigo Mathmancer and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - one warm half and one cool one, neither of which has a green.
+ Original additions, not from the source palette: lightgrey, red, brown, darkbrown, orange, green, lightgreen, darkblue, pink.
+)
+color_palette arnecolors black #202020 white #f2f9ff grey #725956 darkgrey #393939 lightgrey #d5b8b4 gray #725956 darkgray #393939 lightgray #d5b8b4 red #8f6658 darkred #4b2d28 lightred #bb7f57 brown #684235 darkbrown #402823 lightbrown #ac6b26 orange #cf8943 yellow #f6cd26 green #4f6b3a darkgreen #141a0d lightgreen #93b077 blue #7f7397 lightblue #8ab0d8 darkblue #4c4162 purple #744e65 pink #c197b0
+
+(Rust Gold 8 + Storms and Cyan - Trigo Mathmancer and Digi (@Digitress)
+ https://lospec.com/palette-list/rust-gold-8
+ pooled from Rust Gold 8 by Trigo Mathmancer and Storms and Cyan by Digi / @Digitress (lospec.com/palette-list/storms-and-cyan) - a rust-and-gold warm half against a seven-step cyan ramp.
+ Original additions, not from the source palette: white, lightgrey, red, darkred, orange, green, darkgreen, lightgreen, purple, pink.
+)
+color_palette arnecolors black #00000e white #ffe2de grey #725956 darkgrey #393939 lightgrey #b39794 gray #725956 darkgray #393939 lightgray #b39794 red #775043 darkred #4a271c lightred #bb7f57 brown #563226 darkbrown #331c17 lightbrown #ac6b26 orange #e79e57 yellow #f6cd26 green #557a45 darkgreen #325624 lightgreen #8fb37c blue #007f8e lightblue #00cdc9 darkblue #001933 purple #5b4470 pink #c49ad2
+
+(Rust Gold 8 + FairyRust_8x + Ochre Ruin - Trigo Mathmancer, KRYPTOCCULTIST and Quemis
+ https://lospec.com/palette-list/rust-gold-8
+ pooled from Rust Gold 8 by Trigo Mathmancer, FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) and Ochre Ruin by Quemis (lospec.com/palette-list/ochre-ruin).
+ Original additions, not from the source palette: red, orange, darkgreen, pink.
+)
+color_palette arnecolors black #0a151f white #f2f9ff grey #515650 darkgrey #1d272f lightgrey #b7a691 gray #515650 darkgray #1d272f lightgray #b7a691 red #875e51 darkred #4b2d28 lightred #bb7f57 brown #563226 darkbrown #331c17 lightbrown #ac6b26 orange #cf8943 yellow #e7daba green #5e7b75 darkgreen #334e49 lightgreen #9ba28c blue #7f7397 lightblue #8ab0d8 darkblue #191d29 purple #744e65 pink #e0b5ce
+

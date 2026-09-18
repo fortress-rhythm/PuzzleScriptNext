@@ -4,6 +4,7 @@
 const fs = require('fs');
 const path = require('path');
 const sheet = require('./sheet');
+const palettes = require('./palettes');
 const rexbridge = require('./rexbridge');
 const { applyGridEdits } = require('./psgame');
 
@@ -215,9 +216,9 @@ function doImport(opts) {
 
 function doInfo(opts) {
     const source = readGame(opts._[1]);
-    const { game, glyphs, grids, background, paletteName } = sheet.analyse(source);
+    const { game, glyphs, grids, background, resolved } = sheet.analyse(source);
 
-    process.stdout.write(`palette: ${paletteName}\n`);
+    process.stdout.write(`palette: ${palettes.describePalette(resolved)}\n`);
     process.stdout.write(`background char: "${background}"\n`);
     process.stdout.write(`\nglyphs (${Object.keys(glyphs).length}):\n`);
     for (const ch of Object.keys(glyphs).sort()) {
