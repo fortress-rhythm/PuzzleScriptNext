@@ -12,7 +12,7 @@ This tool is for the pile you have not chosen from yet.
 
 | | |
 |---|---|
-| `tools/palette_lib.py` | Shared colour maths — the slot list, WCAG contrast, the CVD matrices, CIELab, the ramp checks, the file parsers |
+| `tools/palette_lib.py` | Shared colour maths — the slot list, WCAG contrast, the CVD matrices, CIELab, the ramp checks, the anchor lexicon, the file parsers |
 | `tools/palette_curate.py` | The curation CLI: fit, rate, look at, combine, record |
 | `tools/palette_verdicts.json` | Your decisions. The tool never writes anything else |
 | `tools/candidates-example/` | Three palettes in the three input formats, to run against |
@@ -32,6 +32,7 @@ uv run tools/palette_curate.py sheet  candidates/ -o s.html look at them
 uv run tools/palette_curate.py show   candidates/foo.hex    one in full
 uv run tools/palette_curate.py combos candidates/           who fills whose gaps
 uv run tools/palette_curate.py audit                        check what already ships
+uv run tools/palette_curate.py anchors                      the slot-name lexicon
 uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
 uv run tools/palette_curate.py emit-curated candidates/foo.hex
 ```
@@ -68,53 +69,66 @@ the code.
 This is the design question worth understanding before trusting any number.
 
 "Does this palette fit PuzzleScript" is really two questions, and which one you
-want depends on what you will do with the palette:
+want depends on what you will do with the palette. The modes are named for what
+they fit **to**, and they claim nothing about quality — quality is what the six
+axes are for, and they frequently disagree with the name.
 
-- **literal** (default) — a slot must mean what PuzzleScript means by it.
-  `green` is green. Where the source has no green, one is synthesised at
-  arnecolors' hue and the candidate's own saturation, marked `added`, and the
-  palette is reported as a partial fit.
+- **`fit-colourname`** (default) — the slot name wins. `green` is green. Where
+  the source has no green, one is synthesised at the anchor hue in the
+  candidate's own saturation, marked `added`, and the palette is reported as a
+  partial fit. The palette is *extended to satisfy the names*.
 
-- **legible** (`--mode legible`) — every colour comes from the source and the
-  slot names are just labels. `green` may be a teal, as long as all twenty-one
-  slots stay distinguishable. Nothing is invented.
+- **`fit-palette`** (`--mode fit-palette`) — the palette wins. Only the source's
+  own colours are used, so a missing green becomes another family renamed and
+  marked `standin`. The names are *reinterpreted to fit the palette*.
+
+Neither is "verbatim", and it would be wrong to name one that. Both still
+interpolate short ramps and relight singles within a family that exists —
+Dungeon-20 under `fit-palette` is 15 sourced, 2 stand-in and **4 derived**. The
+modes differ in exactly one place: what happens when a hue family is absent
+*and* no neighbouring family is within `BORROW_HUE_MAX` of it. Everything else
+— classification, the hue-capped borrow, interpolation, relighting — is
+identical.
 
 The distinction is not academic, because slot names are PuzzleScript's
 *authoring* surface. Someone writing a sprite legend types `green` because the
-grass is green. Under legible mode the board still renders coherently and
-readably, but the author's mental model no longer matches the screen. So:
+grass is green. Under `fit-palette` the board still renders coherently, but the
+author's mental model no longer matches the screen. So:
 
-> **legible mode suits a palette you author with from the start. Literal mode
-> suits one you drop into a game already written against arnecolors.**
+> **`fit-palette` suits a palette you author with from the start.
+> `fit-colourname` suits one you drop into a game already written against
+> arnecolors.**
 
 `role` — how much each slot still means what PuzzleScript means by it — is
-reported in both modes and *scored* only in literal mode. What replaces it in
-legible mode is `separation`, the closest any two of the twenty-one slots come
-to each other perceptually, because that is the thing that actually has to hold
-if `green` is allowed to be a teal.
+reported in both modes and *scored* only under `fit-colourname`. What replaces
+it under `fit-palette` is `separation`, the closest any two of the twenty-one
+slots come to each other perceptually, because that is the thing that actually
+has to hold if `green` is allowed to be a teal.
 
-### Legible mode is not free, and the tool will tell you so
+### Which mode wins is a property of the palette
 
-The obvious worry is that legible mode is a way of flattering a bad palette.
-Measured, it is the opposite — it is a way of finding out whether a palette has
-twenty-one distinguishable colours at all:
+Neither mode is a way of flattering a weak palette, and which one scores better
+is worth reading as a finding about the source:
 
-| palette | literal | legible |
-|---|---|---|
-| Oekaki.nl | 78.1 | 75.4 |
-| Dungeon-20 | 75.6 | 65.4 |
-| Benten Pond | 61.8 | 50.7 |
+| palette | `fit-colourname` | `fit-palette` | prefers |
+|---|---|---|---|
+| Oekaki.nl | **78.0** | 74.7 | colourname |
+| Dungeon-20 | 68.2 | **72.4** | palette |
+| Benten Pond | **62.8** | 55.5 | colourname |
 
-Dungeon-20 drops ten points. It has no green, so legible mode renames its
-yellows — and its yellows then collide with its actual yellow and orange slots,
-so contrast falls from the 36th percentile to the 21st and colourblind
-separation from the 89th to the 57th. For that palette, *synthesising* three
-greens is genuinely better than renaming three yellows, because the source
-simply does not contain twenty-one things you can tell apart.
+Dungeon-20 genuinely has no green anywhere. Inventing three greens crowds the
+space its yellows and browns already occupy — contrast falls to the 21st
+percentile — whereas renaming a spare family costs it nothing it was using. A
+palette with a true hue gap is better off renaming.
 
-That is the honest answer to "could a palette missing some hues still be
-legible": sometimes, and the way to find out is to run both modes and read the
-`sep` column, not to decide in advance.
+Benten Pond is the opposite: it has greens and blues in depth but no saturated
+warm mid-tones at all, and renaming to cover `orange` and `brown` pulls colours
+away from slots that needed them. It loses seven points. Inventing two warm
+colours in its own muted register is cheaper than cannibalising its ramps.
+
+So the honest answer to "could a palette missing some hues still be legible" is
+*sometimes*, and the way to find out is to run both modes and compare — not to
+decide in advance.
 
 A stand-in is always a whole **family**, never a scatter of individually-distinct
 colours. An early version picked the most mutually-distant spare colours and
@@ -124,16 +138,62 @@ easy to tell apart and are not a ramp, so a game shading one object across
 have a real family also claim it before any stand-in runs, or a missing `green`
 helps itself to the blues and leaves `blue` deriving from leftovers.
 
+## The anchors, and why they are not arnecolors
+
+`ANCHOR` in `palette_lib.py` is the lexicon: what each slot **name** denotes. It
+is deliberately separate from `ARNE`, which is the *fallback colour* the engine
+substitutes and must stay exactly arnecolors for compatibility. Those are two
+different jobs, and conflating them had measurable consequences.
+
+Using arnecolors as the lexicon is the obvious move and it is wrong, because
+arnecolors is a palette with opinions rather than a dictionary. Five of its
+twenty-one colours do not classify as their own name under the tool's own
+`family()`:
+
+| slot | arnecolors | actually |
+|---|---|---|
+| `darkgreen` | `#2f484e` | a slate — hue 192, chroma 10 |
+| `darkblue` | `#1B2632` | near-black, chroma 9 |
+| `purple` | `#342a97` | blue-violet, hue 246 |
+| `pink` | `#de65e2` | magenta, hue 298 |
+| `lightbrown` | `#eeb62f` | a golden yellow, hue 42 |
+
+Anchoring the rating there meant a candidate whose `darkgreen` was *actually
+dark green* scored a 75° hue error and lost most of the `role` axis for being
+correct.
+
+The fix is not an idealised set — nothing here is anyone's taste. For each slot
+the anchor is the **medoid** of what the fourteen inherited palettes put there:
+the one real, shipped colour with the smallest total distance to all the
+others. Every anchor is a colour some palette actually ships for that name.
+`anchors` prints the table with, per slot, which palette it came from and the
+`spread` — how much the corpus disagrees about that name at all (`black` 6.7,
+`pink` 42.3).
+
+Measured that way, **arnecolors is the medoid for seven of twenty-one slots**
+(two of them black and white, which everyone agrees on) and an outlier by more
+than 25 ΔE for five. A good lexicon for most names, and quite wrong for a few.
+
+The table is frozen in source rather than recomputed at import, so it is visible
+in a diff, reproducible, and does not silently move every score when a palette
+is added to `colors.js`. `anchors` re-derives it and reports drift.
+
+One wrinkle worth knowing: because each slot's medoid is chosen independently,
+the anchor set is monotonic but not evenly spaced — the corpus's typical `green`
+(L 70) sits close to its typical `lightgreen` (L 77). A ramp being invented
+outright therefore takes its *endpoints* from the anchors and spaces the middle
+evenly, rather than reproducing the corpus's crowding.
+
 ## The rating
 
-Six axes in literal mode, six in legible, each 0–100 and higher-is-better, plus
+Six axes under each mode, each 0–100 and higher-is-better, plus
 a weighted composite. Every axis is always printed, so you can disagree with the
 weighting and read the components instead.
 
-| axis | what it measures | literal | legible |
+| axis | what it measures | `fit-colourname` | `fit-palette` |
 |---|---|---|---|
 | `source` | how much of the mapping is really the source's — `derived` counts half, a stand-in counts full | 20 | 20 |
-| `role` | how well each slot still means what PuzzleScript means by it | 15 | *shown, not scored* |
+| `role` | how well each slot still means what PuzzleScript means by it, measured against `ANCHOR` | 15 | *shown, not scored* |
 | `ramps` | dark→base→light actually gets lighter, and evenly | 20 | 15 |
 | `contrast` | WCAG pairs below 1.3, as a percentile against the inherited palettes | 20 | 20 |
 | `cvd` | colourblind collapses, same percentile | 15 | 15 |
@@ -190,8 +250,9 @@ in `tools/candidates-example/`:
 - **It will not tell you a palette is beautiful.** Benten Pond scores worst of
   the three on every reading and was still the right adoption. The score orders
   a queue; it does not rank palettes by whether they are worth using.
-- **`role` is measured against arnecolors' hues**, so a palette in a genuinely
-  different register is marked down for being itself.
+- **`role` is measured against the corpus medoid**, so a palette in a genuinely
+  different register is still marked down for being itself — less unfairly than
+  against arnecolors, but the axis rewards conventionality by construction.
 - **Stand-in family choice is greedy**, scored on lightness range, spare count
   and distance from what is already placed. It is not an optimal assignment and
   does not claim to be.

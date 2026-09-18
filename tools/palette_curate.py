@@ -20,6 +20,7 @@ deuteranopia. The choice stays yours, and `verdict` is where you record it.
     uv run tools/palette_curate.py sheet  candidates/ -o s.html   look at them
     uv run tools/palette_curate.py combos candidates/          who fills whose gaps
     uv run tools/palette_curate.py audit                       check what ships
+    uv run tools/palette_curate.py anchors                     the slot-name lexicon
     uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
     uv run tools/palette_curate.py emit-curated candidates/foo.hex
 
@@ -38,9 +39,10 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from palette_lib import (  # noqa: E402
-    ALIAS_OF, ARNE, RAMPS, SINGLETS, SLOTS, CVD,
+    ALIAS_OF, ANCHOR, ANCHOR_SOURCE, ARNE, RAMPS, SINGLETS, SLOTS, CVD,
     NEUTRAL_CHROMA, SLOT_FAMILY, analyse, chroma, classify, contrast, delta_e,
-    dist, family, find_colors_js, hsl, lab, lab_mix, lab_to_hex, load_builtins,
+    derive_anchors, dist, family, find_colors_js, hsl, lab, lab_mix,
+    lab_to_hex, load_builtins,
     load_candidates, relight, rgb, simulate,
 )
 
@@ -62,7 +64,7 @@ FORK_PALETTES = ("bentenpond", "dungeon20", "oekakinl")
 #   derived  - built from the palette's own colours: a midpoint between two of
 #              them, or one of them relit to a different lightness
 #   standin  - a colour the palette contains, deliberately used for a slot it
-#              does not match: `green` filled with a teal (legible mode only)
+#              does not match: `green` filled with a teal (fit-palette only)
 #   added    - the palette has nothing in this family at all, so the slot is
 #              synthesised at arnecolors' hue and the palette's own chroma
 #
@@ -75,22 +77,33 @@ FORK_PALETTES = ("bentenpond", "dungeon20", "oekakinl")
 # `standin` exists because "does this palette fit" is really two questions, and
 # which one you want depends on what you are going to do with the palette.
 #
-#   literal  - a slot must mean what PuzzleScript means by it. `green` is
-#              green. Where the source has no green, one is synthesised and
-#              marked `added`, and the palette is reported as a partial fit.
+# The two modes are named for what they fit TO, and they differ in exactly one
+# place: what happens when a hue family is absent from the source AND no
+# neighbouring family is within BORROW_HUE_MAX of it. Everything else - family
+# classification, interpolating short ramps, relighting, the hue-capped borrow -
+# is identical. The names deliberately claim nothing about quality, because
+# quality is what the six axes are for, and they frequently disagree.
 #
-#   legible  - every colour comes from the source and the slot names are just
-#              labels. `green` may be a teal, as long as all 21 slots stay
-#              distinguishable from each other. Nothing is invented.
+#   fit-colourname  - the slot name wins. `green` is green; a missing green is
+#                     synthesised at the anchor hue and marked `added`. The
+#                     palette is extended to satisfy the names.
+#
+#   fit-palette     - the palette wins. Only the source's own colours are used,
+#                     so a missing green becomes another family renamed and
+#                     marked `standin`. The names are reinterpreted to fit the
+#                     palette.
+#
+# Neither is "verbatim": both still interpolate and relight within a family
+# that exists, so fit-palette is not a promise that nothing was touched.
 #
 # The distinction is not academic: slot names are PuzzleScript's *authoring*
 # surface. Someone writing a sprite legend types `green` because the grass is
-# green. Under legible mode that still renders a coherent, readable board, but
-# the author's mental model no longer matches the screen - so legible mode
-# suits a palette you author with from the start, and literal mode suits one
-# you drop into a game that was written against arnecolors. A palette can be
-# excellent under one reading and a poor fit under the other, which is why the
-# tool reports `role` in both modes and only *scores* it in literal mode.
+# green. Under fit-palette the board still renders coherently, but the author's
+# mental model no longer matches the screen - so fit-palette suits a palette you
+# author with from the start, and fit-colourname suits one you drop into a game
+# already written against arnecolors. A palette can be excellent under one
+# reading and a poor fit under the other, which is why `role` is reported in
+# both modes and only *scored* under fit-colourname.
 
 # Where a family may borrow from when it is empty. Borrowing is a real curation
 # move - a dark orange genuinely is a brown - but it is always recorded.
@@ -122,7 +135,7 @@ def synth(slot, reg):
     """A colour for a slot the palette cannot supply, at arnecolors' hue and
     lightness but the candidate's saturation, so the addition sits inside the
     palette's range instead of shouting."""
-    L, a, b = lab(ARNE[slot])
+    L, a, b = lab(ANCHOR[slot])
     c = (a * a + b * b) ** 0.5
     if c < 1e-6:
         return lab_to_hex((L, 0.0, 0.0))
@@ -146,7 +159,7 @@ def pick_nearest(pool, slot, used=()):
     free = [c for c in pool if c not in used]
     if not free:
         return None
-    anchor = ARNE[slot]
+    anchor = ANCHOR[slot]
     aL = lab(anchor)[0]
     return min(free, key=lambda c: hue_gap(c, anchor) + 0.5 * abs(lab(c)[0] - aL))
 
@@ -189,10 +202,10 @@ def enforce_monotonic(chosen):
 def farthest(pool, assigned, k=1):
     """The k pool members that sit furthest from everything already assigned.
 
-    Greedy farthest-point selection. In legible mode this is the whole game: if
-    a slot cannot have the right hue, the next best thing it can have is a hue
-    nothing else is using, because what a player actually needs is to tell two
-    objects apart.
+    Greedy farthest-point selection. Under fit-palette this is the whole game:
+    if a slot cannot have the right hue, the next best thing it can have is a
+    hue nothing else is using, because what a player actually needs is to tell
+    two objects apart.
     """
     chosen, taken = [], list(assigned)
     free = [c for c in pool]
@@ -206,7 +219,7 @@ def farthest(pool, assigned, k=1):
 
 
 def standin_family(fams, used, assigned, want):
-    """In legible mode, the source family that best stands in for a missing one.
+    """Under fit-palette, the source family that best stands in for a missing one.
 
     Picking the individually most-distinct colours is the obvious thing and it
     produces nonsense: a "green" ramp of cyan, orange and pale yellow is three
@@ -242,7 +255,16 @@ def fit_ramp(slots, pool, reg, donor_note=None, standin_note=None):
         # three steps are at least recognisably the same colour.
         base = slots[len(slots) // 2]
         seed = synth(base, reg)
-        chosen = [relight(seed, lab(ARNE[s])[0]) for s in slots]
+        # Endpoints from the anchors, spacing even between them. The anchors are
+        # medoids picked per slot independently, so they are monotonic but not
+        # evenly spaced - the corpus's typical `green` (L 70) sits close to its
+        # typical `lightgreen` (L 77). Inheriting that would invent a ramp with
+        # two near-identical steps, which is the very thing ramp_evenness exists
+        # to catch. When the ramp is being invented outright there is no reason
+        # to reproduce the corpus's crowding, only its range.
+        lo = lab(ANCHOR[slots[0]])[0]
+        hi = lab(ANCHOR[slots[-1]])[0]
+        chosen = [relight(seed, lo + (hi - lo) * i / (k - 1)) for i in range(k)]
         for s in slots:
             prov[s] = "added"
             notes[s] = "no colour of this family in the source"
@@ -383,7 +405,7 @@ RELIGHT_SLACK = 15.0   # Lab L a singlet may drift from its slot before correcti
 BORROW_HUE_MAX = 45.0
 
 
-def fit(hexes, mode="literal"):
+def fit(hexes, mode="fit-colourname"):
     """Propose a 21-slot mapping. Returns (mapping, provenance, notes, spares).
 
     Slots are filled in order of how constrained they are - the grey ramp first,
@@ -391,7 +413,8 @@ def fit(hexes, mode="literal"):
     it, then the three-step ramps, then the singles. Each stage claims the
     colours it uses, so a later stage sees what is genuinely left.
 
-    `mode` is literal or legible; see the note at the top of this section.
+    `mode` is fit-colourname or fit-palette; see the note at the top of this
+    section.
     """
     fams = classify(hexes)
     reg = register(hexes)
@@ -399,7 +422,7 @@ def fit(hexes, mode="literal"):
     used = set()
 
     def standins():
-        return [c for c in hexes if c not in used] if mode == "legible" else None
+        return [c for c in hexes if c not in used] if mode == "fit-palette" else None
 
     pool, neutral_note = neutral_pool(hexes, fams)
     m, p, n = fit_ramp(RAMPS["grey"], pool, reg)
@@ -425,12 +448,12 @@ def fit(hexes, mode="literal"):
                 donor_free = [c for c in fams.get(donor, []) if c not in used]
                 if not donor_free:
                     continue
-                if min(hue_gap(c, ARNE[fam_name]) for c in donor_free) > BORROW_HUE_MAX:
+                if min(hue_gap(c, ANCHOR[fam_name]) for c in donor_free) > BORROW_HUE_MAX:
                     continue
                 pool = donor_free
                 donor_note = f"borrowed from the source's {donor}s"
                 break
-        if not pool and mode == "legible":
+        if not pool and mode == "fit-palette":
             deferred.append(fam_name)
             continue
         m, p, n = fit_ramp(RAMPS[fam_name], pool, reg, donor_note)
@@ -454,7 +477,7 @@ def fit(hexes, mode="literal"):
         if pick is None:
             for donor in FALLBACK[slot]:
                 cand = pick_nearest(fams.get(donor, []), slot, used)
-                if cand is not None and hue_gap(cand, ARNE[slot]) <= BORROW_HUE_MAX:
+                if cand is not None and hue_gap(cand, ANCHOR[slot]) <= BORROW_HUE_MAX:
                     pick, donor_note = cand, f"borrowed from the source's {donor}s"
                     break
         if pick is None:
@@ -478,9 +501,9 @@ def fit(hexes, mode="literal"):
         # orange in some palettes, and using it raw makes `orange` unusable for
         # anything an orange is for. Relighting keeps the palette's own hue and
         # chroma while putting the colour where the slot needs it.
-        drift = lab(pick)[0] - lab(ARNE[slot])[0]
+        drift = lab(pick)[0] - lab(ANCHOR[slot])[0]
         if abs(drift) > RELIGHT_SLACK:
-            fixed = relight(pick, lab(ARNE[slot])[0])
+            fixed = relight(pick, lab(ANCHOR[slot])[0])
             mapping[slot] = fixed
             prov[slot] = "derived"
             notes[slot] = ((donor_note + "; " if donor_note else "")
@@ -511,19 +534,19 @@ def fit(hexes, mode="literal"):
 # famicom, which has shipped since 1983.
 
 WEIGHTS = {
-    # Literal: the slot names have to mean something, so role is weighted and a
-    # palette that cannot supply a hue is marked down for it.
-    "literal": {"source": 20, "role": 15, "ramps": 20,
+    # The slot names have to mean something, so role is weighted and a palette
+    # that cannot supply a hue is marked down for it.
+    "fit-colourname": {"source": 20, "role": 15, "ramps": 20,
                 "contrast": 20, "cvd": 15, "distinct": 10, "separation": 0},
-    # Legible: the names are labels, so role is reported and not scored, and
-    # what replaces it is separation - the thing that actually has to hold if
+    # The names are labels, so role is reported and not scored, and what
+    # replaces it is separation - the thing that actually has to hold if
     # `green` is allowed to be a teal.
-    "legible": {"source": 20, "role": 0, "ramps": 15,
+    "fit-palette": {"source": 20, "role": 0, "ramps": 15,
                 "contrast": 20, "cvd": 15, "distinct": 10, "separation": 20},
 }
 
 # A stand-in is a real colour from the source palette, so it counts as fully
-# sourced: legible mode's whole claim is that it invents nothing.
+# sourced: fit-palette's whole claim is that it invents no new colours.
 PROV_VALUE = {"sourced": 1.0, "standin": 1.0, "derived": 0.5, "added": 0.0}
 
 
@@ -549,7 +572,7 @@ def role_score(mapping):
         if slot in ("black", "white", "grey", "darkgrey", "lightgrey"):
             pen.append(min(chroma(c), 40) / 40 * 100)
         else:
-            pen.append(min(hue_gap(c, ARNE[slot]), 90) / 90 * 100)
+            pen.append(min(hue_gap(c, ANCHOR[slot]), 90) / 90 * 100)
     return round(100 - sum(pen) / len(pen), 1)
 
 
@@ -563,7 +586,7 @@ def ramp_score(res):
 def min_separation(mapping):
     """The closest any two of the 21 slots come to each other, perceptually.
 
-    The single number that decides whether a legible-mode palette works: if the
+    The single number that decides whether a fit-palette mapping works: if the
     smallest gap between any pair is large, every object on the board can be
     told from every other, whatever the slots are called.
     """
@@ -575,7 +598,7 @@ def min_separation(mapping):
     return best
 
 
-def rate(mapping, prov, corpus_stats, mode="literal"):
+def rate(mapping, prov, corpus_stats, mode="fit-colourname"):
     weights = WEIGHTS[mode]
     res = analyse(mapping)
     axes = {
@@ -623,7 +646,7 @@ def save_verdicts(v):
 
 # --------------------------------------------------------------------- reports
 
-def evaluate(cands, stats, mode="literal"):
+def evaluate(cands, stats, mode="fit-colourname"):
     rows = []
     for c in cands:
         mapping, prov, notes, spares = fit(c["hex"], mode)
@@ -637,7 +660,7 @@ def evaluate(cands, stats, mode="literal"):
 
 def cmd_score(rows, stats):
     verdicts = load_verdicts()
-    mode = rows[0]["mode"] if rows else "literal"
+    mode = rows[0]["mode"] if rows else "fit-colourname"
     print(f"\n{len(rows)} candidates in {mode} mode, rated against "
           f"{len(stats['names'])} inherited palettes\n")
     head = (f"  {'':<3}{'palette':<22}{'score':>6}  {'src':>5}{'role':>6}"
@@ -660,11 +683,13 @@ def cmd_score(rows, stats):
     print("  cvd  same, for colourblind collapses")
     print("  dist distinct hex values out of 21")
     print("  sep  how far apart the closest pair of slots is, as a percentile")
-    if mode == "legible":
-        print("\n  legible mode: role is shown but not scored, and separation is.")
+    if mode == "fit-palette":
+        print("\n  fit-palette: only the source's own colours are used, so role is")
+        print("  shown but not scored and separation is scored instead.")
     else:
-        print("\n  literal mode: role is scored. --mode legible lets any source")
-        print("  colour stand in for a slot it does not match.")
+        print("\n  fit-colourname: slot names must mean what they say, so role is")
+        print("  scored. --mode fit-palette instead reuses a source colour under a")
+        print("  name it does not match, and scores separation in role's place.")
 
 
 def cmd_show(r, stats):
@@ -760,6 +785,54 @@ def cmd_audit(stats, builtins, colors_js):
                 print(f"    {n:<16} {ramp}: {hi} is {abs(d)} L darker than {lo}")
     else:
         print("\n  every shipped palette's ramps climb")
+
+
+def cmd_anchors(colors_js):
+    """Show the slot-name lexicon, and re-derive it to check for drift.
+
+    ANCHOR is frozen in palette_lib.py rather than computed at import, so it is
+    visible in a diff and does not silently move every score when a palette is
+    added to colors.js. This command is how you check the frozen table still
+    matches the corpus it came from.
+    """
+    print(f"\n{'=' * 74}\nANCHORS - what each slot NAME denotes\n{'=' * 74}")
+    print("\n  The medoid of the 14 inherited palettes: for each slot, the one")
+    print("  real shipped colour with the smallest total distance to the rest.")
+    print("  Nothing here is idealised - every anchor is a colour some palette")
+    print("  actually ships for that name. `spread` is how much the corpus")
+    print("  disagrees about the name at all.\n")
+    print(f"  {'slot':<11}{'anchor':<9}{'from':<15}{'spread':>7}   "
+          f"{'arnecolors':<11}{'dE':>4}")
+    builtins = load_builtins(colors_js, exclude=FORK_PALETTES)
+    fresh = derive_anchors(builtins) if builtins else {}
+    drift = []
+    for slot in SLOTS:
+        hexv, src, spread = ANCHOR_SOURCE[slot]
+        d = delta_e(hexv, ARNE[slot])
+        note = "" if d < 12 else ("   <- arnecolors is an outlier here"
+                                  if d > 25 else "")
+        print(f"  {slot:<11}{hexv:<9}{src:<15}{spread:>7}   "
+              f"{ARNE[slot].lower():<11}{d:>4.0f}{note}")
+        if fresh and fresh[slot][0] != hexv:
+            drift.append((slot, hexv, fresh[slot][0], fresh[slot][1]))
+
+    same = sum(1 for s in SLOTS if delta_e(ANCHOR_SOURCE[s][0], ARNE[s]) < 1)
+    print(f"\n  arnecolors is the medoid for {same} of {len(SLOTS)} slots.")
+    print("  Where it is not, it is a palette with opinions, not a dictionary:")
+    print("  its darkgreen is a slate, its darkblue near-black, its purple")
+    print("  blue-violet, its lightbrown a golden yellow. Anchoring the rating")
+    print("  on those meant marking a palette down for being correct.")
+
+    if not fresh:
+        print(f"\n  (no corpus at {colors_js}; cannot check for drift)")
+    elif drift:
+        print(f"\n  DRIFT - the frozen table no longer matches the corpus:")
+        for slot, old, new, src in drift:
+            print(f"    {slot:<11} frozen {old}  corpus now {new} ({src})")
+        print("\n  Update ANCHOR_SOURCE in palette_lib.py deliberately, and")
+        print("  expect every score to move when you do.")
+    else:
+        print("\n  Frozen table matches the corpus - no drift.")
 
 
 def cmd_combos(rows, stats, limit=8):
@@ -932,7 +1005,7 @@ pre{background:#0d0f12;border:1px solid #2a2e35;border-radius:5px;padding:9px 11
            f"<style>{css}</style>",
            "<header><h1>Palette candidates</h1>",
            f"<div class=sub>{len(rows)} candidates in "
-           f"<b>{rows[0]['mode'] if rows else 'literal'}</b> mode, fitted to "
+           f"<b>{rows[0]['mode'] if rows else 'fit-colourname'}</b> mode, fitted to "
            f"PuzzleScript's 21 slots and rated against "
            f"{len(stats['names'])} inherited palettes. "
            "Dashed gold = derived from the source's own colours; "
@@ -1078,18 +1151,22 @@ def main():
         p = sub.add_parser(name, help=helptext)
         p.add_argument("paths", nargs="+", help="palette files or directories")
         p.add_argument("--colors-js", default=None)
-        p.add_argument("--mode", choices=["literal", "legible"], default="literal",
-                       help="literal: slot names must mean what they say. "
-                            "legible: any source colour may stand in, as long "
-                            "as the 21 slots stay distinguishable")
+        p.add_argument("--mode", choices=["fit-colourname", "fit-palette"], default="fit-colourname",
+                       help="fit-colourname: slot names must mean what they "
+                            "say, and a missing hue is synthesised. fit-palette: "
+                            "only the source's own colours are used, and a "
+                            "missing hue becomes another family renamed")
 
     p = sub.add_parser("sheet", help="HTML contact sheet for human review")
     p.add_argument("paths", nargs="+")
     p.add_argument("-o", "--out", default="palette-sheet.html")
     p.add_argument("--colors-js", default=None)
-    p.add_argument("--mode", choices=["literal", "legible"], default="literal")
+    p.add_argument("--mode", choices=["fit-colourname", "fit-palette"], default="fit-colourname")
 
     p = sub.add_parser("audit", help="check the palettes that already ship")
+    p.add_argument("--colors-js", default=None)
+
+    p = sub.add_parser("anchors", help="the slot-name lexicon, and any drift")
     p.add_argument("--colors-js", default=None)
 
     p = sub.add_parser("verdict", help="record a curation decision")
@@ -1128,6 +1205,10 @@ def main():
         cmd_audit(stats, builtins, colors_js)
         return 0
 
+    if args.cmd == "anchors":
+        cmd_anchors(colors_js)
+        return 0
+
     cands, errors = load_candidates(args.paths)
     for f, e in errors:
         print(f"skipped {f}: {e}", file=sys.stderr)
@@ -1135,7 +1216,7 @@ def main():
         print("no candidate palettes found", file=sys.stderr)
         return 1
 
-    rows = evaluate(cands, stats, getattr(args, "mode", "literal"))
+    rows = evaluate(cands, stats, getattr(args, "mode", "fit-colourname"))
 
     if args.cmd == "score":
         cmd_score(rows, stats)

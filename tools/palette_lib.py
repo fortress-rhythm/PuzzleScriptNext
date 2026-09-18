@@ -33,10 +33,11 @@ SLOTS = [
 
 ALIAS_OF = {"gray": "grey", "darkgray": "darkgrey", "lightgray": "lightgrey"}
 
-# Fallback source, used verbatim wherever a candidate cannot supply a slot, and
-# the anchor set the fitter aims at: arnecolors is what PuzzleScript means by
-# each of these names, so it defines each slot's *role* even when a candidate
-# palette expresses that role in a completely different register.
+# Fallback source, used verbatim wherever a candidate cannot supply a slot.
+#
+# This is a *compatibility* table, not a lexicon. It is what the engine actually
+# substitutes, so it must stay exactly arnecolors. What each slot NAME denotes
+# is a separate question with a separate answer - see ANCHOR below.
 ARNE = {
     "black": "#000000", "white": "#FFFFFF", "grey": "#9d9d9d",
     "darkgrey": "#697175", "lightgrey": "#cccccc",
@@ -47,6 +48,74 @@ ARNE = {
     "blue": "#1d57f7", "lightblue": "#B2DCEF", "darkblue": "#1B2632",
     "purple": "#342a97", "pink": "#de65e2",
 }
+
+# What each slot NAME denotes - the lexicon the fitter aims at and the rating
+# measures drift from. Kept separate from ARNE because those are two different
+# jobs that were conflated at first, with measurable consequences.
+#
+# Using arnecolors as the lexicon is the obvious move and it is wrong, because
+# arnecolors is a palette with its own opinions rather than a dictionary. Five
+# of its twenty-one colours do not classify as their own name under family()
+# above: its `darkgreen` #2f484e is a slate (hue 192, chroma 10), its `darkblue`
+# is near-black, its `purple` #342a97 is blue-violet, its `pink` is magenta, its
+# `lightbrown` #eeb62f is a golden yellow. Anchoring on that table meant a
+# candidate palette whose `darkgreen` was *actually dark green* scored a 75
+# degree hue error and lost most of the `role` axis for being correct.
+#
+# So the anchors are derived instead of invented: for each slot, the MEDOID of
+# what the fourteen inherited palettes put there - the one real, shipped colour
+# with the smallest total distance to all the others. Nothing is idealised and
+# nothing is mine; every anchor below is a colour some palette actually ships
+# for that name, and the third field is the mean distance from it to the rest,
+# which is how much the corpus disagrees about that name at all.
+#
+# arnecolors turns out to be the medoid for seven slots - two of them black and
+# white, which every palette agrees on - and an outlier by more than 25 dE for
+# five: lightbrown, darkgreen, blue, darkblue and purple. That is the honest
+# summary: a good lexicon for most names, and quite wrong for a few.
+#
+# Frozen deliberately rather than recomputed at import, so it is visible in the
+# diff, reproducible, and does not silently move every score when somebody adds
+# a palette to colors.js. `palette_curate.py anchors` re-derives it and reports
+# any drift.
+ANCHOR_SOURCE = {
+    "black":      ("#000000", "mastersystem", 6.7),
+    "white":      ("#ffffff", "mastersystem", 4.6),
+    "grey":       ("#7c7c7c", "famicom", 16.8),
+    "darkgrey":   ("#444444", "c64", 17.8),
+    "lightgrey":  ("#b0b0b0", "atari", 14.4),
+    "red":        ("#be2633", "arnecolors", 31.7),
+    "darkred":    ("#700014", "atari", 27.2),
+    "lightred":   ("#e06f8b", "arnecolors", 34.4),
+    "brown":      ("#805020", "atari", 30.7),
+    "darkbrown":  ("#493c2b", "arnecolors", 29.7),
+    "lightbrown": ("#b58c53", "pastel", 36.3),
+    "orange":     ("#eb792d", "pastel", 37.4),
+    "yellow":     ("#f7e26b", "arnecolors", 27.6),
+    "green":      ("#75bc54", "proteus_rich", 31.0),
+    "darkgreen":  ("#2b732c", "pastel", 27.0),
+    "lightgreen": ("#90cf5c", "proteus_rich", 31.5),
+    "blue":       ("#3f62c6", "whitingjp", 34.5),
+    "lightblue":  ("#b2dcef", "arnecolors", 27.3),
+    "darkblue":   ("#352879", "c64", 33.6),
+    "purple":     ("#6f3d86", "c64", 40.7),
+    "pink":       ("#cd88e5", "proteus_rich", 42.3),
+}
+
+ANCHOR = {k: v[0] for k, v in ANCHOR_SOURCE.items()}
+
+
+def derive_anchors(builtins):
+    """Re-derive ANCHOR from a corpus. Returns {slot: (hex, palette, spread)}."""
+    names = list(builtins)
+    out = {}
+    for s in SLOTS:
+        cands = [(n, builtins[n][s]) for n in names]
+        best = min(cands, key=lambda nc: sum(delta_e(nc[1], o[1]) for o in cands))
+        spread = sum(delta_e(best[1], o[1]) for o in cands) / max(1, len(cands) - 1)
+        out[s] = (best[1].lower(), best[0], round(spread, 1))
+    return out
+
 
 # The ramps, dark -> light. This is the "template of what success looks like":
 # within a ramp, luminance must increase, monotonically, every step. A palette

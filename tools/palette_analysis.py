@@ -23,7 +23,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from palette_lib import (  # noqa: E402
-    ALIAS_OF, ARNE, CVD, SLOTS, analyse, contrast, dist, hsl, luminance,
+    ALIAS_OF, CVD, SLOTS, analyse, contrast, dist, hsl, luminance,
     load_builtins, rgb, simulate,
 )
 

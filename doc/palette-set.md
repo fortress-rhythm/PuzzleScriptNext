@@ -118,6 +118,16 @@ have none; `palette_curate.py audit` lists the exceptions, one of which
 (`proteus_night`'s `lightgreen`, a near-black navy) looks like an inherited
 copy-paste error rather than a stylistic choice.
 
+One thing that came out of building the curation tool is worth knowing before
+hand-mapping anything: **arnecolors is a fallback, not a dictionary.** It is the
+right table to fall back to — that is a compatibility requirement — but it is a
+poor guide to what a slot name *means*. Five of its twenty-one colours do not
+classify as their own name: `darkgreen` `#2f484e` is a slate, `darkblue` is
+near-black, `purple` `#342a97` is blue-violet, `pink` is magenta, `lightbrown`
+`#eeb62f` is a golden yellow. Measured against the fourteen inherited palettes
+it is the most typical colour for only seven of the twenty-one slots.
+`palette_curate.py anchors` prints what the corpus actually means by each name.
+
 ## How these three came out
 
 Measured against the fourteen shipped palettes, which span **26–75**
