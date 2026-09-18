@@ -4,6 +4,24 @@ var solvedSections = [];
 var curlevelTarget=null;
 var hasUsedCheckpoint=false;
 var levelEditorOpened=false;
+
+// Level editor rectangular selection and clipboard.
+// A selection is in level coordinates, inclusive of both corners. The clipboard
+// holds a rectangle of cell masks, so a copied region can be stamped back down
+// overwriting whatever is under it rather than being inserted.
+var editorSelection=null;       // {x0,y0,x1,y1}, normalised
+var editorSelectAnchor=null;    // {x,y} corner held down while dragging a selection out
+var editorClipboard=null;       // {w,h,cells:[BitVec]} in row-major order
+var editorPasteMode=false;      // true while the paste ghost follows the cursor
+
+// Drop any in-progress selection or paste. The clipboard deliberately survives,
+// so a rectangle copied from one level can be pasted into another.
+function editorClearSelectionState() {
+	editorSelection=null;
+	editorSelectAnchor=null;
+	editorPasteMode=false;
+}
+
 var muted=0;
 var runrulesonlevelstart_phase=false;
 var ignoreNotJustPressedAction=true;

@@ -32,6 +32,14 @@ levelEditorClickLink.addEventListener("click", levelEditorClick_Fn, false);
 var exportClickLink = document.getElementById("exportClickLink");
 exportClickLink.addEventListener("click", exportClick, false);
 
+// palette-set extension (fork-original)
+var palettePreviewClickLink = document.getElementById("palettePreviewClickLink");
+if (palettePreviewClickLink)
+	palettePreviewClickLink.addEventListener("click", palettePreviewClick, false);
+var palettePanelClose = document.getElementById("palettePanelClose");
+if (palettePanelClose)
+	palettePanelClose.addEventListener("click", palettePreviewClick, false);
+
 var exampleDropdown = document.getElementById("exampleDropdown");
 exampleDropdown.addEventListener("change", dropdownChange, false);
 

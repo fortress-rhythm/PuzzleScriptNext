@@ -1,0 +1,87 @@
+title Empty Sections
+author psmap tests
+color_palette arnecolors
+
+(A game part-way through being built: several SECTION headings exist as
+placeholders with no map under them yet, including a duplicated number. Those
+orphaned commands stack up in front of the next real grid, so anything that
+labels a map from the *first* heading it finds gets the number wrong.)
+
+========
+OBJECTS
+========
+
+Background
+LIGHTGREEN GREEN
+
+Wall
+BROWN DARKBROWN
+
+Player
+Black Orange White Blue
+.000.
+.111.
+22222
+.333.
+.3.3.
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+p = Player
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Wall, Player
+
+======
+RULES
+======
+
+==============
+WINCONDITIONS
+==============
+
+=======
+LEVELS
+=======
+
+section 0
+message First one.
+#####
+#.p.#
+#####
+
+section 1
+message Second one.
+#######
+#..p..#
+#######
+
+section 2
+message
+
+section 2
+message
+
+section 3
+message The map here belongs to section 3, not section 2.
+#########
+#...p...#
+#########
+
+section 4
+message
+
+section 5
+message

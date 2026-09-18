@@ -40,6 +40,8 @@ function arrCopy(from, fromoffset, to, tooffset, len) {
 }
 
 function adjustLevel(level, widthdelta, heightdelta) {
+	// Any selection is in coordinates that are about to change meaning.
+	editorClearSelectionState();
 	backups.push(backupLevel());
 	var oldlevel = level.clone();
 	level.width += widthdelta;
@@ -231,6 +233,159 @@ function printLevel() {
 	consolePrint(output,true);
 }
 
+//------------------------------------------------------------------------------
+// Level editor: rectangular selection and clipboard.
+//
+// Editing a map as text gets block copy right and block paste wrong - pasting
+// into a text editor inserts, which shoves the rest of every row sideways. On a
+// grid the operation you actually want is to overwrite a rectangle in place,
+// which is what these do.
+
+// Is this level coordinate inside the map being edited?
+function editorInBounds(x,y) {
+	return x>=0 && y>=0 && x<curLevel.width && y<curLevel.height;
+}
+
+// Cells are stored column-major.
+function editorCellIndex(x,y) {
+	return y + x*curLevel.height;
+}
+
+function editorBackgroundMask() {
+	var mask = new BitVec(STRIDE_OBJ);
+	mask.ibitset(state.backgroundid);
+	return mask;
+}
+
+// Build a selection rectangle from two corners, clamped to the map.
+function editorMakeSelection(ax,ay,bx,by) {
+	var x0 = Math.max(0, Math.min(ax,bx));
+	var y0 = Math.max(0, Math.min(ay,by));
+	var x1 = Math.min(curLevel.width-1, Math.max(ax,bx));
+	var y1 = Math.min(curLevel.height-1, Math.max(ay,by));
+	if (x1<x0 || y1<y0) {
+		return null;
+	}
+	return { x0:x0, y0:y0, x1:x1, y1:y1 };
+}
+
+// Copy the selection into the clipboard, optionally clearing it to background.
+function editorCopySelection(cut) {
+	if (editorSelection===null) {
+		consolePrint("Nothing selected - hold shift and drag out a rectangle first.",true);
+		return;
+	}
+	var sel = editorSelection;
+	var w = sel.x1-sel.x0+1;
+	var h = sel.y1-sel.y0+1;
+	var cells = [];
+	for (var y=sel.y0;y<=sel.y1;y++) {
+		for (var x=sel.x0;x<=sel.x1;x++) {
+			cells.push(curLevel.getCell(editorCellIndex(x,y)));
+		}
+	}
+	editorClipboard = { w:w, h:h, cells:cells };
+
+	if (cut) {
+		backups.push(backupLevel());
+		var background = editorBackgroundMask();
+		for (var y=sel.y0;y<=sel.y1;y++) {
+			for (var x=sel.x0;x<=sel.x1;x++) {
+				curLevel.setCell(editorCellIndex(x,y), background);
+			}
+		}
+	}
+	consolePrint((cut?"Cut ":"Copied ")+w+"x"+h+" tiles. Ctrl+V to paste.");
+	redraw();
+}
+
+// Fill the selection with background.
+function editorClearSelectedTiles() {
+	if (editorSelection===null) {
+		return;
+	}
+	backups.push(backupLevel());
+	var sel = editorSelection;
+	var background = editorBackgroundMask();
+	for (var y=sel.y0;y<=sel.y1;y++) {
+		for (var x=sel.x0;x<=sel.x1;x++) {
+			curLevel.setCell(editorCellIndex(x,y), background);
+		}
+	}
+	redraw();
+}
+
+// Arm a paste. Nothing is written yet: a ghost follows the cursor so you can see
+// which cells are about to be overwritten, and a click commits it.
+function editorBeginPaste() {
+	if (editorClipboard===null) {
+		consolePrint("Nothing copied yet - select a rectangle and press Ctrl+C.",true);
+		return;
+	}
+	editorPasteMode=true;
+	consolePrint("Click to paste "+editorClipboard.w+"x"+editorClipboard.h+", Escape to cancel.");
+	redraw();
+}
+
+// Stamp the clipboard down with its top-left corner at (ox,oy), overwriting in
+// place. Anything falling outside the map is dropped rather than resizing it.
+function editorCommitPaste(ox,oy) {
+	if (editorClipboard===null) {
+		return;
+	}
+	var clip = editorClipboard;
+	backups.push(backupLevel());
+
+	var placed=0;
+	var clipped=0;
+	for (var y=0;y<clip.h;y++) {
+		for (var x=0;x<clip.w;x++) {
+			var tx=ox+x;
+			var ty=oy+y;
+			if (!editorInBounds(tx,ty)) {
+				clipped++;
+				continue;
+			}
+			curLevel.setCell(editorCellIndex(tx,ty), clip.cells[y*clip.w+x]);
+			placed++;
+		}
+	}
+
+	editorPasteMode=false;
+	editorSelection = editorMakeSelection(ox,oy,ox+clip.w-1,oy+clip.h-1);
+	if (clipped>0) {
+		consolePrint("Pasted "+placed+" tiles, "+clipped+" fell outside the map.",true);
+	} else {
+		consolePrint("Pasted "+clip.w+"x"+clip.h+".");
+	}
+	redraw();
+}
+
+// Ctrl/Cmd shortcuts for the editor clipboard. Returns true if the key was
+// consumed, so the caller knows to suppress the browser's own handling.
+function editorClipboardKey(event) {
+	if (!levelEditorOpened || textMode || event.altKey || event.repeat) {
+		return false;
+	}
+	switch (event.keyCode) {
+		case 67: //c
+			editorCopySelection(false);
+			return true;
+		case 88: //x
+			editorCopySelection(true);
+			return true;
+		case 86: //v
+			editorBeginPaste();
+			return true;
+		case 65: //a
+			editorPasteMode=false;
+			editorSelection = editorMakeSelection(0,0,curLevel.width-1,curLevel.height-1);
+			redraw();
+			return true;
+	}
+	return false;
+}
+
 function levelEditorClick(event,click) {
 	if (mouseCoordY<=-2) {
 		var ypos = editorRowCount-(-mouseCoordY-2)-1;
@@ -243,6 +398,36 @@ function levelEditorClick(event,click) {
 		}
 
 	} else if (mouseCoordX>-1&&mouseCoordY>-1&&mouseCoordX<screenwidth-2&&mouseCoordY<screenheight-2-editorRowCount	) {
+
+		// A pending paste swallows the click, wherever the tools would normally
+		// have sent it.
+		if (editorPasteMode) {
+			if (click) {
+				editorCommitPaste(mouseCoordX,mouseCoordY);
+			}
+			return;
+		}
+
+		// Shift turns the left button into a marquee, leaving plain dragging as
+		// painting so nothing about the existing editor changes.
+		if (event.shiftKey) {
+			if (click) {
+				editorSelectAnchor = { x:mouseCoordX, y:mouseCoordY };
+			}
+			if (editorSelectAnchor!==null) {
+				editorSelection = editorMakeSelection(
+					editorSelectAnchor.x, editorSelectAnchor.y, mouseCoordX, mouseCoordY);
+				redraw();
+			}
+			return;
+		}
+
+		// Painting anywhere drops the selection, so the highlight never lingers
+		// over tiles that have since changed.
+		if (click && editorSelection!==null) {
+			editorSelection=null;
+		}
+
 		var glyphname = glyphImagesCorrespondance[glyphSelectedIndex];
 		var glyph = state.glyphDict[glyphname];
 		var glyphmask = new BitVec(STRIDE_OBJ);
@@ -300,6 +485,14 @@ function levelEditorRightClick(event,click) {
 			redraw();
 		}
 	} else if (mouseCoordX>-1&&mouseCoordY>-1&&mouseCoordX<screenwidth-2&&mouseCoordY<screenheight-2-editorRowCount	) {
+		// Cancelling a pending paste is the friendlier reading of a right click
+		// than erasing whatever happens to be under the cursor.
+		if (editorPasteMode) {
+			editorPasteMode=false;
+			consolePrint("Paste cancelled.");
+			redraw();
+			return;
+		}
 		var coordIndex = mouseCoordY + mouseCoordX*curLevel.height;
 		var glyphmask = new BitVec(STRIDE_OBJ);
 		glyphmask.ibitset(state.backgroundid);
@@ -707,6 +900,7 @@ function onMouseUp(event, wasFiredByTouch = false) {
 
 	dragging=false;
     rightdragging=false;
+	editorSelectAnchor=null;
 
 	var lmb = event.button===0;
 	var rmb = event.button===2;
@@ -759,6 +953,12 @@ function onKeyDown(event) {
     if(lastDownTarget === canvas || (window.Mobile && (lastDownTarget === window.Mobile.focusIndicator) ) ){
     	if (keybuffer.indexOf(event.keyCode)===-1) {
     		if (event&&(event.ctrlKey || event.metaKey)){
+				// Game input ignores modifiers, so checkKey() is never reached
+				// with ctrl held. The level editor's clipboard shortcuts are the
+				// one thing that wants them, and they are handled here instead.
+				if (editorClipboardKey(event)) {
+					return prevent(event);
+				}
 		    } else {
     		    keybuffer.splice(keyRepeatIndex,0,event.keyCode);
 	    	    keyRepeatTimer=0;
@@ -1212,6 +1412,14 @@ function checkKey(e,justPressed) {
         		stopSolving();
         		break;
         	}
+			// In the editor, escape backs out of a paste or a selection before
+			// it means "leave the game".
+			if (levelEditorOpened && !textMode && justPressed
+					&& (editorPasteMode || editorSelection!==null)) {
+				editorClearSelectionState();
+				redraw();
+				return prevent(e);
+			}
 			if (!titleScreen && state.metadata.enable_pause) {
 				goToPauseScreen(); 
 				canvasResize();
@@ -1247,6 +1455,7 @@ function checkKey(e,justPressed) {
         				}
         			}
         			levelEditorOpened=!levelEditorOpened;
+        			editorClearSelectionState();
         			if (levelEditorOpened===false){
         				printLevel();
         			}
@@ -1256,6 +1465,15 @@ function checkKey(e,justPressed) {
         		return prevent(e);
         	}
             break;
+		}
+		case 8://backspace
+		case 46://delete
+		{
+			if (levelEditorOpened && !textMode && justPressed && editorSelection!==null) {
+				editorClearSelectedTiles();
+				return prevent(e);
+			}
+			break;
 		}
 		case 48://0
 		case 49://1

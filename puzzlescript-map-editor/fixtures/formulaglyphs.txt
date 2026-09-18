@@ -1,0 +1,98 @@
+title Formula Glyphs
+author psmap tests
+color_palette arnecolors
+
+(A deliberately hostile legend. Every one of these characters is legal in a
+PuzzleScript level and every one of them means something to a spreadsheet:
+'=' '+' '-' and '@' all start a formula in Excel, ',' and '"' break naive CSV
+splitting, and '\' is an escape in plenty of formats. If a round trip survives
+this file it will survive a real game.)
+
+========
+OBJECTS
+========
+
+Background
+LIGHTGREEN GREEN
+
+Wall
+BROWN DARKBROWN
+
+Player
+Black Orange White Blue
+.000.
+.111.
+22222
+.333.
+.3.3.
+
+Equals
+Red
+
+Plus
+Blue
+
+Minus
+Yellow
+
+At
+Purple
+
+Comma
+White
+
+Quote
+Pink
+
+Backslash
+Orange
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+= = Equals
++ = Plus
+- = Minus
+@ = At
+, = Comma
+" = Quote
+\ = Backslash
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Player, Wall, Equals, Plus, Minus, At, Comma, Quote, Backslash
+
+======
+RULES
+======
+
+==============
+WINCONDITIONS
+==============
+
+=======
+LEVELS
+=======
+
+level Everything Excel hates
+##########
+#=+-@,"\.#
+#.P......#
+#\",@-+=.#
+##########
+
+#####
+#=+=#
+#.P.#
+#####
