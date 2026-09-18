@@ -70,6 +70,36 @@ order — so `@ = Crate and Target` draws the target underneath the crate, exact
 as the game will. A character with no legend entry is drawn as a loud red cross,
 because it means the level will not compile.
 
+### Palettes
+
+The whole `color_palette` line is honoured, in all of the forms PuzzleScript
+accepts:
+
+```
+color_palette mastersystem                     a name
+color_palette 3                                a number
+color_palette arnecolors black #292f25 ...     a base plus per-game overrides
+color_palette bentenpond                       a PuzzleScript Next palette
+```
+
+The override form matters most, because it is the one you distribute: it is the
+only way to ship a custom palette that runs on every PuzzleScript build. A
+viewer that read the base name and dropped the overrides would render exactly
+those games in the wrong colours, which is what this one used to do.
+
+The seventeen palettes in `src/palettes.js` are copied from PuzzleScript Next —
+the fourteen stock ones, plus `bentenpond`, `dungeon20` and `oekakinl` from its
+palette-set extension. When this repo is checked out inside PuzzleScriptNext the
+test suite verifies the copy against `src/js/colors.js` slot by slot, and skips
+the check when it is not, the same way the demo-game sweep does.
+
+**Nothing here refuses to open a file.** A palette name this build does not
+carry falls back to arnecolors, and an override naming a slot that does not
+exist is dropped — but both are reported rather than applied silently, in the
+status bar, in `psmap info`, and on the `_legend` sheet of an exported
+workbook. Opening a map in the wrong colours and saying so is better than
+refusing to open it; doing it without saying so is worse than either.
+
 | | |
 |---|---|
 | `M` `B` `R` `L` `G` `I` | select, brush, rect, line, fill, eyedropper |
@@ -220,7 +250,8 @@ The browser editor was verified by driving it headlessly against the same games.
 ```
 src/psgame.js    parses OBJECTS, LEGEND, COLLISIONLAYERS and LEVELS,
                  keeping source line ranges so edits can be spliced back
-src/palettes.js  colour palettes, copied from PuzzleScript Next
+src/palettes.js  colour palettes copied from PuzzleScript Next, and the
+                 resolver that turns a color_palette line into real colours
 src/xlsx.js      dependency-free XLSX reader/writer (inline strings, fills)
 src/csv.js       RFC 4180 CSV/TSV
 src/sheet.js     the spreadsheet bridge

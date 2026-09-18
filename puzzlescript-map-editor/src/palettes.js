@@ -1,7 +1,14 @@
 'use strict';
 
 // Colour palettes copied from PuzzleScriptNext src/js/colors.js so that this
-// project stays standalone. Keep in sync if upstream palettes change.
+// project stays standalone. Keep in sync if upstream palettes change - the
+// test suite verifies this file against colors.js whenever PuzzleScriptNext is
+// checked out beside this repo, and skips the check when it is not.
+//
+// The last three are fork-only: PuzzleScript Next's palette-set extension adds
+// them at indices 15-17, and stock PuzzleScript has never heard the names.
+// Carrying them here costs nothing and means a game written against the fork
+// renders in its own colours rather than silently in arnecolors.
 
 const colorPalettes = {
     "mastersystem": {
@@ -367,6 +374,84 @@ const colorPalettes = {
         "darkblue": "#2c2fa0",
         "purple": "#7037d9",
         "pink": "#ec2b8f"
+    },
+    "bentenpond": {
+        "black": "#292f25",
+        "white": "#d8d2ae",
+        "grey": "#736f52",
+        "darkgrey": "#494738",
+        "lightgrey": "#a5a27f",
+        "gray": "#736f52",
+        "darkgray": "#494738",
+        "lightgray": "#a5a27f",
+        "red": "#bf5f43",
+        "darkred": "#a2333a",
+        "lightred": "#e3938b",
+        "brown": "#7a5734",
+        "darkbrown": "#3d2f22",
+        "lightbrown": "#f1d6c5",
+        "orange": "#c9793f",
+        "yellow": "#d9b45e",
+        "green": "#4c8149",
+        "darkgreen": "#304733",
+        "lightgreen": "#8dab6d",
+        "blue": "#193762",
+        "lightblue": "#7cacac",
+        "darkblue": "#083b42",
+        "purple": "#573c5d",
+        "pink": "#825f77"
+    },
+    "dungeon20": {
+        "black": "#2e222f",
+        "white": "#d6dad3",
+        "grey": "#665964",
+        "darkgrey": "#443846",
+        "lightgrey": "#a9b2a2",
+        "gray": "#665964",
+        "darkgray": "#443846",
+        "lightgray": "#a9b2a2",
+        "red": "#993d41",
+        "darkred": "#7a3045",
+        "lightred": "#c9666b",
+        "brown": "#997f73",
+        "darkbrown": "#3c2c26",
+        "lightbrown": "#fbb954",
+        "orange": "#cd683d",
+        "yellow": "#f2ec8b",
+        "green": "#4e6b46",
+        "darkgreen": "#2f4034",
+        "lightgreen": "#8fa87e",
+        "blue": "#407080",
+        "lightblue": "#5bbfc5",
+        "darkblue": "#28353e",
+        "purple": "#45293f",
+        "pink": "#8f5d72"
+    },
+    "oekakinl": {
+        "black": "#000000",
+        "white": "#ffffff",
+        "grey": "#909090",
+        "darkgrey": "#384d51",
+        "lightgrey": "#e6e4d5",
+        "gray": "#909090",
+        "darkgray": "#384d51",
+        "lightgray": "#e6e4d5",
+        "red": "#a4313f",
+        "darkred": "#6b1f28",
+        "lightred": "#c96c7f",
+        "brown": "#90642d",
+        "darkbrown": "#4c4334",
+        "lightbrown": "#dba54b",
+        "orange": "#d97d3c",
+        "yellow": "#f0cb69",
+        "green": "#4d7d23",
+        "darkgreen": "#33561a",
+        "lightgreen": "#8fb332",
+        "blue": "#3c8ee7",
+        "lightblue": "#9ac3e0",
+        "darkblue": "#24313d",
+        "purple": "#6b0b48",
+        "pink": "#f1a8ca"
     }
 };
 
@@ -384,10 +469,111 @@ const colorPalettesAliases = {
     "11": "proteus_rich",
     "12": "proteus_night",
     "13": "c64",
-    "14": "whitingjp"
+    "14": "whitingjp",
+    "15": "bentenpond",
+    "16": "dungeon20",
+    "17": "oekakinl"
 };
 
-const PALETTES_API = { colorPalettes, colorPalettesAliases };
+/**
+ * Turn a `color_palette` line into the palette a game actually renders with.
+ *
+ * `spec` is what psgame.findPaletteSpec returns: { name, overrides } where
+ * overrides is a list of [key, token] pairs in source order. Returns
+ *
+ *   { name, palette, known, applied, unknownKeys }
+ *
+ * and never throws - an unrecognised palette name falls back to arnecolors and
+ * says so through `known`, because a map editor that refuses to open a file is
+ * worse than one that opens it in the wrong colours and admits it.
+ *
+ * Three things this handles that the previous one-liner did not:
+ *
+ *   color_palette 3                     numeric aliases were defined here and
+ *                                       never consulted, so every numbered
+ *                                       palette silently rendered as arnecolors
+ *
+ *   color_palette arnecolors black #292f25 white #d8d2ae ...
+ *                                       per-game overrides were dropped
+ *                                       entirely. This is not an exotic form:
+ *                                       it is stock PuzzleScript, and it is
+ *                                       what PuzzleScript Next's palette export
+ *                                       produces, so the one representation
+ *                                       meant to be portable was the one that
+ *                                       rendered wrong
+ *
+ *   color_palette bentenpond            fork palette names, now carried above
+ *
+ * An override value may be a hex literal or the name of a colour in the base
+ * palette, which is what the engine accepts. `grey` and `gray` stay separate
+ * keys deliberately: the engine treats them as separate, so overriding one and
+ * not the other leaves the other at its base value, and a map editor that
+ * quietly aliased them would disagree with the game.
+ */
+function resolvePalette(spec) {
+    const raw = ((spec && spec.name) || 'arnecolors').toLowerCase();
+    const name = colorPalettesAliases[raw] || raw;
+    const base = colorPalettes[name];
+    const palette = Object.assign({}, base || colorPalettes.arnecolors);
+
+    let applied = 0;
+    const unknownKeys = [];
+    for (const [key, token] of (spec && spec.overrides) || []) {
+        const value = literalColor(token) || palette[String(token).toLowerCase()];
+        if (!value) { unknownKeys.push(token); continue; }
+        if (!Object.prototype.hasOwnProperty.call(palette, key)) {
+            unknownKeys.push(key);
+            continue;
+        }
+        palette[key] = value;
+        applied++;
+    }
+    return { name: raw, resolved: name, palette, known: !!base, applied, unknownKeys };
+}
+
+/** A hex literal in any of the four lengths PuzzleScript accepts, or null. */
+function literalColor(token) {
+    if (typeof token !== 'string') return null;
+    if (/^#[0-9a-f]{3}$/i.test(token)) {
+        return '#' + token.slice(1).split('').map(c => c + c).join('').toUpperCase();
+    }
+    if (/^#[0-9a-f]{4}$/i.test(token)) {
+        return '#' + token.slice(1, 4).split('').map(c => c + c).join('').toUpperCase();
+    }
+    if (/^#[0-9a-f]{6}$/i.test(token)) return token.toUpperCase();
+    if (/^#[0-9a-f]{8}$/i.test(token)) return '#' + token.slice(1, 7).toUpperCase();
+    return null;
+}
+
+/**
+ * One line describing what a game's palette actually resolved to.
+ *
+ * Says when something was ignored. Falling back to arnecolors for a name this
+ * build does not carry is the right behaviour, but doing it silently is how
+ * somebody spends an afternoon wondering why the map editor and the game
+ * disagree about what colour the walls are.
+ */
+function describePalette(resolved) {
+    const parts = [];
+    if (!resolved.known) {
+        parts.push(`unknown here, showing ${resolved.resolved === resolved.name
+            ? 'arnecolors' : resolved.resolved}`);
+    } else if (resolved.resolved !== resolved.name) {
+        parts.push(resolved.resolved);
+    }
+    if (resolved.applied) {
+        parts.push(`${resolved.applied} override${resolved.applied === 1 ? '' : 's'}`);
+    }
+    if (resolved.unknownKeys.length) {
+        parts.push(`ignored ${resolved.unknownKeys.join(', ')}`);
+    }
+    return resolved.name + (parts.length ? ` (${parts.join('; ')})` : '');
+}
+
+const PALETTES_API = {
+    colorPalettes, colorPalettesAliases, resolvePalette, literalColor,
+    describePalette,
+};
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PALETTES_API;
 if (typeof globalThis !== 'undefined') {

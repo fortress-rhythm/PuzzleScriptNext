@@ -1216,7 +1216,28 @@ def cmd_fetch(slugs, outdir):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Rate and curate candidate palettes for PuzzleScript's 21 slots.")
+        description="Rate and curate candidate palettes for PuzzleScript's 21 slots.",
+        epilog="""\
+the usual run, from the repository root:
+
+  mkdir -p tools/candidates             put .hex / .gpl / .pal / .json in here
+  palette_curate.py score   tools/candidates/
+  palette_curate.py compare tools/candidates/
+  palette_curate.py sheet   tools/candidates/ -o tools/candidates/sheet.html
+  palette_curate.py show    tools/candidates/best.hex
+  palette_curate.py verdict best accept -m "why"
+  palette_curate.py emit-curated tools/candidates/best.hex
+
+then continue at step 4 of doc/palette-set.md.
+
+Everything prints to stdout except `sheet` (-o) and `verdict`, which writes
+tools/palette_verdicts.json. Nothing is written to src/ - emit-curated prints a
+draft for you to correct and paste.
+
+The score orders a reading queue; it cannot tell you a palette is good. Look at
+the sheet. Full notes in doc/palette-curation.md.
+""",
+        formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     for name, helptext in [("score", "rank candidates"),

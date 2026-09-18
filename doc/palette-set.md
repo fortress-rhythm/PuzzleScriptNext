@@ -53,6 +53,14 @@ Author with the short form; export the long one when you publish. The
 **PALETTES** panel does the conversion, and `src/demo/palette-refs.txt` holds all
 three ready to paste.
 
+The two forms now render identically in `puzzlescript-map-editor/` too. They
+did not before: the map editor read the base palette name and dropped every
+override, so the one representation meant to be portable was the one it drew in
+the wrong colours. It also never consulted its own numeric aliases, so
+`color_palette 3` fell back to arnecolors. Both are fixed, it carries all
+seventeen palettes now, and its test suite checks that copy against
+`src/js/colors.js` slot by slot whenever the two are checked out together.
+
 One detail that is easy to get wrong by hand: the block must also set
 `gray`, `darkgray` and `lightgray`. They are spelling aliases, not extra
 colours, but they are separate keys — omit them and a game that spells grey the

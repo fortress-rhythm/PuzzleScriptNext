@@ -10,3 +10,6 @@ src - Kopie
 # Python bytecode from the tools/ scripts
 __pycache__/
 *.pyc
+
+# Downloaded candidate palettes and generated contact sheets
+tools/candidates/

@@ -12,8 +12,8 @@
 // OBJECTS section, and squares up the cells. The result is a map you can
 // actually read, in a tool that already has the editing model you want.
 
-const { parseGame, buildGlyphTable, findPaletteName, labelForCommands } = require('./psgame');
-const { colorPalettes } = require('./palettes');
+const { parseGame, buildGlyphTable, findPaletteSpec, labelForCommands } = require('./psgame');
+const { resolvePalette, describePalette } = require('./palettes');
 const xlsx = require('./xlsx');
 const csv = require('./csv');
 
@@ -87,13 +87,15 @@ function makeGlyphLookup(glyphs, caseSensitive) {
  */
 function analyse(source) {
     const game = parseGame(source);
-    const paletteName = findPaletteName(game);
-    const palette = colorPalettes[paletteName] || colorPalettes.arnecolors;
+    const spec = findPaletteSpec(game);
+    const resolved = resolvePalette(spec);
+    const paletteName = resolved.name;
+    const palette = resolved.palette;
     const glyphs = buildGlyphTable(game, palette);
     const grids = game.grids;
     const background = findBackgroundChar(game, glyphs, grids);
     const glyphAt = makeGlyphLookup(glyphs, game.caseSensitive);
-    return { game, palette, paletteName, glyphs, glyphAt, grids, background };
+    return { game, palette, paletteName, resolved, glyphs, glyphAt, grids, background };
 }
 
 // ---------------------------------------------------------------------------
@@ -101,7 +103,7 @@ function analyse(source) {
 // ---------------------------------------------------------------------------
 
 function toWorkbook(source, options = {}) {
-    const { game, glyphs, glyphAt, grids, background, paletteName } = analyse(source);
+    const { game, glyphs, glyphAt, grids, background, resolved } = analyse(source);
     const sheets = [];
 
     // Index sheet: what is in this workbook, and the commands attached to each
@@ -146,7 +148,7 @@ function toWorkbook(source, options = {}) {
         ]);
     }
     legendRows.push([]);
-    legendRows.push([{ v: `palette: ${paletteName}` }]);
+    legendRows.push([{ v: `palette: ${describePalette(resolved)}` }]);
     legendRows.push([{ v: `background char: ${background}` }]);
     sheets.push({ name: '_legend', rows: legendRows, colWidth: 22, freeze: { rows: 1, cols: 0 } });
 

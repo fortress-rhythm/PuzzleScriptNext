@@ -10,22 +10,76 @@ This tool is for the pile you have not chosen from yet.
 
 ## Ten-minute version
 
+Run everything from the repository root.
+
 ```sh
-mkdir candidates                      # drop .hex / .gpl / .pal / .json in it
-uv run tools/palette_test.py                             # should say all passed
-uv run tools/palette_curate.py score   candidates/       # rank them
-uv run tools/palette_curate.py compare candidates/       # does the mode matter?
-uv run tools/palette_curate.py sheet   candidates/ -o sheet.html   # LOOK at them
-uv run tools/palette_curate.py show    candidates/best.hex         # read the notes
+mkdir -p tools/candidates            # drop .hex / .gpl / .pal / .json in here
+uv run tools/palette_test.py                                    # says all passed
+uv run tools/palette_curate.py score   tools/candidates/        # rank them
+uv run tools/palette_curate.py compare tools/candidates/        # does the mode matter?
+uv run tools/palette_curate.py sheet   tools/candidates/ -o tools/candidates/sheet.html
+open tools/candidates/sheet.html                                # LOOK at them
+uv run tools/palette_curate.py show    tools/candidates/best.hex
 uv run tools/palette_curate.py verdict best accept -m "why"
-uv run tools/palette_curate.py emit-curated candidates/best.hex    # correct, then paste
+uv run tools/palette_curate.py emit-curated tools/candidates/best.hex
 ```
 
 Then continue at step 4 of `doc/palette-set.md`.
 
-The only step that is not optional is `sheet`. A score orders a reading queue;
-it cannot tell you a palette is beautiful. Benten Pond scores worst of the
-three shipped palettes on every reading and was still the right adoption.
+Nothing is special about `tools/candidates/` except that it is `.gitignore`d,
+so downloaded palettes and generated sheets do not end up in a commit. Any
+directory works; every command takes paths.
+
+The only step that is not optional is looking at the sheet. A score orders a
+reading queue; it cannot tell you a palette is beautiful. Benten Pond scores
+worst of the three shipped palettes on every reading and was still the right
+adoption.
+
+## Where things go
+
+**Input** is any file or directory you name on the command line. There is no
+configured location and no search path — if you would rather keep candidates on
+your desktop, point at your desktop.
+
+**Output** is stdout for everything except two things:
+
+| what | where | in git? |
+|---|---|---|
+| `score`, `compare`, `show`, `combos`, `audit`, `anchors` | stdout — redirect if you want a file | no |
+| `emit-curated`, `block` | stdout — made to be read, corrected, and pasted | no |
+| `sheet` | the `-o` path; defaults to `./palette-sheet.html` | no, if you keep it in `tools/candidates/` |
+| `verdict` | `tools/palette_verdicts.json`, always | **yes** — it is the record of your decisions |
+| `fetch` | the `-o` directory; defaults to `./candidates` | no |
+
+`tools/palette_verdicts.json` is the only file the tool writes on its own, and
+the only one meant to be committed. Nothing writes to `src/`: `emit-curated`
+prints a draft for you to correct and paste into `palette_analysis.py`, and
+`--emit-js` prints a block for you to paste into `colors.js`. That is
+deliberate — a tool that edited the engine's palette table directly would make
+a curation mistake indistinguishable from a bug.
+
+## What runs where, and in what language
+
+The curation tooling is Python; nothing a *player* or a *game author* touches
+is.
+
+| | language | when |
+|---|---|---|
+| `tools/*.py` | Python, via `uv run` | only while deciding on and generating a palette |
+| `src/js/colors.js` | JavaScript | the engine, at runtime |
+| `src/js/palettes_ui.js` | JavaScript | the **PALETTES** panel in the editor toolbar |
+| `puzzlescript-map-editor/` | JavaScript, Node and browser | the standalone map toolkit |
+
+So: Python is a build-time tool for this repository, not a dependency of the
+engine, the editor, the map editor, or anything you ship. A game author never
+runs it. If you only want to *use* the palettes, the PALETTES panel does
+preview, apply and export without touching a terminal, and
+`src/demo/palette-refs.txt` has all three ready to paste.
+
+You need Python only to rate a new candidate palette or to regenerate the
+generated files, and only `uv` — the scripts are dependency-free with PEP 723
+headers, so `uv run` needs no resolution step and there is no environment to
+create.
 
 ## What is here
 

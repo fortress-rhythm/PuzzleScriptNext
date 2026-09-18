@@ -665,6 +665,142 @@ test('all upstream demo games round-trip unchanged', () => {
     sweepRoundTrip(files, 'upstream demo games');
 });
 
+
+// ---------------------------------------------------------------------------
+// Colour palettes
+// ---------------------------------------------------------------------------
+
+const palettes = require('../src/palettes');
+
+function gameWithPalette(line) {
+    return [
+        'title T', line, '',
+        '===', 'OBJECTS', '===', '',
+        'Background', 'green', '', 'Wall', 'black', '',
+        '===', 'LEGEND', '===', '', '. = Background', '# = Wall', '',
+        '===', 'LEVELS', '===', '', '..#', '.#.', '',
+    ].join('\n');
+}
+
+test('a plain palette name resolves', () => {
+    const r = palettes.resolvePalette({ name: 'mastersystem', overrides: [] });
+    assert.strictEqual(r.known, true);
+    assert.strictEqual(r.palette.black, '#000000');
+});
+
+test('numeric palette aliases resolve', () => {
+    // These were defined and never consulted, so every numbered palette
+    // silently rendered as arnecolors.
+    const r = palettes.resolvePalette({ name: '3', overrides: [] });
+    assert.strictEqual(r.resolved, 'amiga');
+    assert.strictEqual(r.palette.green, palettes.colorPalettes.amiga.green);
+});
+
+test('an unknown palette name falls back to arnecolors and says so', () => {
+    const r = palettes.resolvePalette({ name: 'nosuchpalette', overrides: [] });
+    assert.strictEqual(r.known, false);
+    assert.strictEqual(r.palette.black, palettes.colorPalettes.arnecolors.black);
+    assert.ok(/unknown here/.test(palettes.describePalette(r)));
+});
+
+test('inline overrides are applied', () => {
+    const spec = psgame.findPaletteSpec(psgame.parseGame(
+        gameWithPalette('color_palette arnecolors black #292f25 green #4c8149')));
+    assert.deepStrictEqual(spec.overrides,
+        [['black', '#292f25'], ['green', '#4c8149']]);
+    const r = palettes.resolvePalette(spec);
+    assert.strictEqual(r.applied, 2);
+    assert.strictEqual(r.palette.black, '#292F25');
+    assert.strictEqual(r.palette.green, '#4C8149');
+});
+
+test('an override value may name another colour', () => {
+    const r = palettes.resolvePalette(
+        { name: 'arnecolors', overrides: [['green', 'blue']] });
+    assert.strictEqual(r.palette.green, palettes.colorPalettes.arnecolors.blue);
+});
+
+test('an override of a slot that does not exist is reported, not applied', () => {
+    const r = palettes.resolvePalette(
+        { name: 'arnecolors', overrides: [['chartreuse', '#123456']] });
+    assert.strictEqual(r.applied, 0);
+    assert.deepStrictEqual(r.unknownKeys, ['chartreuse']);
+});
+
+test('grey and gray stay separate keys', () => {
+    // The engine treats them as separate, so overriding one must not move the
+    // other - a viewer that aliased them would disagree with the game.
+    const r = palettes.resolvePalette(
+        { name: 'arnecolors', overrides: [['grey', '#123456']] });
+    assert.strictEqual(r.palette.grey, '#123456');
+    assert.strictEqual(r.palette.gray, palettes.colorPalettes.arnecolors.gray);
+});
+
+test('a trailing unpaired override token is ignored, not fatal', () => {
+    const spec = psgame.findPaletteSpec(psgame.parseGame(
+        gameWithPalette('color_palette arnecolors black #292f25 white')));
+    assert.deepStrictEqual(spec.overrides, [['black', '#292f25']]);
+});
+
+test('findPaletteName still returns just the base name', () => {
+    const game = psgame.parseGame(
+        gameWithPalette('color_palette arnecolors black #292f25'));
+    assert.strictEqual(psgame.findPaletteName(game), 'arnecolors');
+});
+
+test('the fork palette names resolve', () => {
+    for (const name of ['bentenpond', 'dungeon20', 'oekakinl']) {
+        const r = palettes.resolvePalette({ name, overrides: [] });
+        assert.strictEqual(r.known, true, name);
+        assert.strictEqual(Object.keys(r.palette).length, 24, name);
+    }
+});
+
+test('the short and portable palette forms render identically', () => {
+    // PuzzleScript Next's palette-set docs promise these two are the same
+    // palette: `color_palette bentenpond` for the fork, and the spelled-out
+    // override block for everywhere else. That promise is only true if a
+    // viewer honours the overrides - before it did, these differed.
+    const short = sheet.analyse(gameWithPalette('color_palette bentenpond'));
+    const bp = palettes.colorPalettes.bentenpond;
+    const pairs = Object.keys(bp).map(k => `${k} ${bp[k]}`).join(' ');
+    const portable = sheet.analyse(
+        gameWithPalette(`color_palette arnecolors ${pairs}`));
+    for (const ch of Object.keys(short.glyphs)) {
+        assert.strictEqual(portable.glyphs[ch].color, short.glyphs[ch].color,
+            `glyph ${ch} differs between the short and portable forms`);
+    }
+});
+
+test('vendored palettes match PuzzleScriptNext colors.js, when it is beside us', () => {
+    // This file is a copy, so it can drift. Checked only when the engine repo
+    // is checked out as a sibling, the same way the demo-game sweep is.
+    const colorsJs = path.join(__dirname, '..', '..', 'src', 'js', 'colors.js');
+    if (!fs.existsSync(colorsJs)) return;
+    const text = fs.readFileSync(colorsJs, 'utf8');
+    const body = text.slice(text.indexOf('colorPalettes = {'));
+    const upstream = {};
+    const blockRe = /(\w+)\s*:\s*\{([^}]*)\}/g;
+    let m;
+    while ((m = blockRe.exec(body))) {
+        const entries = {};
+        const pairRe = /(\w+)\s*:\s*"(#[0-9a-fA-F]{6})"/g;
+        let q;
+        while ((q = pairRe.exec(m[2]))) entries[q[1]] = q[2].toLowerCase();
+        if (Object.keys(entries).length >= 24) upstream[m[1]] = entries;
+    }
+    assert.ok(Object.keys(upstream).length >= 14,
+        `parsed only ${Object.keys(upstream).length} palettes from colors.js`);
+    for (const [name, entries] of Object.entries(upstream)) {
+        const mine = palettes.colorPalettes[name];
+        assert.ok(mine, `colors.js has "${name}" and src/palettes.js does not`);
+        for (const [slot, hex] of Object.entries(entries)) {
+            assert.strictEqual(String(mine[slot]).toLowerCase(), hex,
+                `${name}.${slot} drifted from colors.js`);
+        }
+    }
+});
+
 // ---------------------------------------------------------------------------
 
 for (const { name, error } of failures) {

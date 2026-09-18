@@ -128,9 +128,8 @@ function loadSource(text, fileName) {
         return false;
     }
 
-    const paletteName = psgame.findPaletteName(game);
-    const palette = palettes.colorPalettes[paletteName] || palettes.colorPalettes.arnecolors;
-    const glyphs = psgame.buildGlyphTable(game, palette);
+    const resolved = palettes.resolvePalette(psgame.findPaletteSpec(game));
+    const glyphs = psgame.buildGlyphTable(game, resolved.palette);
 
     state.source = text;
     state.fileName = fileName || 'game.txt';
@@ -184,7 +183,11 @@ function loadSource(text, fileName) {
     fitZoom();
     fullRefresh();
     canvas.focus();
-    setStatus(`${state.levels.length} level(s) loaded`);
+    // Say what the colours came from, and warn when this build could not honour
+    // the game's request - the map would otherwise just look subtly wrong.
+    const p = state.palette;
+    const note = p ? ` - palette ${palettes.describePalette(p)}` : '';
+    setStatus(`${state.levels.length} level(s) loaded${note}`, p ? !p.known : false);
     return true;
 }
 

@@ -572,15 +572,42 @@ function resolveColor(token, palette) {
 }
 
 /**
- * Which palette does this game use? Read from the prelude.
+ * Which palette does this game use, and what does it change about it?
+ *
+ * Returns { name, overrides } where overrides is a list of [key, token] pairs
+ * in source order, ready for palettes.resolvePalette.
+ *
+ * The whole line matters, not just the first word. PuzzleScript's
+ * `color_palette <base> <key> <value> ...` form spells out per-game overrides
+ * on top of a stock palette, and it is the form you are meant to distribute -
+ * it is the only one that runs on every build. Reading just the base name and
+ * discarding the rest rendered exactly those games in the wrong colours, with
+ * no indication anything had been ignored.
+ *
+ * A trailing unpaired token is ignored rather than treated as an error: this
+ * is a viewer, and half a pair is more likely a typo in someone else's game
+ * than a reason to refuse to draw their map.
  */
-function findPaletteName(game) {
+function findPaletteSpec(game) {
     const preludeEnd = game.sections.length ? game.sections[0].headerLine : game.lines.length;
     for (let i = 0; i < preludeEnd; i++) {
-        const m = game.stripped[i].code.trim().match(/^(?:color_palette|colour_palette)\s+(\S+)/i);
-        if (m) return m[1].toLowerCase();
+        const m = game.stripped[i].code.trim()
+            .match(/^(?:color_palette|colour_palette)\s+(.+)$/i);
+        if (!m) continue;
+        const tokens = m[1].trim().split(/\s+/);
+        const name = tokens.shift().toLowerCase();
+        const overrides = [];
+        for (let j = 0; j + 1 < tokens.length; j += 2) {
+            overrides.push([tokens[j].toLowerCase(), tokens[j + 1]]);
+        }
+        return { name, overrides };
     }
-    return 'arnecolors';
+    return { name: 'arnecolors', overrides: [] };
+}
+
+/** The base palette name alone. Kept for callers that only want the label. */
+function findPaletteName(game) {
+    return findPaletteSpec(game).name;
 }
 
 /**
@@ -652,6 +679,7 @@ function applyGridEdits(game, edits) {
 // Named distinctly rather than a generic `API`: in the browser these files
 // load as plain <script>s and share one global scope.
 const PSGAME_API = {
+    findPaletteSpec,
     SECTION_NAMES,
     LEVEL_COMMANDS,
     parseGame,
