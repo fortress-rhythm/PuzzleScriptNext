@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <link rel="shortcut icon" type="image/x-icon" href="ico/favicon.ico" />
+
+    <title>Adding a Custom Font - PuzzleScript Next Documentation</title>
+
+    <!-- Bootstrap core CSS -->
+    <link href="css/bootstrap.css" rel="stylesheet">
+
+    <!-- Custom styles for this template -->
+    <link href="css/bootstrap-theme.css" rel="stylesheet">
+
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+      <script src="../../assets/js/html5shiv.js"></script>
+      <script src="../../assets/js/respond.min.js"></script>
+    <![endif]-->
+
+    <style>
+      code, pre { word-break: break-all; white-space: pre-wrap; }
+    </style>
+  </head>
+
+  <body>
+
+    <div class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="../index.html"><img src="../images/mascot_colorful.png">Puzzlescript Next</a>
+        </div>
+        <div class="collapse navbar-collapse">
+          <ul class="nav navbar-nav">
+              <li><a href="../editor.html">Make A Game</a></li>
+
+              <li class="active"><a href="documentation.html">Documentation</a></li>
+          </ul>
+          <ul class="nav navbar-nav navbar-right">
+            <li><a href="https://discord.gg/3uumegUV7y">Discord</a></li>
+            <li><a href="https://groups.google.com/g/puzzlescript">Forum</a></li>
+            <li><a href="https://github.com/david-pfx/PuzzleScriptNext">GitHub</a></li>
+            <li><a href="about.html">About</a></li>
+          </ul>
+        </div><!--/.nav-collapse -->
+      </div>
+    </div>
+
+    <div class="container">
+
+<p>
+<ol class="breadcrumb">
+  <li><a href="documentation.html">Documentation</a></li>
+  <li class="active">Adding a Custom Font</li>
+</ol>
+<p>
+
+<h1>Adding a Custom Font <img src="../images/mascot_32.png"></h1>
+
+<p>By default, title screens, menus, messages and the status line are drawn in a plain Monospace
+system font. The <a href="prelude.html#custom_font"><b>custom_font</b></a> prelude directive
+<img src="../images/psplus.png" title="PuzzleScript Plus" height="16"> lets any individual game
+swap that for a real font file instead &mdash; a pixel font you drew yourself, one you bought or
+downloaded, whatever fits the game. This page is a step-by-step walkthrough of doing that, using
+a free pixel font (<a href="https://caffinate.itch.io/abaddon">Abaddon Bold</a> by Nathan Scott)
+as the worked example.</p>
+
+<p><b>This is a per-game setting, not an engine setting.</b> It would be technically possible to
+bake one specific font into the engine itself as the new default for every game (replacing the
+Monospace fallback in <code>src/js/graphics.js</code>), but that's deliberately <i>not</i> what
+this page shows you how to do: it would silently reskin every game built with this engine that
+doesn't ask for it, which is more confusing than useful. Use <b>custom_font</b> in the games that
+actually want a particular look; leave the ones that don't alone.</p>
+
+<h2>1. Get a font file</h2>
+<p>You need the actual font file (<code>.ttf</code>, <code>.otf</code> or <code>.woff2</code>) &mdash;
+not a link to a page about the font. A few common sources:</p>
+<ul>
+  <li>A pixel-font editor like <a href="https://www.pentacom.jp/pentacom/bitfontmaker2/">BitFontMaker2</a>
+    lets you draw your own glyph-by-glyph and export it as a downloadable <code>.ttf</code>.</li>
+  <li>Marketplaces like <a href="https://itch.io/game-assets/tag-font">itch.io</a> have many free and
+    paid pixel fonts, usually packaged as a <code>.zip</code> of one or more <code>.ttf</code>/<code>.otf</code>
+    files.</li>
+  <li><a href="https://fonts.google.com/">Google Fonts</a> works too, and can be linked to directly by
+    URL instead of embedded (see step 4).</li>
+</ul>
+<p><b>Check the license &mdash; including the font file's own metadata, not just the page you got it
+from.</b> A font you drew yourself is obviously fine. A downloaded one usually says what's allowed,
+but different sources for the same font can disagree: the Abaddon Bold example used on this page
+comes as a <code>.zip</code> whose <code>readme.txt</code> says "CC BY 3.0", but the font file
+itself has "CC BY-ND 3.0" (No Derivatives) baked into its own name table. Either way, embedding the
+exact, unmodified file (as this page does) is fine; it's only if you modify the font first
+&mdash; subsetting it, re-hinting it, editing glyphs &mdash; that the stricter reading matters. A
+font page with no license mentioned at all is not automatically free to redistribute inside your
+game &mdash; check before shipping.</p>
+
+<h2>2. Check the file size</h2>
+<p>You're about to embed this file's entire contents directly into your game's source. Pixel fonts
+are normally small (single-digit to low-double-digit KB), which is exactly what makes this
+practical. Abaddon Bold, for example, is about 15KB. If a font file is hundreds of KB or more,
+either look for a lighter one or host it externally instead (step 4b).</p>
+
+<h2>3. Base64-encode it</h2>
+<p>The engine loads a custom font as a <a href="https://developer.mozilla.org/en-US/docs/Web/URI/Reference/Schemes/data"><code>data:</code>
+URI</a>: the font's raw bytes, encoded as base64 text, inlined directly into a prelude line. This
+is what makes it <i>permanent</i> &mdash; the font travels inside the <code>.txt</code> game file
+itself, so it keeps working even if the site you originally got it from disappears, and works
+identically when the game is shared, exported to standalone HTML, or embedded elsewhere.</p>
+
+<p>If you use Python (with <a href="https://docs.astral.sh/uv/">uv</a> or otherwise), <code>base64</code>
+is in the standard library, so no install is needed:</p>
+<pre><code>uv run python -c "import base64; print(base64.b64encode(open('AbaddonBold.ttf','rb').read()).decode())" &gt; font.b64.txt</code></pre>
+<p>Or without uv:</p>
+<pre><code>python3 -c "import base64; print(base64.b64encode(open('AbaddonBold.ttf','rb').read()).decode())" &gt; font.b64.txt</code></pre>
+<p>If you'd rather not touch a terminal, a web tool like
+<a href="https://base64.guru/converter/encode/file">File to Base64</a> works too &mdash; pick the
+"Data URI" output format.</p>
+
+<h2>4. Add it to your prelude</h2>
+<p>Paste the result as a single prelude line (it'll be one very long line &mdash; that's expected):</p>
+<pre><code>custom_font data:font/ttf;base64,AAEAAAAKAIAAAwAgT1MvMltTiOMAAAEoAAAAYGNtYXCIGsDS...</code></pre>
+<p>Optionally tune the size with <b>font_size</b> (an em multiplier, 1 = default):</p>
+<pre><code>font_size 1.5</code></pre>
+
+<h3>4b. Alternative: link to a font URL instead of embedding it</h3>
+<p><b>custom_font</b> also accepts a plain URL to a <code>.woff2</code>/<code>.ttf</code> file, which
+skips the base64 step entirely:</p>
+<pre><code>custom_font https://fonts.gstatic.com/s/vt323/v17/pxiKyp0ihIEF2isfFJU.woff2</code></pre>
+<p>This is quicker to set up, but it's <i>not</i> permanent in the same sense as embedding: if that
+URL ever goes away or changes, the game silently falls back to Monospace. It's a reasonable choice
+for something like a Google Fonts link (which Google effectively guarantees to keep serving), but
+not for a one-off download link from a font marketplace or gallery page &mdash; embed those instead.</p>
+
+<h2>5. Test it</h2>
+<p>Custom fonts only affect the title screen, menus, message screens and the status line &mdash; they
+don't change how objects are drawn on the grid (for that, see <b>sprite_size</b> and the objects'
+own pixel art). Load your game and check:</p>
+<ul>
+  <li>The title screen and main menu.</li>
+  <li>Any <b>message</b> screens your game uses.</li>
+  <li>Every character your text actually uses, especially accented letters or symbols &mdash; a font
+    exported from a pixel-font editor or with a narrow glyph set can be missing some of them, and a
+    missing glyph will usually just render blank.</li>
+</ul>
+
+<p>There's a working, ready-to-open example in the demo folder:
+<a href="../editor.html?demo=next/custom_font_demo">try the Custom Font Demo in the editor</a>
+(or view its source at <code>demo/next/custom_font_demo.txt</code>). It embeds Abaddon Bold exactly
+as described above.</p>
+
+    </div><!-- /.container -->
+
+
+    <!-- Bootstrap core JavaScript
+    ================================================== -->
+    <!-- Placed at the end of the document so the pages load faster -->
+    <script src="js/jquery.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+  </body>
+</html>
