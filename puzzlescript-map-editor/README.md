@@ -87,9 +87,9 @@ only way to ship a custom palette that runs on every PuzzleScript build. A
 viewer that read the base name and dropped the overrides would render exactly
 those games in the wrong colours, which is what this one used to do.
 
-The twenty-three palettes in `src/palettes.js` are copied from PuzzleScript Next —
-the fourteen stock ones, plus the nine its palette-set extension adds at
-indices 15-23. When this repo is checked out inside PuzzleScriptNext the
+The twenty-four palettes in `src/palettes.js` are copied from PuzzleScript Next —
+the fourteen stock ones, plus the ten its palette-set extension adds at
+indices 15-24. When this repo is checked out inside PuzzleScriptNext the
 test suite verifies the copy against `src/js/colors.js` slot by slot, and skips
 the check when it is not, the same way the demo-game sweep does.
 

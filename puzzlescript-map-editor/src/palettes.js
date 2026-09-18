@@ -5,8 +5,8 @@
 // test suite verifies this file against colors.js whenever PuzzleScriptNext is
 // checked out beside this repo, and skips the check when it is not.
 //
-// The last nine are fork-only: PuzzleScript Next's palette-set extension adds
-// them at indices 15-23, and stock PuzzleScript has never heard the names.
+// The last ten are fork-only: PuzzleScript Next's palette-set extension adds
+// them at indices 15-24, and stock PuzzleScript has never heard the names.
 // Carrying them here costs nothing and means a game written against the fork
 // renders in its own colours rather than silently in arnecolors.
 
@@ -608,6 +608,32 @@ const colorPalettes = {
         "darkblue": "#44425f",
         "purple": "#493556",
         "pink": "#c197b0"
+    },
+    "berrysepia": {
+        "black": "#0d001a",
+        "white": "#e2ded5",
+        "grey": "#372e38",
+        "darkgrey": "#241a21",
+        "lightgrey": "#c4b8a6",
+        "gray": "#372e38",
+        "darkgray": "#241a21",
+        "lightgray": "#c4b8a6",
+        "red": "#b87258",
+        "darkred": "#3c1a13",
+        "lightred": "#ddbdac",
+        "brown": "#493e2d",
+        "darkbrown": "#30231a",
+        "lightbrown": "#a08e76",
+        "orange": "#d3a690",
+        "yellow": "#d8d4a2",
+        "green": "#88aa58",
+        "darkgreen": "#374e22",
+        "lightgreen": "#b5ca90",
+        "blue": "#6d85a5",
+        "lightblue": "#6ceded",
+        "darkblue": "#1b3652",
+        "purple": "#6e5181",
+        "pink": "#b5a6bc"
     }
 };
 
@@ -634,7 +660,8 @@ const colorPalettesAliases = {
     "20": "ruststorm",
     "21": "rustfairyochre",
     "22": "endofallglory",
-    "23": "gloryrust"
+    "23": "gloryrust",
+    "24": "berrysepia"
 };
 
 /**

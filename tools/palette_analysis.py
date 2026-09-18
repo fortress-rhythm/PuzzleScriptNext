@@ -86,6 +86,16 @@ SOURCES = {
                   cb8965 ba5d48 973737 6c2d39 141a0d 4b2d28 744e65 7f7397 8ab0d8 aad8f7
                   daedfe f2f9ff""".split(),
     },
+    "berrysepia": {
+        "title": "Berry Nebula + Soggy Sepia CRT-20",
+        "author": "Lostinindigo and Digi (@Digitress)",
+        "url": "https://lospec.com/palette-list/berry-nebula",
+        "note": "pooled from Berry Nebula by Lostinindigo and Soggy Sepia CRT-20 by Digi / @Digitress (lospec.com/palette-list/soggy-sepia-crt-20) - each supplies exactly what the other's notes say it lacks",
+        "hex": """6ceded 6cb9c9 6d85a5 6e5181 6f1d5c 4f1446 2e0a30 0d001a 0a0707 140f0f
+                  30231a 493e2d a08e76 c4b8a6 d2cabd e2ded5 0d0505 190b0b 3c1a13 5b2e22
+                  b87258 d3a690 ddbdac e9d6ca 070905 0f130b 242c13 374e22 88aa58 b5ca90
+                  c7d7ac dbe6ca 070509 0f0b13 241a21 372e38 887294 b5a6bc c7bdce dbd6e0""".split(),
+    },
     "rustfairy": {
         "title": "Rust Gold 8 + FairyRust_8x",
         "author": "Trigo Mathmancer and KRYPTOCCULTIST",
@@ -297,6 +307,40 @@ CURATED = {
         "darkblue": ("#44425f", "sourced"), "blue": ("#74819c", "sourced"),
         "lightblue": ("#aad8f7", "sourced"),
         "purple": ("#493556", "sourced"), "pink": ("#c197b0", "added"),
+    },
+    "berrysepia": {
+        # Soggy Sepia with real blues. Its own notes record three *added* blues
+        # because the source has none anywhere - and Berry Nebula is made of
+        # nothing but blues and purples, so the pairing replaces inventions with
+        # colours somebody actually chose. That is the whole argument for it;
+        # everything warm, green and neutral is Soggy Sepia's, unchanged from
+        # index 18.
+        #
+        # `black` is Berry Nebula's #0d001a rather than Soggy Sepia's #0a0707.
+        # They are 0.7 L apart and it makes no measurable difference, but a
+        # purple-black is the right black for a nebula.
+        "black": ("#0d001a", "sourced"), "darkgrey": ("#241a21", "sourced"),
+        "grey": ("#372e38", "sourced"), "lightgrey": ("#c4b8a6", "sourced"),
+        "white": ("#e2ded5", "sourced"),
+        "darkred": ("#3c1a13", "sourced"), "red": ("#b87258", "sourced"),
+        "lightred": ("#ddbdac", "sourced"),
+        "darkbrown": ("#30231a", "sourced"), "brown": ("#493e2d", "sourced"),
+        "lightbrown": ("#a08e76", "sourced"),
+        "orange": ("#d3a690", "sourced"), "yellow": ("#d8d4a2", "added"),
+        "darkgreen": ("#374e22", "sourced"), "green": ("#88aa58", "sourced"),
+        "lightgreen": ("#b5ca90", "sourced"),
+        # Berry Nebula is a gradient, not a palette: eight evenly-stepped colours
+        # along one path from near-black purple to neon cyan. Everything below
+        # L 40 on that path is purple, so it supplies `blue` and `lightblue` but
+        # not a dark blue, and the dark end is relit from its own #6d85a5.
+        #
+        # The fitter preferred #4f1446 there, and scored it higher for being
+        # sourced. It is a magenta-purple sixty degrees from what `darkblue`
+        # means - the misnomer this rubric exists to catch - so the derived
+        # colour wins and the score loses.
+        "darkblue": ("#1b3652", "added"), "blue": ("#6d85a5", "sourced"),
+        "lightblue": ("#6ceded", "sourced"),
+        "purple": ("#6e5181", "sourced"), "pink": ("#b5a6bc", "sourced"),
     },
     "rustfairy": {
         # Rust Gold's warm half against FairyRust's cool one. FairyRust's blues

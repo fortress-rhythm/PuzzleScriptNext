@@ -22,6 +22,7 @@ deuteranopia. The choice stays yours, and `verdict` is where you record it.
     uv run tools/palette_curate.py combos candidates/          who fills whose gaps
     uv run tools/palette_curate.py union a.gpl b.gpl -o both.gpl   pool them
     uv run tools/palette_curate.py audit                       check what ships
+    uv run tools/palette_curate.py preview --fork -o p.html    look at what ships
     uv run tools/palette_curate.py anchors                     the slot-name lexicon
     uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
     uv run tools/palette_curate.py emit-curated candidates/foo.hex
@@ -871,6 +872,108 @@ def cmd_compare(cands, stats):
     print("  Neither is a rule - the gap is the finding.")
 
 
+def preview_html(palettes, fork, colors_js):
+    """Every shipped palette as labelled chips, with its numbers underneath.
+
+    `sheet` does this for candidates; nothing did it for the palettes that
+    actually ship. The PALETTES panel in the editor shows them, but only with a
+    browser and a running engine, and `audit` prints their numbers without
+    showing a single colour. Deciding whether a palette is worth using means
+    looking at it, and that should not require launching the engine.
+    """
+    order = ["black", "white", "grey", "darkgrey", "lightgrey",
+             "gray", "darkgray", "lightgray",
+             "red", "darkred", "lightred", "brown", "darkbrown", "lightbrown",
+             "orange", "yellow", "green", "darkgreen", "lightgreen",
+             "blue", "lightblue", "darkblue", "purple", "pink"]
+    shown_fork = sum(1 for n in palettes if n in fork)
+    out = ["<!doctype html><meta charset=utf-8><title>shipped palettes</title>",
+           f"<style>{SHEET_CSS}</style>",
+           "<header><h1>Shipped palettes</h1>",
+           f"<div class=sub>{len(palettes)} palettes read from "
+           f"{html.escape(os.path.relpath(colors_js))}. "
+           + (f"{shown_fork} of them {'is a fork addition' if shown_fork == 1 else 'are fork additions'}, marked below. "
+              if shown_fork else "")
+           + "Every colour is what the engine will actually draw.</div></header>"]
+
+    for name, mapping in palettes.items():
+        res = analyse(mapping)
+        out.append("<div class=card>")
+        out.append(f"<h2>{html.escape(name)}"
+                   + (' <span class="v maybe">fork</span>' if name in fork else "")
+                   + "</h2>")
+        out.append("<div class=cols><div>")
+        for ramp, slots in list(RAMPS.items()) + [("other", SINGLETS)]:
+            out.append(f"<div class=ramp><b>{ramp}</b>"
+                       + "".join(swatch(mapping[s], s) for s in slots) + "</div>")
+        out.append("</div>")
+
+        out.append("<div class=axes>")
+        faults = res["ramp_faults"]
+        even = sum(res["ramp_evenness"].values()) / len(res["ramp_evenness"])
+        out.append(f"<div class=flags>distinct <code>{res['unique']}/21</code><br>"
+                   f"contrast pairs &lt;1.3: <code>{len(res['low_contrast'])}</code><br>"
+                   f"CVD collapses: <code>{res['cvd_total']}</code><br>"
+                   f"ramp faults: <code>{len(faults)}</code>, "
+                   f"mean evenness <code>{even:.2f}</code></div>")
+        if faults:
+            out.append("<div class=flags style='margin-top:8px'>"
+                       + "<br>".join(f"<code>{r}</code>: {hi} is "
+                                     f"{abs(d)} L darker than {lo}"
+                                     for r, lo, hi, d in faults) + "</div>")
+        for c, names in res["dupes"].items():
+            out.append(f"<div class=flags><code>{c}</code> shared by "
+                       f"{', '.join(names)}</div>")
+        out.append("</div>")
+
+        out.append("<div class=cvd><div class=meta>deuteranopia</div><div class=strip>"
+                   + "".join(
+                       '<div class="sw" style="background:%s"></div>'
+                       % ("#%02x%02x%02x" % tuple(int(x) for x in
+                          simulate(mapping[s], CVD["deuteranopia"])))
+                       for s in SLOTS) + "</div>"
+                   "<div class=meta style='margin-top:10px'>protanopia</div><div class=strip>"
+                   + "".join(
+                       '<div class="sw" style="background:%s"></div>'
+                       % ("#%02x%02x%02x" % tuple(int(x) for x in
+                          simulate(mapping[s], CVD["protanopia"])))
+                       for s in SLOTS) + "</div></div>")
+        out.append("</div>")
+
+        pairs = " ".join(f"{k} {mapping[ALIAS_OF.get(k, k)]}" for k in order)
+        out.append("<div style='margin-top:12px'><div class=meta>portable prelude block</div>"
+                   f"<pre>color_palette arnecolors {html.escape(pairs)}</pre></div>")
+        out.append("</div>")
+    return "\n".join(out)
+
+
+def cmd_preview(names, out, colors_js, fork_only=False):
+    everything = load_builtins(colors_js)
+    if not everything:
+        print(f"no palettes found in {colors_js}", file=sys.stderr)
+        return 1
+    fork = set(FORK_PALETTES(colors_js))
+    if fork_only:
+        everything = {k: v for k, v in everything.items() if k in fork}
+    if names:
+        wanted, missing = {}, []
+        for n in names:
+            if n in everything:
+                wanted[n] = everything[n]
+            else:
+                missing.append(n)
+        for n in missing:
+            print(f"no palette called {n}", file=sys.stderr)
+        if not wanted:
+            print(f"known: {', '.join(everything)}", file=sys.stderr)
+            return 1
+        everything = wanted
+    with open(out, "w", encoding="utf-8") as f:
+        f.write(preview_html(everything, fork, colors_js))
+    print(f"wrote {out}  ({len(everything)} palettes)")
+    return 0
+
+
 def cmd_union(paths, out, name=None):
     """Pool several palettes into one candidate file.
 
@@ -1085,21 +1188,7 @@ def cmd_block(r):
 
 # ------------------------------------------------------------------ the sheet
 
-def swatch(c, label="", cls=""):
-    fg = "#000" if lab(c)[0] > 55 else "#fff"
-    return (f'<div class="sw {cls}" style="background:{c};color:{fg}">'
-            f'<span class="n">{html.escape(label)}</span>'
-            f'<span class="h">{c}</span></div>')
-
-
-def sheet_html(rows, stats, verdicts):
-    """One self-contained page. No network, no build step: open the file.
-
-    The point of the sheet is that the numbers above are an index, not an
-    answer - you cannot tell whether a palette is worth using without looking
-    at it, and looking at 21 chips in a grid is the whole job.
-    """
-    css = """
+SHEET_CSS = """
 body{font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;margin:0;
  background:#14161a;color:#e8e6e1}
 header{padding:20px 28px;border-bottom:1px solid #2a2e35}
@@ -1139,6 +1228,23 @@ pre{background:#0d0f12;border:1px solid #2a2e35;border-radius:5px;padding:9px 11
 .v.maybe{background:#43391f;color:#e3b04b}
 .legend{font-size:11px;color:#8b929e;margin-top:6px}
 """
+
+
+def swatch(c, label="", cls=""):
+    fg = "#000" if lab(c)[0] > 55 else "#fff"
+    return (f'<div class="sw {cls}" style="background:{c};color:{fg}">'
+            f'<span class="n">{html.escape(label)}</span>'
+            f'<span class="h">{c}</span></div>')
+
+
+def sheet_html(rows, stats, verdicts):
+    """One self-contained page. No network, no build step: open the file.
+
+    The point of the sheet is that the numbers above are an index, not an
+    answer - you cannot tell whether a palette is worth using without looking
+    at it, and looking at 21 chips in a grid is the whole job.
+    """
+    css = SHEET_CSS
     out = [f"<!doctype html><meta charset=utf-8><title>palette candidates</title>",
            f"<style>{css}</style>",
            "<header><h1>Palette candidates</h1>",
@@ -1329,6 +1435,12 @@ the sheet. Full notes in doc/palette-curation.md.
     p = sub.add_parser("anchors", help="the slot-name lexicon, and any drift")
     p.add_argument("--colors-js", default=None)
 
+    p = sub.add_parser("preview", help="look at the palettes that ship")
+    p.add_argument("names", nargs="*", help="palette names; default is all of them")
+    p.add_argument("-o", "--out", default="palette-preview.html")
+    p.add_argument("--fork", action="store_true", help="only the fork's own")
+    p.add_argument("--colors-js", default=None)
+
     p = sub.add_parser("union", help="pool several palettes into one candidate")
     p.add_argument("paths", nargs="+", help="two or more palette files")
     p.add_argument("-o", "--out", required=True, help="the .gpl file to write")
@@ -1362,6 +1474,10 @@ the sheet. Full notes in doc/palette-curation.md.
 
     if args.cmd == "union":
         return cmd_union(args.paths, args.out, args.name)
+
+    if args.cmd == "preview":
+        return cmd_preview(args.names, args.out,
+                           args.colors_js or find_colors_js(), args.fork)
 
     colors_js = args.colors_js or find_colors_js()
     stats, builtins = corpus_stats(colors_js)

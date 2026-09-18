@@ -54,6 +54,13 @@ color_palette arnecolors black #342028 white #e5dbbc grey #7f8f8d darkgrey #3f5c
 )
 color_palette arnecolors black #141a0d white #f2f9ff grey #7f8f8d darkgrey #3f5c63 lightgrey #abb7aa gray #7f8f8d darkgray #3f5c63 lightgray #abb7aa red #973737 darkred #522b34 lightred #ba5d48 brown #9c5642 darkbrown #743422 lightbrown #b68260 orange #cb8965 yellow #e5dbbc green #6aa074 darkgreen #457968 lightgreen #a5be89 blue #74819c lightblue #aad8f7 darkblue #44425f purple #493556 pink #c197b0
 
+(Berry Nebula + Soggy Sepia CRT-20 - Lostinindigo and Digi (@Digitress)
+ https://lospec.com/palette-list/berry-nebula
+ pooled from Berry Nebula by Lostinindigo and Soggy Sepia CRT-20 by Digi / @Digitress (lospec.com/palette-list/soggy-sepia-crt-20) - each supplies exactly what the other's notes say it lacks.
+ Original additions, not from the source palette: yellow, darkblue.
+)
+color_palette arnecolors black #0d001a white #e2ded5 grey #372e38 darkgrey #241a21 lightgrey #c4b8a6 gray #372e38 darkgray #241a21 lightgray #c4b8a6 red #b87258 darkred #3c1a13 lightred #ddbdac brown #493e2d darkbrown #30231a lightbrown #a08e76 orange #d3a690 yellow #d8d4a2 green #88aa58 darkgreen #374e22 lightgreen #b5ca90 blue #6d85a5 lightblue #6ceded darkblue #1b3652 purple #6e5181 pink #b5a6bc
+
 (Rust Gold 8 + FairyRust_8x - Trigo Mathmancer and KRYPTOCCULTIST
  https://lospec.com/palette-list/rust-gold-8
  pooled from Rust Gold 8 by Trigo Mathmancer and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - one warm half and one cool one, neither of which has a green.
