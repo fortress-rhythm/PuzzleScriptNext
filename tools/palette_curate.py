@@ -697,6 +697,47 @@ def evaluate(cands, stats, mode="fit-colourname"):
     return rows
 
 
+def score_json(rows, stats):
+    """The score table as JSON, for sorting and filtering with other tools.
+
+    The text table is ranked by composite and that is usually what you want,
+    but "show me everything with no colourblind collapses" or "sort by sourced
+    slots" are ordinary questions and a fixed table cannot answer them. This is
+    the same numbers in a shape `jq` can work on.
+    """
+    verdicts = load_verdicts()
+    out = {
+        "mode": rows[0]["mode"] if rows else "fit-colourname",
+        "corpus": {"palettes": len(stats["names"]),
+                   "contrast_range": [min(stats["contrast"]), max(stats["contrast"])],
+                   "cvd_range": [min(stats["cvd"]), max(stats["cvd"])]},
+        "candidates": [],
+    }
+    for r in rows:
+        res = r["res"]
+        counts = {k: sum(1 for s in SLOTS if r["prov"][s] == k)
+                  for k in ("sourced", "standin", "derived", "added")}
+        out["candidates"].append({
+            "name": r["name"],
+            "slug": r["slug"],
+            "author": r.get("author"),
+            "source_file": r.get("source_file"),
+            "source_colours": len(r["hex"]),
+            "score": r["score"],
+            "axes": r["axes"],
+            "provenance": counts,
+            "distinct": res["unique"],
+            "low_contrast_pairs": len(res["low_contrast"]),
+            "cvd_collapses": res["cvd_total"],
+            "ramp_faults": len(res["ramp_faults"]),
+            "ramp_evenness": res["ramp_evenness"],
+            "verdict": verdicts.get(r["slug"], {}).get("verdict"),
+            "mapping": r["mapping"],
+            "slot_provenance": r["prov"],
+        })
+    return out
+
+
 def cmd_score(rows, stats):
     verdicts = load_verdicts()
     mode = rows[0]["mode"] if rows else "fit-colourname"
@@ -1417,6 +1458,8 @@ the sheet. Full notes in doc/palette-curation.md.
         p = sub.add_parser(name, help=helptext)
         p.add_argument("paths", nargs="+", help="palette files or directories")
         p.add_argument("--colors-js", default=None)
+        p.add_argument("--json", action="store_true",
+                       help="machine-readable output, for jq and friends")
         p.add_argument("--mode", choices=["fit-colourname", "fit-palette"], default="fit-colourname",
                        help="fit-colourname: slot names must mean what they "
                             "say, and a missing hue is synthesised. fit-palette: "
@@ -1505,7 +1548,11 @@ the sheet. Full notes in doc/palette-curation.md.
     if args.cmd == "compare":
         cmd_compare(cands, stats)
     elif args.cmd == "score":
-        cmd_score(rows, stats)
+        if getattr(args, "json", False):
+            json.dump(score_json(rows, stats), sys.stdout, indent=2)
+            print()
+        else:
+            cmd_score(rows, stats)
     elif args.cmd == "show":
         for r in rows:
             cmd_show(r, stats)
@@ -1524,5 +1571,28 @@ the sheet. Full notes in doc/palette-curation.md.
     return 0
 
 
+def _run(fn):
+    """Run a main() and die quietly when a pipe closes early.
+
+    Without this, `score candidates/ | head` prints a BrokenPipeError traceback
+    and exits 1, because Python flushes stdout at shutdown and the flush hits
+    the closed pipe. Every one of these tools is meant to be piped into `head`,
+    `grep` and `less`, so every one of them needs it. 141 is what a shell
+    reports for a process killed by SIGPIPE, which is what a C program doing
+    the same thing would give you.
+    """
+    try:
+        code = fn()
+    except BrokenPipeError:
+        code = 141
+    try:
+        sys.stdout.flush()
+    except BrokenPipeError:
+        code = 141
+    if code == 141:
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+    sys.exit(code)
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    _run(main)

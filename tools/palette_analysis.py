@@ -629,5 +629,28 @@ def main():
         baseline()
 
 
+def _run(fn):
+    """Run a main() and die quietly when a pipe closes early.
+
+    Without this, `score candidates/ | head` prints a BrokenPipeError traceback
+    and exits 1, because Python flushes stdout at shutdown and the flush hits
+    the closed pipe. Every one of these tools is meant to be piped into `head`,
+    `grep` and `less`, so every one of them needs it. 141 is what a shell
+    reports for a process killed by SIGPIPE, which is what a C program doing
+    the same thing would give you.
+    """
+    try:
+        code = fn()
+    except BrokenPipeError:
+        code = 141
+    try:
+        sys.stdout.flush()
+    except BrokenPipeError:
+        code = 141
+    if code == 141:
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+    sys.exit(code)
+
+
 if __name__ == "__main__":
-    main()
+    _run(main)

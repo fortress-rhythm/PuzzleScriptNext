@@ -46,11 +46,12 @@ your desktop, point at your desktop.
 
 | what | where | in git? |
 |---|---|---|
-| `score`, `compare`, `show`, `combos`, `audit`, `anchors` | stdout — redirect if you want a file | no |
+| `score`, `compare`, `show`, `combos`, `audit`, `anchors` | stdout — redirect if you want a file; `score --json` for machine-readable | no |
 | `emit-curated`, `block` | stdout — made to be read, corrected, and pasted | no |
 | `sheet` | the `-o` path; defaults to `./palette-sheet.html` | no, if you keep it in `tools/candidates/` |
 | `union` | the `-o` path, a `.gpl` file | no — it is a candidate, not a decision |
 | `preview` | the `-o` path; defaults to `./palette-preview.html` | no |
+| `sync_map_editor.py` | the vendored copy under `puzzlescript-map-editor/` | **yes** — see `doc/map-editor-sync.md` |
 | `verdict` | `tools/palette_verdicts.json`, always | **yes** — it is the record of your decisions |
 | `fetch` | the `-o` directory; defaults to `./candidates` | no |
 
@@ -60,6 +61,52 @@ prints a draft for you to correct and paste into `palette_analysis.py`, and
 `--emit-js` prints a block for you to paste into `colors.js`. That is
 deliberate — a tool that edited the engine's palette table directly would make
 a curation mistake indistinguishable from a bug.
+
+## Using it like any other command-line tool
+
+Every command that takes palettes takes **any mix of files, directories and
+shell globs**, so the ordinary things work:
+
+```sh
+uv run tools/palette_curate.py score tools/candidates/           # a folder
+uv run tools/palette_curate.py score tools/candidates/*.gpl      # a glob
+uv run tools/palette_curate.py score candidates/ one-more.hex    # both
+```
+
+Directories are walked recursively. Duplicate palettes collapse and colliding
+slugs are disambiguated, both reported on stderr, so pointing at a folder of
+mixed downloads does the sensible thing.
+
+**Pipes work.** `score candidates/ | head` used to print a `BrokenPipeError`
+traceback and exit 1, because Python flushes stdout at shutdown and the flush
+hit the closed pipe. All four scripts now exit 141 instead — what a shell
+reports for a process killed by SIGPIPE — with nothing on stderr.
+
+**Reports go to stdout, diagnostics to stderr**, so `2>/dev/null` drops the
+"skipped this file" notes without touching the table, and `>` captures a report
+without capturing them.
+
+**Exit codes** are 0 on success, 1 when there is nothing to do or a check
+failed (`sync_map_editor.py --check` on drift, `fetch` with nothing fetched),
+141 on a closed pipe.
+
+For anything the fixed table cannot answer — *everything with no colourblind
+collapses*, *sorted by sourced slots* — `score --json` prints the same numbers
+in a shape `jq` can work on:
+
+```sh
+uv run tools/palette_curate.py score candidates/ --json \
+  | jq -r '.candidates[] | select(.cvd_collapses == 0) | "\(.name) \(.score)"'
+
+uv run tools/palette_curate.py score candidates/ --json \
+  | jq -r '.candidates | sort_by(-.provenance.sourced)[] | "\(.provenance.sourced)/21 \(.name)"'
+```
+
+Each entry carries the score and all six axes, the provenance counts, the raw
+metrics (`distinct`, `low_contrast_pairs`, `cvd_collapses`, `ramp_faults`,
+`ramp_evenness`), any recorded verdict, and the full mapping with its per-slot
+provenance. The corpus the percentiles were taken against is in there too, so a
+number can be read without re-running anything.
 
 ## What runs where, and in what language
 
