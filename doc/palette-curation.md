@@ -17,6 +17,7 @@ mkdir -p tools/candidates            # drop .hex / .gpl / .pal / .json in here
 uv run tools/palette_test.py                                    # says all passed
 uv run tools/palette_curate.py score   tools/candidates/        # rank them
 uv run tools/palette_curate.py compare tools/candidates/        # does the mode matter?
+uv run tools/palette_curate.py combos  tools/candidates/        # any pair better together?
 uv run tools/palette_curate.py sheet   tools/candidates/ -o tools/candidates/sheet.html
 open tools/candidates/sheet.html                                # LOOK at them
 uv run tools/palette_curate.py show    tools/candidates/best.hex
@@ -32,7 +33,7 @@ directory works; every command takes paths.
 
 The only step that is not optional is looking at the sheet. A score orders a
 reading queue; it cannot tell you a palette is beautiful. Benten Pond scores
-worst of the three shipped palettes on every reading and was still the right
+worst of the seven shipped palettes on every reading and was still the right
 adoption.
 
 ## Where things go
@@ -48,6 +49,7 @@ your desktop, point at your desktop.
 | `score`, `compare`, `show`, `combos`, `audit`, `anchors` | stdout — redirect if you want a file | no |
 | `emit-curated`, `block` | stdout — made to be read, corrected, and pasted | no |
 | `sheet` | the `-o` path; defaults to `./palette-sheet.html` | no, if you keep it in `tools/candidates/` |
+| `union` | the `-o` path, a `.gpl` file | no — it is a candidate, not a decision |
 | `verdict` | `tools/palette_verdicts.json`, always | **yes** — it is the record of your decisions |
 | `fetch` | the `-o` directory; defaults to `./candidates` | no |
 
@@ -74,7 +76,7 @@ So: Python is a build-time tool for this repository, not a dependency of the
 engine, the editor, the map editor, or anything you ship. A game author never
 runs it. If you only want to *use* the palettes, the PALETTES panel does
 preview, apply and export without touching a terminal, and
-`src/demo/palette-refs.txt` has all three ready to paste.
+`src/demo/palette-refs.txt` has all seven ready to paste.
 
 You need Python only to rate a new candidate palette or to regenerate the
 generated files, and only `uv` — the scripts are dependency-free with PEP 723
@@ -106,6 +108,7 @@ uv run tools/palette_curate.py compare candidates/          both modes at once
 uv run tools/palette_curate.py sheet  candidates/ -o s.html look at them
 uv run tools/palette_curate.py show   candidates/foo.hex    one in full
 uv run tools/palette_curate.py combos candidates/           who fills whose gaps
+uv run tools/palette_curate.py union a.gpl b.gpl -o both.gpl   pool them into one
 uv run tools/palette_curate.py audit                        check what already ships
 uv run tools/palette_curate.py anchors                      the slot-name lexicon
 uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
@@ -218,6 +221,37 @@ easy to tell apart and are not a ramp, so a game shading one object across
 `darkgreen`/`green`/`lightgreen` would have got three unrelated hues. Ramps that
 have a real family also claim it before any stand-in runs, or a missing `green`
 helps itself to the blues and leaves `blue` deriving from leftovers.
+
+## Pooling palettes
+
+Eight-colour palettes are common and none of them can fill twenty-one slots on
+its own — `Rust Gold 8` alone manages seven and scores 61.6. `combos` finds
+which pairs are worth putting together; `union` is what actually makes one:
+
+```sh
+uv run tools/palette_curate.py union rust-gold-8.gpl fairyrust-8x.gpl \
+    -o tools/candidates/unions/rustfairy.gpl --name "Rust Gold 8 + FairyRust_8x"
+uv run tools/palette_curate.py score tools/candidates/unions/
+```
+
+Any number of inputs. The output is a GIMP palette because that is the one
+input format carrying a name and comments, so the file records how many colours
+came from which source and every later command reads it like any other
+candidate. Colours are deduplicated across sources, first occurrence winning.
+
+**Nothing is blended.** A union is exactly the colours of its parts, which is
+what keeps the result attributable to the people who made them — and it is why
+`union` is a separate step rather than something `combos` does silently.
+
+One thing measurement kept showing while the three shipped unions were being
+fitted, and worth expecting: **almost every colourblind collapse in a pooled
+palette is a lightness collision, not a hue problem.** Two slots landing within
+a few L of each other look like different colours normally and like one colour
+under simulation. Twenty-one slots across an L range of about 90 leaves roughly
+4 L per slot, so it happens readily when two palettes are stacked — and the fix
+is always to move whichever of the pair is `added` or `derived` into a gap
+rather than to change a sourced colour's role. `doc/palette-set.md` has the
+worked example, where that took one palette from four collapses to none.
 
 ## The anchors, and why they are not arnecolors
 
@@ -423,13 +457,14 @@ Two behaviour changes in `palette_analysis.py`, both deliberate:
 - The maths moved to `palette_lib.py`. Output of `--emit-js`, `--emit-refs` and
   the default report is byte-identical; `--json` gains `cvd_total`,
   `ramp_faults` and `ramp_evenness`.
-- `baseline()` excluded the fork's own three palettes and its header stopped
-  saying "the 14 shipped palettes" while printing seventeen. Once
-  `bentenpond`, `dungeon20` and `oekakinl` landed in `colors.js`, a plain read
-  of that file returned all seventeen and the "shipped range" quietly widened to
-  include the palettes being measured against it. The printed range is unchanged
-  at 26–75 low-contrast pairs and 0–13 CVD collapses — all three sat inside it —
-  so every number quoted in `doc/palette-set.md` still holds.
+- `baseline()` excluded the fork's own palettes, and its header stopped saying
+  "the 14 shipped palettes" while printing more than fourteen. Once the fork's
+  entries landed in `colors.js`, a plain read of that file returned all of them
+  and the "shipped range" quietly widened to include the very palettes being
+  measured against it. The corpus is now read from the fork block's own comment
+  markers in `colors.js`, so it stays at fourteen however many palettes are
+  added. The printed range is unchanged at 26–75 low-contrast pairs and 0–13
+  CVD collapses, so every number quoted in `doc/palette-set.md` still holds.
 
 ## Credits
 

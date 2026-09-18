@@ -13,7 +13,7 @@ to build, this one says what exists and how to add the next one.
 | | |
 |---|---|
 | `src/js/colors.js` | Seven palettes at indices 15–21, inside a labelled fork block |
-| `tools/palette_analysis.py` | Derivation, the three checks, and the code generators |
+| `tools/palette_analysis.py` | Derivation, the checks, and the code generators |
 | `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
 | `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
 | `src/Documentation/prelude.html` | User-facing list with credits |
@@ -95,16 +95,16 @@ and why it cannot corrupt a game.
 
 `doc/palette-curation.md` covers the stage before this one — finding candidates,
 rating them and deciding. Its tooling replaces steps 1-3 below with a fitted,
-rated draft you correct; steps 4 and 5 are unchanged either way.
+rated draft you correct; steps 4 to 6 are unchanged either way.
 
-Two things now notice on their own when you add one, so neither needs editing:
-the calibration corpus reads the fork block's own comment markers in
-`colors.js` rather than carrying a list, and `puzzlescript-map-editor`'s test
-suite fails until the new palette is copied into its vendored table.
+Two things notice on their own and need no editing: the calibration corpus
+reads the fork block's own comment markers in `colors.js` rather than carrying
+a list, and the **PALETTES** panel enumerates whatever `colorPalettesAliases`
+holds, so a new entry appears in it without any UI change.
 
 1. Add the source hex to `SOURCES` in `tools/palette_analysis.py`.
 2. `uv run tools/palette_analysis.py` — the raw hue-clustering pass plus the
-   three checks, with the fourteen shipped palettes printed underneath as a
+   checks, with the fourteen inherited palettes printed underneath as a
    baseline.
 3. Read the clustering against the slot list and write the result into
    `CURATED`, with a comment for every slot the source cannot supply. The
@@ -116,8 +116,17 @@ suite fails until the new palette is copied into its vendored table.
    uv run tools/palette_analysis.py --emit-refs > src/demo/palette-refs.txt
    uv run tools/palette_test.py                  # confirms they match
    ```
-5. Add an alias index and a credit in `prelude.html` and in
-   `paletteCredits` in `palettes_ui.js`.
+5. Add an alias index in `colors.js`, and a credit in `prelude.html` and in
+   `paletteCredits` in `palettes_ui.js`. The panel itself needs no change.
+6. Copy the new entry into `puzzlescript-map-editor/src/palettes.js` and add
+   its alias there too, or the map editor draws the game in arnecolors and says
+   the palette is unknown. Its own test suite catches this, but only when the
+   two repositories are checked out together:
+   ```sh
+   cd puzzlescript-map-editor && npm test   # fails until the copy is made
+   ```
+   The same file lives in the standalone `puzzlescript-map-editor` repository;
+   change it there and mirror it here, or the two drift.
 
 ### The rubric
 
@@ -136,7 +145,7 @@ A fourth check was added later, in `tools/palette_lib.py`, and applies to both
 tools: within a ramp, **luminance must increase at every step**. `lightred`
 darker than `red` is a mapping error, and contrast and colourblindness both
 measure pairs in isolation, so neither notices a ramp running backwards. Ten of
-the fourteen inherited palettes have no such fault, and all four palettes above
+the fourteen inherited palettes have no such fault, and all seven palettes above
 have none; `palette_curate.py audit` lists the exceptions, one of which
 (`proteus_night`'s `lightgreen`, a near-black navy) looks like an inherited
 copy-paste error rather than a stylistic choice.
@@ -151,20 +160,32 @@ near-black, `purple` `#342a97` is blue-violet, `pink` is magenta, `lightbrown`
 it is the most typical colour for only seven of the twenty-one slots.
 `palette_curate.py anchors` prints what the corpus actually means by each name.
 
-## How these four came out
+## How these seven came out
 
 Measured against the fourteen inherited palettes, which span **26–75**
 low-contrast pairs and **0–13** colourblind collapses:
 
 | palette | sourced | distinct | contrast < 1.3 | CVD collapses | ramp faults |
 |---|---|---|---|---|---|
+| `rustfairy` | 12/21 | 21/21 | 26 | 0 | 0 |
+| `ruststorm` | 11/21 | 21/21 | 27 | 0 | 0 |
 | `oekakinl` | 18/21 | 21/21 | 28 | 4 | 0 |
+| `rustfairyochre` | 17/21 | 21/21 | 30 | 1 | 0 |
 | `dungeon20` | 15/21 | 21/21 | 35 | 7 | 0 |
 | `bentenpond` | 17/21 | 21/21 | 37 | 10 | 0 |
 | `soggysepia` | 17/21 | 21/21 | 40 | 2 | 0 |
 
-All four are inside the inherited range, all four have distinct values for every
-slot, and none has a ramp that runs backwards.
+All seven are inside the inherited range, all seven have distinct values for
+every slot, and none has a ramp that runs backwards.
+
+The two columns pull against each other, which is the honest summary of the
+set. `rustfairy` and `ruststorm` have the best contrast and no colourblind
+collapses at all, and they are also the two with the fewest sourced slots —
+eleven and twelve — because an eight-colour palette plus one partner leaves a
+lot to fill, and a colour you place yourself can be placed where nothing
+collides. `oekakinl` and `bentenpond` source far more and pay for it in
+collapses they inherited from their sources. Neither end of that trade is
+wrong; it is what "adapted, not copied" costs and buys.
 
 - **`oekakinl` is the most legible** and the safest default. Its numbers sit
   beside arnecolors (29 / 5), it has true black and white, and only three slots
