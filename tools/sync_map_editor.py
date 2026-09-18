@@ -6,8 +6,8 @@
 Keep the vendored copy of puzzlescript-map-editor in step with its own repo.
 
     uv run tools/sync_map_editor.py --check     does the copy match? (exit 1 if not)
-    uv run tools/sync_map_editor.py             standalone -> vendored
-    uv run tools/sync_map_editor.py --reverse   vendored -> standalone
+    uv run tools/sync_map_editor.py --publish   vendored -> standalone
+    uv run tools/sync_map_editor.py --adopt     standalone -> vendored
 
 `puzzlescript-map-editor/` inside this repository is a plain copy of the
 standalone repository of the same name - not a submodule, not a subtree, just
@@ -23,7 +23,16 @@ palette drift check in `palette_test.py` compares `src/palettes.js` against
 `colors.js`, which is a check on the *data*; edit `src/psgame.js` in one copy
 and nothing anywhere fails. This script is that missing check.
 
-The standalone repository is canonical. Edit it there, run this, commit both.
+The vendored copy is canonical, because it is the only one a change can be
+proved correct in: the map editor's full suite reaches up into this repository
+for the game corpus and the palette table, and skips those checks anywhere
+else. So edit here, verify here, `--publish`, commit both. `--adopt` is the
+other direction, for a change that landed in the standalone repository first.
+
+There is no default direction. Copying thirty files the wrong way is not
+something a bare invocation should be able to do by accident, so one of the two
+has to be spelled out. (`--reverse` was the old name for `--publish` and still
+works.)
 
 Dependency-free, so `uv run` needs no resolution step.
 """
@@ -105,11 +114,25 @@ def main():
         description="Keep the vendored puzzlescript-map-editor in step with its repo.")
     ap.add_argument("--check", action="store_true",
                     help="report drift and exit 1 if there is any; change nothing")
-    ap.add_argument("--reverse", action="store_true",
-                    help="copy vendored -> standalone instead of the usual direction")
+    ap.add_argument("--publish", "--reverse", dest="publish", action="store_true",
+                    help="copy vendored -> standalone: the way a verified change goes out")
+    ap.add_argument("--adopt", action="store_true",
+                    help="copy standalone -> vendored, for a change that landed there first")
     ap.add_argument("--standalone", default=None,
                     help="path to the standalone repo (default: this repo's sibling)")
     args = ap.parse_args()
+
+    if args.publish and args.adopt:
+        print("--publish and --adopt are opposite directions; pick one",
+              file=sys.stderr)
+        return 2
+    if not args.check and not (args.publish or args.adopt):
+        print("pick a direction:", file=sys.stderr)
+        print("  --publish  vendored -> standalone, the usual one", file=sys.stderr)
+        print("  --adopt    standalone -> vendored", file=sys.stderr)
+        print("or --check to compare the two without copying anything",
+              file=sys.stderr)
+        return 2
 
     vendored, standalone = find_roots(args.standalone)
     if not os.path.isdir(vendored):
@@ -128,22 +151,22 @@ def main():
         if differing or only_v or only_s:
             n = len(differing) + len(only_v) + len(only_s)
             print(f"\n  {n} file(s) out of step. Run one of:")
-            print("    uv run tools/sync_map_editor.py            standalone -> vendored")
-            print("    uv run tools/sync_map_editor.py --reverse  vendored -> standalone")
+            print("    uv run tools/sync_map_editor.py --publish  vendored -> standalone")
+            print("    uv run tools/sync_map_editor.py --adopt    standalone -> vendored")
             return 1
         print("  vendored copy matches the standalone repository")
         return 0
 
     src, dst, label = ((vendored, standalone, "vendored -> standalone")
-                       if args.reverse else
+                       if args.publish else
                        (standalone, vendored, "standalone -> vendored"))
-    todo = list(differing) + (only_v if args.reverse else only_s)
+    todo = list(differing) + (only_v if args.publish else only_s)
     print(f"  {label}")
     if not todo:
         print("  already in step - nothing to do")
         return 0
     copy_files(src, dst, todo)
-    missing = (only_s if args.reverse else only_v)
+    missing = (only_s if args.publish else only_v)
     if missing:
         print("\n  present only in the destination, left alone - delete by hand "
               "if they are stale:")

@@ -139,16 +139,18 @@ reasoning.
    hand-edited:
    ```sh
    uv run tools/palette_analysis.py --write   # colors.js, the alias table, the
-                                              # prelude blocks, the map editor
+                                              # prelude blocks, the vendored
+                                              # map editor
    uv run tools/palette_test.py               # confirms they match
    ```
    That includes `puzzlescript-map-editor/src/palettes.js` and its alias table.
    The map editor needs the entry or it draws the game in arnecolors and says
    the palette is unknown; its own test suite catches that, but only when the
-   two repositories are checked out together. `--write` also updates the
-   standalone `puzzlescript-map-editor` checkout when it sits beside this one,
-   because that copy is the canonical one — `doc/map-editor-sync.md` explains
-   why the copy exists and what catches you when it drifts.
+   two repositories are checked out together. `--write` touches the vendored
+   copy only — the standalone `puzzlescript-map-editor` repository is a publish
+   target, and `uv run tools/sync_map_editor.py --publish` carries the change
+   out to it once the tests here pass. `doc/map-editor-sync.md` explains why
+   the copy exists, which way it flows and what catches you when it drifts.
 5. Add a credit in `prelude.html` and in `paletteCredits` in `palettes_ui.js`.
    These are the only two hand-edits left: everything else, the alias index
    included, comes from the palette file. The panel itself needs no change.

@@ -303,6 +303,9 @@ def emit_block(name):
 # gets skipped: the map editor then draws a game in arnecolors and says the
 # palette is unknown, and only its own test suite notices, and only when both
 # repositories happen to be checked out together.
+#
+# What is generated here is the vendored copy. The standalone repository gets
+# it from tools/sync_map_editor.py --publish; see doc/map-editor-sync.md.
 
 ME_ORDER = JS_ORDER
 
@@ -347,7 +350,9 @@ def _replace_block(text, start_marker, end_marker, body, path, nth=0):
     if len(starts) <= nth:
         raise SystemExit(f"{path}: expected {nth + 1} "
                          f"'{start_marker.strip()}' markers, found {len(starts)}"
-                         " - cannot write into it safely")
+                         " - cannot write into it safely. The markers delimit"
+                         " the generated block and have to stay in the file;"
+                         " if they were removed, restore them from git.")
 
     head_end = text.index("\n", starts[nth]) + 1
     # The marker's own explanatory comment stays; only the data below it is
@@ -374,21 +379,17 @@ def write_generated(root=None, dry_run=False):
     so nothing outside the fork's own block is ever touched and an upstream
     merge still sees a clean diff. Files that are not there are skipped rather
     than created - this writes into a checkout, it does not lay one out.
+
+    Every file is rendered before any of them is written, so a missing marker
+    leaves the tree exactly as it was rather than half generated.
     """
     root = root or os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    written, unchanged = [], []
+    pending = []
 
-    def put(path, new):
-        rel = os.path.relpath(path, root)
-        if not os.path.exists(path):
-            return
-        if open(path, encoding="utf-8").read() == new:
-            unchanged.append(rel)
-            return
-        if not dry_run:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(new)
-        written.append(rel)
+    def plan(path, new):
+        """Queue a file, unless this checkout does not have it."""
+        if os.path.exists(path):
+            pending.append((path, new))
 
     colors_js = os.path.join(root, "src", "js", "colors.js")
     if os.path.exists(colors_js):
@@ -402,16 +403,18 @@ def write_generated(root=None, dry_run=False):
         text = _replace_block(text, start, end, emit_aliases(), colors_js, nth=0)
         body = "\n" + emit_js().rstrip().rstrip(",")
         text = _replace_block(text, start, end, body, colors_js, nth=1)
-        put(colors_js, text)
+        plan(colors_js, text)
 
     refs = os.path.join(root, "src", "demo", "palette-refs.txt")
-    put(refs, emit_refs().rstrip("\n") + "\n")
+    plan(refs, emit_refs().rstrip("\n") + "\n")
 
-    for me in (os.path.join(root, "..", "puzzlescript-map-editor", "src", "palettes.js"),
-               os.path.join(root, "puzzlescript-map-editor", "src", "palettes.js")):
-        me = os.path.normpath(me)
-        if not os.path.exists(me):
-            continue
+    # The vendored copy only. The standalone repository beside this one is a
+    # publish target, not a source: tools/sync_map_editor.py --publish carries
+    # the change out once it is verified here, which is the only place the map
+    # editor's full suite runs. Writing into the sibling directly meant a
+    # checkout nobody had pulled could abort a regeneration it had no part in.
+    me = os.path.join(root, "puzzlescript-map-editor", "src", "palettes.js")
+    if os.path.exists(me):
         text = open(me, encoding="utf-8").read()
         text = _replace_block(text, "// --- palette-set extension: palettes",
                               "// --- end palette-set extension: palettes",
@@ -419,8 +422,20 @@ def write_generated(root=None, dry_run=False):
         text = _replace_block(text, "// --- palette-set extension: aliases",
                               "// --- end palette-set extension: aliases",
                               emit_mapeditor_aliases(), me)
-        put(me, text)
+        plan(me, text)
 
+    # Nothing has been written yet. Everything above can raise, and raising
+    # halfway used to leave colors.js rewritten and the map editor untouched.
+    written, unchanged = [], []
+    for path, new in pending:
+        rel = os.path.relpath(path, root)
+        if open(path, encoding="utf-8").read() == new:
+            unchanged.append(rel)
+            continue
+        if not dry_run:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(new)
+        written.append(rel)
     return written, unchanged
 
 
@@ -431,7 +446,7 @@ def main():
 palettes/ is the source; everything else is generated from it:
 
   palette_analysis.py --write        regenerate colors.js, palette-refs.txt and
-                                     the map editor's copy, in place
+                                     the vendored map editor, in place
   palette_analysis.py --check        say what --write would change, change
                                      nothing, exit 1 if anything has drifted
   palette_analysis.py --block NAME   one palette as a prelude block to paste
