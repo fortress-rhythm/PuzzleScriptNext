@@ -67,6 +67,31 @@ SOURCES = {
                   070905 0f130b 242c13 374e22 88aa58 b5ca90 c7d7ac dbe6ca
                   070509 0f0b13 241a21 372e38 887294 b5a6bc c7bdce dbd6e0""".split(),
     },
+    "rustfairy": {
+        "title": "Rust Gold 8 + FairyRust_8x",
+        "author": "Trigo Mathmancer and KRYPTOCCULTIST",
+        "url": "https://lospec.com/palette-list/rust-gold-8",
+        "note": "pooled from Rust Gold 8 by Trigo Mathmancer and FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) - one warm half and one cool one, neither of which has a green",
+        "hex": """f6cd26 ac6b26 563226 331c17 bb7f57 725956 393939 202020 141a0d 4b2d28
+                  744e65 7f7397 8ab0d8 aad8f7 daedfe f2f9ff""".split(),
+    },
+    "ruststorm": {
+        "title": "Rust Gold 8 + Storms and Cyan",
+        "author": "Trigo Mathmancer and Digi (@Digitress)",
+        "url": "https://lospec.com/palette-list/rust-gold-8",
+        "note": "pooled from Rust Gold 8 by Trigo Mathmancer and Storms and Cyan by Digi / @Digitress (lospec.com/palette-list/storms-and-cyan) - a rust-and-gold warm half against a seven-step cyan ramp",
+        "hex": """f6cd26 ac6b26 563226 331c17 bb7f57 725956 393939 202020 00000e 001933
+                  003f51 007f8e 00aeb8 00bebc 00cdc9 00fdff""".split(),
+    },
+    "rustfairyochre": {
+        "title": "Rust Gold 8 + FairyRust_8x + Ochre Ruin",
+        "author": "Trigo Mathmancer, KRYPTOCCULTIST and Quemis",
+        "url": "https://lospec.com/palette-list/rust-gold-8",
+        "note": "pooled from Rust Gold 8 by Trigo Mathmancer, FairyRust_8x by KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x) and Ochre Ruin by Quemis (lospec.com/palette-list/ochre-ruin)",
+        "hex": """f6cd26 ac6b26 563226 331c17 bb7f57 725956 393939 202020 141a0d 4b2d28
+                  744e65 7f7397 8ab0d8 aad8f7 daedfe f2f9ff 0a151f 191d29 1d272f 5e7b75
+                  1b181c 54403f 7e6668 b7a691 30322d 515650 9ba28c e7daba""".split(),
+    },
 }
 
 # ------------------------------------------------------------------- mapping
@@ -186,6 +211,75 @@ CURATED = {
         # palette that already has three is the failure this rubric exists to
         # catch, so the yellow is stated as an addition instead.
         "yellow": ("#d8d4a2", "added"),
+    },
+    # ---------------------------------------------------------------- unions
+    #
+    # The three below are pooled from more than one source palette. Nothing is
+    # blended: a union is exactly the colours of its parts, which is what keeps
+    # the result attributable to the people who made them. `palette_curate.py
+    # union` writes the pooled file; these are the mappings read off it by hand.
+    #
+    # All three exist because Rust Gold 8 alone cannot carry twenty-one slots -
+    # eight colours, no green, no blue, no purple, no pink. Every one of its
+    # useful partners covers a different one of those gaps, so which partner you
+    # pick is which palette you get, not a matter of better or worse.
+    "rustfairy": {
+        # Rust Gold's warm half against FairyRust's cool one. FairyRust's blues
+        # are all pale - L 70 and up - so the blue ramp's dark end comes from
+        # its lavender instead, relit; the two together give an even ramp where
+        # neither palette could give one alone.
+        #
+        # The warm ramp is the awkward part. Both sources' dark warms cluster at
+        # L 13-25, so taking three reds and three browns from them straight puts
+        # four slots within two L of each other and they collapse into one
+        # another under protanopia. `darkbrown` and `brown` are therefore relit
+        # to open the ramp out. That is the whole difference between four
+        # colourblind collapses and none.
+        "black": ("#202020", "sourced"), "darkgrey": ("#393939", "sourced"), "grey": ("#725956", "sourced"), "lightgrey": ("#d5b8b4", "added"), "white": ("#f2f9ff", "sourced"),
+        "darkred": ("#4b2d28", "sourced"), "red": ("#8f6658", "added"), "lightred": ("#bb7f57", "sourced"),
+        "darkbrown": ("#402823", "added"), "brown": ("#684235", "added"), "lightbrown": ("#ac6b26", "sourced"),
+        "darkgreen": ("#141a0d", "sourced"), "green": ("#4f6b3a", "added"), "lightgreen": ("#93b077", "added"),
+        "darkblue": ("#4c4162", "added"), "blue": ("#7f7397", "sourced"), "lightblue": ("#8ab0d8", "sourced"),
+        "orange": ("#cf8943", "added"), "yellow": ("#f6cd26", "sourced"), "purple": ("#744e65", "sourced"), "pink": ("#c197b0", "added"),
+    },
+    "ruststorm": {
+        # The same warm half against a seven-step cyan ramp, which is the
+        # widest-spanning single ramp of any source here: L 0 to L 90. It buys
+        # a blue ramp outright and pays for it everywhere else - Storms and Cyan
+        # contributes one non-blue colour, so `white`, `lightgrey`, the greens,
+        # `purple` and `pink` are all additions. Eight of twenty-one, the most
+        # of any palette in this set, and the docs say so rather than hiding it.
+        #
+        # Neither source has a light neutral at all: the warm half tops out at
+        # L 58 and the cyans are cyan. `white` and `lightgrey` are the two
+        # additions that make the grey ramp usable, and without them `white`
+        # would be a mid-brown at L 40.
+        "black": ("#00000e", "sourced"), "darkgrey": ("#393939", "sourced"), "grey": ("#725956", "sourced"), "lightgrey": ("#b39794", "added"), "white": ("#ffe2de", "added"),
+        "darkred": ("#4a271c", "added"), "red": ("#775043", "added"), "lightred": ("#bb7f57", "sourced"),
+        "darkbrown": ("#331c17", "sourced"), "brown": ("#563226", "sourced"), "lightbrown": ("#ac6b26", "sourced"),
+        "darkgreen": ("#325624", "added"), "green": ("#557a45", "added"), "lightgreen": ("#8fb37c", "added"),
+        "darkblue": ("#001933", "sourced"), "blue": ("#007f8e", "sourced"), "lightblue": ("#00cdc9", "sourced"),
+        "orange": ("#e79e57", "added"), "yellow": ("#f6cd26", "sourced"), "purple": ("#5b4470", "added"), "pink": ("#c49ad2", "added"),
+    },
+    "rustfairyochre": {
+        # Three sources, twenty-eight colours, and the only one of the set that
+        # needs a single addition. Ochre Ruin's nine neutrals give a real grey
+        # ramp, FairyRust the blues and purples, Rust Gold the warm half.
+        #
+        # The cost is that almost everything is muted: Ochre Ruin sits at chroma
+        # 3-17 throughout, so the palette separates by lightness rather than
+        # hue, and the slots that do collide collide hard. `darkgreen` was the
+        # source's own #30322d until measurement showed it two L from `darkred`
+        # and collapsing under both protanopia and deuteranopia; relighting it
+        # off the palette's own teal-green costs one sourced slot and removes
+        # three of the four collapses. That trade is the one judgement call in
+        # this mapping worth arguing with.
+        "black": ("#0a151f", "sourced"), "darkgrey": ("#1d272f", "sourced"), "grey": ("#515650", "sourced"), "lightgrey": ("#b7a691", "sourced"), "white": ("#f2f9ff", "sourced"),
+        "darkred": ("#4b2d28", "sourced"), "red": ("#875e51", "added"), "lightred": ("#bb7f57", "sourced"),
+        "darkbrown": ("#331c17", "sourced"), "brown": ("#563226", "sourced"), "lightbrown": ("#ac6b26", "sourced"),
+        "darkgreen": ("#334e49", "added"), "green": ("#5e7b75", "sourced"), "lightgreen": ("#9ba28c", "sourced"),
+        "darkblue": ("#191d29", "sourced"), "blue": ("#7f7397", "sourced"), "lightblue": ("#8ab0d8", "sourced"),
+        "orange": ("#cf8943", "added"), "yellow": ("#e7daba", "sourced"), "purple": ("#744e65", "sourced"), "pink": ("#e0b5ce", "added"),
     },
 }
 

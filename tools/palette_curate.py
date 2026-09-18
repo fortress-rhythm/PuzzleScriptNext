@@ -20,6 +20,7 @@ deuteranopia. The choice stays yours, and `verdict` is where you record it.
     uv run tools/palette_curate.py show   candidates/foo.hex   one in detail
     uv run tools/palette_curate.py sheet  candidates/ -o s.html   look at them
     uv run tools/palette_curate.py combos candidates/          who fills whose gaps
+    uv run tools/palette_curate.py union a.gpl b.gpl -o both.gpl   pool them
     uv run tools/palette_curate.py audit                       check what ships
     uv run tools/palette_curate.py anchors                     the slot-name lexicon
     uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
@@ -870,6 +871,60 @@ def cmd_compare(cands, stats):
     print("  Neither is a rule - the gap is the finding.")
 
 
+def cmd_union(paths, out, name=None):
+    """Pool several palettes into one candidate file.
+
+    `combos` pools two palettes internally to find out whether they are worth
+    combining, but it cannot hand you the result - and a combination you cannot
+    feed back into `score`, `show` and `sheet` is a suggestion rather than a
+    candidate. This writes the pooled palette out as a GIMP palette, which is
+    the one input format that carries a name and comments, so the file says
+    what it is made of and every later command reads it like any other.
+
+    Colours are deduplicated across sources, first occurrence winning, and the
+    header records which palette each colour came from. Nothing is blended:
+    a union is exactly the colours of its parts, which is what makes the result
+    still attributable to the people who made them.
+    """
+    cands, errors = load_candidates(paths)
+    for f, e in errors:
+        print(f"{os.path.basename(f)}: {e}", file=sys.stderr)
+    if len(cands) < 2:
+        print("union needs at least two palettes", file=sys.stderr)
+        return 1
+
+    seen, colours, origin = set(), [], {}
+    for c in cands:
+        for h in c["hex"]:
+            if h in seen:
+                continue
+            seen.add(h)
+            colours.append(h)
+            origin[h] = c["name"]
+
+    title = name or " + ".join(c["name"] for c in cands)
+    lines = ["GIMP Palette", f"Name: {title}", "Columns: 8",
+             "# Pooled by tools/palette_curate.py union - no colour is blended or",
+             "# invented; this is exactly the colours of its sources, so the result",
+             "# stays attributable to the people who made them.",
+             "#"]
+    for c in cands:
+        lines.append(f"# {len(c['hex']):>3} from {c['name']}"
+                     + (f" ({c['author']})" if c.get("author") else ""))
+    lines.append("#")
+    for h in colours:
+        r, g, b = rgb(h)
+        lines.append(f"{r:3d} {g:3d} {b:3d}\t{h.lstrip('#')}  {origin[h]}")
+
+    with open(out, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+    dropped = sum(len(c["hex"]) for c in cands) - len(colours)
+    print(f"wrote {out}  -  {len(colours)} colours from {len(cands)} palettes"
+          + (f", {dropped} duplicate{'s' if dropped != 1 else ''} dropped"
+             if dropped else ""))
+    return 0
+
+
 def cmd_anchors(colors_js):
     """Show the slot-name lexicon, and re-derive it to check for drift.
 
@@ -1274,6 +1329,11 @@ the sheet. Full notes in doc/palette-curation.md.
     p = sub.add_parser("anchors", help="the slot-name lexicon, and any drift")
     p.add_argument("--colors-js", default=None)
 
+    p = sub.add_parser("union", help="pool several palettes into one candidate")
+    p.add_argument("paths", nargs="+", help="two or more palette files")
+    p.add_argument("-o", "--out", required=True, help="the .gpl file to write")
+    p.add_argument("--name", default=None, help="name for the pooled palette")
+
     p = sub.add_parser("verdict", help="record a curation decision")
     p.add_argument("slug")
     p.add_argument("verdict", choices=["accept", "reject", "maybe", "clear"])
@@ -1299,6 +1359,9 @@ the sheet. Full notes in doc/palette-curation.md.
 
     if args.cmd == "fetch":
         return cmd_fetch(args.slugs, args.outdir)
+
+    if args.cmd == "union":
+        return cmd_union(args.paths, args.out, args.name)
 
     colors_js = args.colors_js or find_colors_js()
     stats, builtins = corpus_stats(colors_js)

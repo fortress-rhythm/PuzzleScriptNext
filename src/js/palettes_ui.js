@@ -287,4 +287,17 @@ var paletteCredits = {
         'palette adapted from "Soggy Sepia CRT-20" by Digi / @Digitress '
         + '(lospec.com/palette-list/soggy-sepia-crt-20). The source has no blue at all, '
         + 'so the three blues and yellow are original additions.',
+    rustfairy:
+        'palette pooled from "Rust Gold 8" by Trigo Mathmancer '
+        + '(lospec.com/palette-list/rust-gold-8) and "FairyRust_8x" by KRYPTOCCULTIST. '
+        + 'Neither source has a green, so the three greens and lightgrey are '
+        + 'original additions.',
+    ruststorm:
+        'palette pooled from "Rust Gold 8" by Trigo Mathmancer and "Storms and Cyan" '
+        + 'by Digi / @Digitress (lospec.com/palette-list/storms-and-cyan). white, '
+        + 'lightgrey, the three greens, purple and pink are original additions.',
+    rustfairyochre:
+        'palette pooled from "Rust Gold 8" by Trigo Mathmancer, "FairyRust_8x" by '
+        + 'KRYPTOCCULTIST and "Ochre Ruin" by Quemis (lospec.com/palette-list/ochre-ruin). '
+        + 'red is the only original addition.',
 };

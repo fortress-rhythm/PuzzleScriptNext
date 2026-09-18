@@ -12,7 +12,7 @@ to build, this one says what exists and how to add the next one.
 
 | | |
 |---|---|
-| `src/js/colors.js` | Four palettes at indices 15–18, inside a labelled fork block |
+| `src/js/colors.js` | Seven palettes at indices 15–21, inside a labelled fork block |
 | `tools/palette_analysis.py` | Derivation, the three checks, and the code generators |
 | `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
 | `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
@@ -29,6 +29,13 @@ The palettes:
 | 16 | `dungeon20` | [Dungeon-20](https://lospec.com/palette-list/dungeon-20) | Meaghan (goldentreesart) |
 | 17 | `oekakinl` | [Oekaki.nl](https://lospec.com/palette-list/oekakinl) | P-Tux7 |
 | 18 | `soggysepia` | [Soggy Sepia CRT-20](https://lospec.com/palette-list/soggy-sepia-crt-20) | Digi (@Digitress) |
+| 19 | `rustfairy` | Rust Gold 8 + FairyRust_8x | Trigo Mathmancer, KRYPTOCCULTIST |
+| 20 | `ruststorm` | Rust Gold 8 + [Storms and Cyan](https://lospec.com/palette-list/storms-and-cyan) | Trigo Mathmancer, Digi (@Digitress) |
+| 21 | `rustfairyochre` | Rust Gold 8 + FairyRust_8x + [Ochre Ruin](https://lospec.com/palette-list/ochre-ruin) | Trigo Mathmancer, KRYPTOCCULTIST, Quemis |
+
+The last three are **unions**: pooled from more than one source palette. Nothing
+is blended — a union is exactly the colours of its parts, which is what keeps
+the result attributable to the people who made them.
 
 Indices continue at 15 and the inherited fourteen are untouched, so an upstream
 merge stays a clean diff.
@@ -52,14 +59,14 @@ anywhere. This is what you distribute.
 
 Author with the short form; export the long one when you publish. The
 **PALETTES** panel does the conversion, and `src/demo/palette-refs.txt` holds all
-four ready to paste.
+seven ready to paste.
 
 The two forms now render identically in `puzzlescript-map-editor/` too. They
 did not before: the map editor read the base palette name and dropped every
 override, so the one representation meant to be portable was the one it drew in
 the wrong colours. It also never consulted its own numeric aliases, so
 `color_palette 3` fell back to arnecolors. Both are fixed, it carries all
-eighteen palettes now, and its test suite checks that copy against
+twenty-one palettes now, and its test suite checks that copy against
 `src/js/colors.js` slot by slot whenever the two are checked out together.
 
 One detail that is easy to get wrong by hand: the block must also set
@@ -182,6 +189,42 @@ slot, and none has a ramp that runs backwards.
   browns, orange, greens — reads as one sepia range, and only the blues stand
   apart. Objects distinguished by lightness will be fine; objects distinguished
   by warm hue alone will not.
+
+### The three unions
+
+`Rust Gold 8` is eight colours with no green, no blue, no purple and no pink,
+so on its own it fills seven of twenty-one slots and scores 61.6. Every useful
+partner covers a *different* one of those gaps, which means the choice of
+partner is which palette you get, not which is better:
+
+| | sourced | contrast | CVD | what the partner buys |
+|---|---|---|---|---|
+| `rustfairy` | 12/21 | 26 | **0** | pale blues and two purples |
+| `ruststorm` | 11/21 | 27 | **0** | a seven-step cyan ramp, L 0–90 |
+| `rustfairyochre` | 17/21 | 30 | 1 | nine neutrals, and a green |
+
+The workflow is `union` then the usual loop:
+
+```sh
+uv run tools/palette_curate.py union rust-gold-8.gpl fairyrust-8x.gpl -o rustfairy.gpl
+uv run tools/palette_curate.py score tools/candidates/unions/
+```
+
+**Every collapse in the first drafts was a lightness collision**, not a hue
+problem: two slots landing within a few L of each other read as different
+colours normally and as the same colour under simulation. Twenty-one slots
+across an L range of about 90 leaves roughly 4 L per slot, so it happens
+readily, and the fix is always to move whichever of the two is `added` or
+`derived` into a gap instead. On `rustfairy` that took the count from 4 to 0
+and raised the score from 81.0 to 87.4 without changing a single sourced
+colour's role. It is the most mechanical part of curation and the part the
+checks are best at.
+
+`ruststorm` is the honest cautionary case: eight of its twenty-one slots are
+additions, the most of any palette here, because Storms and Cyan contributes
+exactly one non-blue colour. Neither source has a light neutral at all — the
+warm half tops out at L 58 — so without an added `white` and `lightgrey` the
+grey ramp would end at a mid-brown.
 
 ### soggysepia in particular
 

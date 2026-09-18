@@ -5,8 +5,8 @@
 // test suite verifies this file against colors.js whenever PuzzleScriptNext is
 // checked out beside this repo, and skips the check when it is not.
 //
-// The last four are fork-only: PuzzleScript Next's palette-set extension adds
-// them at indices 15-18, and stock PuzzleScript has never heard the names.
+// The last seven are fork-only: PuzzleScript Next's palette-set extension adds
+// them at indices 15-21, and stock PuzzleScript has never heard the names.
 // Carrying them here costs nothing and means a game written against the fork
 // renders in its own colours rather than silently in arnecolors.
 
@@ -478,6 +478,84 @@ const colorPalettes = {
         "darkblue": "#232648",
         "purple": "#887294",
         "pink": "#b5a6bc"
+    },
+    "rustfairy": {
+        "black": "#202020",
+        "white": "#f2f9ff",
+        "grey": "#725956",
+        "darkgrey": "#393939",
+        "lightgrey": "#d5b8b4",
+        "gray": "#725956",
+        "darkgray": "#393939",
+        "lightgray": "#d5b8b4",
+        "red": "#8f6658",
+        "darkred": "#4b2d28",
+        "lightred": "#bb7f57",
+        "brown": "#684235",
+        "darkbrown": "#402823",
+        "lightbrown": "#ac6b26",
+        "orange": "#cf8943",
+        "yellow": "#f6cd26",
+        "green": "#4f6b3a",
+        "darkgreen": "#141a0d",
+        "lightgreen": "#93b077",
+        "blue": "#7f7397",
+        "lightblue": "#8ab0d8",
+        "darkblue": "#4c4162",
+        "purple": "#744e65",
+        "pink": "#c197b0"
+    },
+    "ruststorm": {
+        "black": "#00000e",
+        "white": "#ffe2de",
+        "grey": "#725956",
+        "darkgrey": "#393939",
+        "lightgrey": "#b39794",
+        "gray": "#725956",
+        "darkgray": "#393939",
+        "lightgray": "#b39794",
+        "red": "#775043",
+        "darkred": "#4a271c",
+        "lightred": "#bb7f57",
+        "brown": "#563226",
+        "darkbrown": "#331c17",
+        "lightbrown": "#ac6b26",
+        "orange": "#e79e57",
+        "yellow": "#f6cd26",
+        "green": "#557a45",
+        "darkgreen": "#325624",
+        "lightgreen": "#8fb37c",
+        "blue": "#007f8e",
+        "lightblue": "#00cdc9",
+        "darkblue": "#001933",
+        "purple": "#5b4470",
+        "pink": "#c49ad2"
+    },
+    "rustfairyochre": {
+        "black": "#0a151f",
+        "white": "#f2f9ff",
+        "grey": "#515650",
+        "darkgrey": "#1d272f",
+        "lightgrey": "#b7a691",
+        "gray": "#515650",
+        "darkgray": "#1d272f",
+        "lightgray": "#b7a691",
+        "red": "#875e51",
+        "darkred": "#4b2d28",
+        "lightred": "#bb7f57",
+        "brown": "#563226",
+        "darkbrown": "#331c17",
+        "lightbrown": "#ac6b26",
+        "orange": "#cf8943",
+        "yellow": "#e7daba",
+        "green": "#5e7b75",
+        "darkgreen": "#334e49",
+        "lightgreen": "#9ba28c",
+        "blue": "#7f7397",
+        "lightblue": "#8ab0d8",
+        "darkblue": "#191d29",
+        "purple": "#744e65",
+        "pink": "#e0b5ce"
     }
 };
 
@@ -499,7 +577,10 @@ const colorPalettesAliases = {
     "15": "bentenpond",
     "16": "dungeon20",
     "17": "oekakinl",
-    "18": "soggysepia"
+    "18": "soggysepia",
+    "19": "rustfairy",
+    "20": "ruststorm",
+    "21": "rustfairyochre"
 };
 
 /**
