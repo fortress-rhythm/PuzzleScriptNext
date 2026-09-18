@@ -8,6 +8,25 @@ This tool is for the pile you have not chosen from yet.
 
 ---
 
+## Ten-minute version
+
+```sh
+mkdir candidates                      # drop .hex / .gpl / .pal / .json in it
+uv run tools/palette_test.py                             # should say all passed
+uv run tools/palette_curate.py score   candidates/       # rank them
+uv run tools/palette_curate.py compare candidates/       # does the mode matter?
+uv run tools/palette_curate.py sheet   candidates/ -o sheet.html   # LOOK at them
+uv run tools/palette_curate.py show    candidates/best.hex         # read the notes
+uv run tools/palette_curate.py verdict best accept -m "why"
+uv run tools/palette_curate.py emit-curated candidates/best.hex    # correct, then paste
+```
+
+Then continue at step 4 of `doc/palette-set.md`.
+
+The only step that is not optional is `sheet`. A score orders a reading queue;
+it cannot tell you a palette is beautiful. Benten Pond scores worst of the
+three shipped palettes on every reading and was still the right adoption.
+
 ## What is here
 
 | | |
@@ -16,6 +35,7 @@ This tool is for the pile you have not chosen from yet.
 | `tools/palette_curate.py` | The curation CLI: fit, rate, look at, combine, record |
 | `tools/palette_verdicts.json` | Your decisions. The tool never writes anything else |
 | `tools/candidates-example/` | Three palettes in the three input formats, to run against |
+| `tools/palette_test.py` | The checks. `uv run tools/palette_test.py` |
 
 `palette_analysis.py` now imports its maths from `palette_lib.py` rather than
 carrying its own copy. Two tools that disagreed about what "deuteranopia" meant
@@ -28,6 +48,7 @@ fourteen palettes (see *What changed underneath*).
 
 ```sh
 uv run tools/palette_curate.py score  candidates/           rank them
+uv run tools/palette_curate.py compare candidates/          both modes at once
 uv run tools/palette_curate.py sheet  candidates/ -o s.html look at them
 uv run tools/palette_curate.py show   candidates/foo.hex    one in full
 uv run tools/palette_curate.py combos candidates/           who fills whose gaps
@@ -84,7 +105,7 @@ axes are for, and they frequently disagree with the name.
 
 Neither is "verbatim", and it would be wrong to name one that. Both still
 interpolate short ramps and relight singles within a family that exists —
-Dungeon-20 under `fit-palette` is 15 sourced, 2 stand-in and **4 derived**. The
+Dungeon-20 under `fit-palette` is 10 sourced, 3 stand-in and **8 derived**. The
 modes differ in exactly one place: what happens when a hue family is absent
 *and* no neighbouring family is within `BORROW_HUE_MAX` of it. Everything else
 — classification, the hue-capped borrow, interpolation, relighting — is
@@ -107,28 +128,34 @@ has to hold if `green` is allowed to be a teal.
 
 ### Which mode wins is a property of the palette
 
-Neither mode is a way of flattering a weak palette, and which one scores better
-is worth reading as a finding about the source:
+`compare` runs both and shows the gap:
 
-| palette | `fit-colourname` | `fit-palette` | prefers |
-|---|---|---|---|
-| Oekaki.nl | **78.0** | 74.7 | colourname |
-| Dungeon-20 | 68.2 | **72.4** | palette |
-| Benten Pond | **62.8** | 55.5 | colourname |
+```
+  palette                colourname  palette    gap   prefers     why
+  Oekaki.nl                    78.0     74.7   -3.3   either      same mapping both ways
+  Dungeon-20                   67.3     71.4   +4.1   palette     4 slots would have to be
+                                                                  invented; renaming 3 costs less
+  benten-pond                  62.8     55.5   -7.3   either      same mapping both ways
+```
 
-Dungeon-20 genuinely has no green anywhere. Inventing three greens crowds the
+**Read the `prefers` column before the scores.** Only Dungeon-20 is actually
+fitted differently by the two modes. It is the only one of the three with a
+family the hue-capped borrow cannot cover: it has no green anywhere, and
+nothing within 45° of green to stand in. Inventing three greens crowds the
 space its yellows and browns already occupy — contrast falls to the 21st
-percentile — whereas renaming a spare family costs it nothing it was using. A
-palette with a true hue gap is better off renaming.
+percentile — whereas renaming a spare family costs it nothing it was using.
+**A palette with a true hue gap is usually better off renaming.**
 
-Benten Pond is the opposite: it has greens and blues in depth but no saturated
-warm mid-tones at all, and renaming to cover `orange` and `brown` pulls colours
-away from slots that needed them. It loses seven points. Inventing two warm
-colours in its own muted register is cheaper than cannibalising its ramps.
+Oekaki.nl and Benten Pond produce *byte-identical mappings* under both modes,
+because neither has a gap the borrow cannot fill. Their score differences are
+therefore not a finding about renaming at all — they are purely the axis
+reweighting, `role` at 15 versus `separation` at 20. Comparing scores across
+modes is only meaningful when the mappings actually differ, which is why
+`compare` says `either` rather than inventing a preference.
 
 So the honest answer to "could a palette missing some hues still be legible" is
-*sometimes*, and the way to find out is to run both modes and compare — not to
-decide in advance.
+*sometimes*, it is decided per palette, and for most palettes the question does
+not arise — the borrow covers them and there is nothing to choose between.
 
 A stand-in is always a whole **family**, never a scatter of individually-distinct
 colours. An early version picked the most mutually-distant spare colours and
@@ -236,6 +263,56 @@ years. **It is inherited, not fork-original, and changing it would repaint every
 existing game that uses that palette, so nothing here touches it.** Worth
 reporting upstream alongside the `color_palette` aliasing bug in
 `doc/palette-set.md`.
+
+## The checks
+
+```sh
+uv run tools/palette_test.py
+```
+
+Dependency-free and self-contained, like the tools, so there is no framework to
+install. About 5,200 assertions over the real palettes, the three example
+candidates, and sixty generated ones weighted towards the awkward cases — the
+one-colour palette, the all-greys palette, the palette whose colours are all at
+the same lightness.
+
+It checks *invariants the code claims*, not particular outputs. The fitter is
+meant to be improved, and pinning its exact choices would make every
+improvement look like a regression. What must not change is the set of
+promises:
+
+- every fit covers all 21 slots with valid colours, in both modes
+- **every ramp climbs** — the fitter's "monotonic by construction" claim
+- a slot marked `sourced` or `standin` really is a colour from the source
+- `standin` never appears under `fit-colourname`
+- `spares` really are unused; every non-sourced slot carries a note saying why
+- `fit` is deterministic; every axis lands in 0–100
+- the frozen `ANCHOR` still matches the corpus, and every anchor is a real
+  shipped colour
+- `ANCHOR` itself obeys the ramp rule it enforces
+- the calibration corpus is exactly 14 palettes, with the fork's three excluded
+- **`src/demo/palette-refs.txt` matches `--emit-refs`**, and every curated
+  colour appears in `colors.js` — the generated files in git cannot drift
+- all five input formats parse the same palette identically
+- duplicate palettes collapse; colliding slugs are disambiguated, not merged
+
+Writing it found three real bugs that manual inspection had missed, all of them
+invariant violations rather than matters of taste:
+
+1. **`relight` silently changed hue.** It converted Lab to sRGB and let the
+   channels clip. Relighting `#7bda1e`, a yellow-green, down to L 25 clipped to
+   `#006900` — a pure green 40° away. It now reduces chroma until the colour
+   fits the gamut instead, so a dark yellow-green comes out duller rather than
+   greener, which is what pigment does anyway.
+2. **`sourced` was sometimes a lie.** `enforce_monotonic` would relight a
+   colour to keep a ramp climbing while leaving its provenance as `sourced`, so
+   the "sourced 17/21" figures were overstated whenever two source colours sat
+   within 4 L of each other. Relit slots are now downgraded to `derived` with a
+   note. Dungeon-20's honest count is 11/21, not 13/21.
+3. **Ramps could still fail to climb.** `enforce_monotonic` pushed each step up
+   to clear the one below, which has no headroom at the top: a palette whose
+   greys are already near L 100 kept a flat final step. It now makes a second
+   pass downwards, pushing the lower steps out of the way instead.
 
 ## What the fitter gets wrong
 

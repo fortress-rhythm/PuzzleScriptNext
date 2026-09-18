@@ -240,7 +240,8 @@ def lab_mix(a, b, t):
     return lab_to_hex(mixed)
 
 
-def lab_to_hex(L):
+def lab_to_linear(L):
+    """Lab -> linear sRGB, unclamped, so callers can test for gamut."""
     ll, aa, bb = L
     fy = (ll + 16) / 116
     fx, fz = fy + aa / 500, fy - bb / 200
@@ -248,23 +249,48 @@ def lab_to_hex(L):
     def finv(t):
         return t ** 3 if t ** 3 > 216 / 24389 else (t - 4 / 29) * 108 / 841
     x, y, z = finv(fx) * 0.95047, finv(fy) * 1.0, finv(fz) * 1.08883
-    r = x * 3.2404542 + y * -1.5371385 + z * -0.4985314
-    g = x * -0.9692660 + y * 1.8760108 + z * 0.0415560
-    b = x * 0.0556434 + y * -0.2040259 + z * 1.0572252
+    return (x * 3.2404542 + y * -1.5371385 + z * -0.4985314,
+            x * -0.9692660 + y * 1.8760108 + z * 0.0415560,
+            x * 0.0556434 + y * -0.2040259 + z * 1.0572252)
 
+
+def in_gamut(L, eps=1e-4):
+    return all(-eps <= c <= 1 + eps for c in lab_to_linear(L))
+
+
+def lab_to_hex(L):
     def enc(c):
         c = max(0.0, min(1.0, c))
         c = 12.92 * c if c <= 0.0031308 else 1.055 * c ** (1 / 2.4) - 0.055
         return c * 255
-    return hexof((enc(r), enc(g), enc(b)))
+    return hexof(tuple(enc(c) for c in lab_to_linear(L)))
 
 
 def relight(h, target_L):
     """The same colour at a different Lab lightness. Used to derive a ramp step
-    a source palette does not contain: the result keeps the palette's own hue
-    and chroma, so it reads as a member of the palette rather than a graft."""
+    a source palette does not contain: the result keeps the palette's own hue,
+    so it reads as a member of the palette rather than a graft.
+
+    Chroma is reduced until the result fits in sRGB rather than letting the
+    conversion clip channels. Clipping is the obvious implementation and it
+    silently changes the hue - relighting #7bda1e, a yellow-green, down to L 25
+    clips to #006900, a pure green 40 degrees away. A relight that does not
+    preserve hue is not a relight, so the chroma gives way instead: a dark
+    yellow-green is duller than a bright one, which is true of real pigments
+    too and is what the eye expects.
+    """
     ll, aa, bb = lab(h)
-    return lab_to_hex((max(0.0, min(100.0, target_L)), aa, bb))
+    target_L = max(0.0, min(100.0, target_L))
+    if in_gamut((target_L, aa, bb)):
+        return lab_to_hex((target_L, aa, bb))
+    lo, hi = 0.0, 1.0
+    for _ in range(24):
+        mid = (lo + hi) / 2
+        if in_gamut((target_L, aa * mid, bb * mid)):
+            lo = mid
+        else:
+            hi = mid
+    return lab_to_hex((target_L, aa * lo, bb * lo))
 
 
 # ------------------------------------------------------------------- families
@@ -550,7 +576,22 @@ def parse_palette(path):
 
 
 def load_candidates(paths):
-    """Every palette under the given files and directories."""
+    """Every palette under the given files and directories.
+
+    Returns (candidates, errors). Two things are cleaned up here because both
+    happen the moment you download real palettes rather than construct test
+    ones, and both corrupt the results quietly rather than loudly:
+
+    Duplicate slugs. Verdicts are keyed by slug, and the slug comes from the
+    filename, so `benten-pond.hex` and `benten-pond.gpl` - which is exactly
+    what you get if you click two download buttons on one Lospec page - would
+    share a verdict and overwrite each other's.
+
+    Duplicate palettes. The same colours arriving twice under two filenames
+    would be fitted, rated and ranked twice, which inflates the candidate count
+    and puts the same palette in two places in the reading queue. The second
+    copy is dropped and reported, rather than silently merged.
+    """
     exts = {".hex", ".gpl", ".pal", ".json", ".txt", ".css"}
     files = []
     for p in paths:
@@ -561,10 +602,32 @@ def load_candidates(paths):
                         files.append(os.path.join(root, n))
         else:
             files.append(p)
+
     out, errors = [], []
+    by_colours, slugs = {}, {}
     for f in files:
         try:
-            out.append(parse_palette(f))
+            cand = parse_palette(f)
         except (OSError, ValueError, json.JSONDecodeError) as e:
             errors.append((f, str(e)))
+            continue
+
+        key = tuple(sorted(cand["hex"]))
+        if key in by_colours:
+            errors.append((f, "same colours as "
+                           + os.path.basename(by_colours[key]) + "; skipped"))
+            continue
+        by_colours[key] = f
+
+        slug = cand["slug"]
+        if slug in slugs:
+            n = 2
+            while f"{slug}{n}" in slugs:
+                n += 1
+            cand["slug"] = f"{slug}{n}"
+            errors.append((f, f"slug '{slug}' already used by "
+                           + os.path.basename(slugs[slug])
+                           + f"; filed as '{cand['slug']}'"))
+        slugs[cand["slug"]] = f
+        out.append(cand)
     return out, errors

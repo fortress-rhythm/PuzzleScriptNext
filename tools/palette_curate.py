@@ -16,6 +16,7 @@ plausible source colour, two objects that vanish into each other under
 deuteranopia. The choice stays yours, and `verdict` is where you record it.
 
     uv run tools/palette_curate.py score  candidates/          rank them
+    uv run tools/palette_curate.py compare candidates/          both modes at once
     uv run tools/palette_curate.py show   candidates/foo.hex   one in detail
     uv run tools/palette_curate.py sheet  candidates/ -o s.html   look at them
     uv run tools/palette_curate.py combos candidates/          who fills whose gaps
@@ -66,7 +67,7 @@ FORK_PALETTES = ("bentenpond", "dungeon20", "oekakinl")
 #   standin  - a colour the palette contains, deliberately used for a slot it
 #              does not match: `green` filled with a teal (fit-palette only)
 #   added    - the palette has nothing in this family at all, so the slot is
-#              synthesised at arnecolors' hue and the palette's own chroma
+#              synthesised at the ANCHOR hue and the palette's own chroma
 #
 # `derived` is the interesting middle case. A palette with two greens can carry
 # three green slots honestly; a palette with no green at all cannot, and saying
@@ -132,8 +133,8 @@ def register(hexes):
 
 
 def synth(slot, reg):
-    """A colour for a slot the palette cannot supply, at arnecolors' hue and
-    lightness but the candidate's saturation, so the addition sits inside the
+    """A colour for a slot the palette cannot supply: the anchor's hue and
+    lightness, the candidate's own saturation, so the addition sits inside the
     palette's range instead of shouting."""
     L, a, b = lab(ANCHOR[slot])
     c = (a * a + b * b) ** 0.5
@@ -188,15 +189,35 @@ def spread(colors, k):
 
 
 def enforce_monotonic(chosen):
-    """Force a ramp to climb. The pickers below already order by lightness, so
-    this only ever fires on a palette with two colours at the same L - but when
-    it fires, the alternative is a ramp with an invisible step in it."""
+    """Force a ramp to climb. Returns (colours, indices it had to change).
+
+    The pickers already order by lightness, so this only fires on a palette
+    with two colours at the same L - but when it fires, the alternative is a
+    ramp with an invisible step in it.
+
+    Two passes, because one is not enough. Pushing each step up to clear the
+    one below it fails at the top: if the ramp is already near L 100 there is
+    no headroom, the push clamps, and the ramp still does not climb. So a
+    second pass walks back down and makes room underneath instead. A ramp that
+    cannot rise at the top must descend at the bottom.
+
+    Which indices changed matters to the caller: a colour that has been relit
+    is no longer the source's colour, and calling it `sourced` would overstate
+    every "sourced 17/21" figure in the reports.
+    """
     out = list(chosen)
+    changed = set()
     for i in range(1, len(out)):
-        prev, cur = lab(out[i - 1])[0], lab(out[i])[0]
-        if cur < prev + MIN_STEP:
-            out[i] = relight(out[i], min(100.0, prev + MIN_STEP))
-    return out
+        target = lab(out[i - 1])[0] + MIN_STEP
+        if lab(out[i])[0] < target and target <= 100.0:
+            out[i] = relight(out[i], target)
+            changed.add(i)
+    for i in range(len(out) - 2, -1, -1):
+        target = lab(out[i + 1])[0] - MIN_STEP
+        if lab(out[i])[0] > target and target >= 0.0:
+            out[i] = relight(out[i], target)
+            changed.add(i)
+    return out, changed
 
 
 def farthest(pool, assigned, k=1):
@@ -268,7 +289,8 @@ def fit_ramp(slots, pool, reg, donor_note=None, standin_note=None):
         for s in slots:
             prov[s] = "added"
             notes[s] = "no colour of this family in the source"
-        return dict(zip(slots, enforce_monotonic(chosen))), prov, notes
+        fixed, _ = enforce_monotonic(chosen)
+        return dict(zip(slots, fixed)), prov, notes
 
     if len(pool) >= k:
         chosen = spread(pool, k)
@@ -334,7 +356,16 @@ def fit_ramp(slots, pool, reg, donor_note=None, standin_note=None):
                 prov[s] = "derived"
                 notes[s] = "interpolated between the source's own steps"
 
-    return dict(zip(slots, enforce_monotonic(chosen))), prov, notes
+    fixed, nudged = enforce_monotonic(chosen)
+    # A relit colour is not the source's colour any more, whatever it was a
+    # moment ago, so it stops counting as sourced.
+    for i in nudged:
+        s = slots[i]
+        if prov[s] in ("sourced", "standin"):
+            prov[s] = "derived"
+            notes[s] = (f"relit from {chosen[i]} so the ramp keeps climbing"
+                        + (f"; {notes[s]}" if s in notes else ""))
+    return dict(zip(slots, fixed)), prov, notes
 
 
 NEUTRAL_RAMP_CHROMA = 22.0   # muted enough to serve as a grey
@@ -787,6 +818,51 @@ def cmd_audit(stats, builtins, colors_js):
         print("\n  every shipped palette's ramps climb")
 
 
+def cmd_compare(cands, stats):
+    """Both modes side by side.
+
+    Which mode a palette scores better under is a finding about the palette,
+    not a general rule: one with a true hue gap is usually better off renaming
+    a spare family than having three colours invented for it, and one that is
+    merely lopsided is usually the other way round. Running both and reading
+    the gap is the only way to tell, so it should not require running the tool
+    twice and holding two tables in your head.
+    """
+    by_mode = {m: {r["slug"]: r for r in evaluate(cands, stats, m)}
+               for m in WEIGHTS}
+    print(f"\n{'=' * 74}\nCOMPARE - the same candidates fitted both ways\n{'=' * 74}\n")
+    print(f"  {'palette':<22}{'colourname':>11}{'palette':>9}{'gap':>7}   "
+          f"{'prefers':<12}why")
+    print("  " + "-" * 82)
+    rows = sorted(by_mode["fit-colourname"].values(), key=lambda r: -r["score"])
+    for r in rows:
+        a = by_mode["fit-colourname"][r["slug"]]
+        b = by_mode["fit-palette"][r["slug"]]
+        gap = b["score"] - a["score"]
+        prefers = "palette" if gap > 0 else "colourname"
+        added = sum(1 for s in SLOTS if a["prov"][s] == "added")
+        stand = sum(1 for s in SLOTS if b["prov"][s] == "standin")
+        # A palette with no gaps at all is fitted identically both ways - there
+        # is no decision to make, so the whole difference is that role is
+        # weighted under one mode and separation under the other. Reporting
+        # that as a preference would be inventing a reason for an artefact.
+        if a["mapping"] == b["mapping"]:
+            prefers = "either"
+            why = "same mapping both ways; the gap is only the axis weighting"
+        elif abs(gap) < 1.0:
+            why = f"{added} invented vs {stand} renamed, and it barely matters"
+        elif gap > 0:
+            why = (f"{added} slots would have to be invented; "
+                   f"renaming {stand} costs less")
+        else:
+            why = f"renaming {stand} slots cannibalises ramps it was using"
+        print(f"  {r['name'][:21]:<22}{a['score']:>11}{b['score']:>9}"
+              f"{gap:>+7.1f}   {prefers:<12}{why}")
+    print("\n  A palette with a true hue gap is usually better off renaming.")
+    print("  One that is merely lopsided is usually better off inventing.")
+    print("  Neither is a rule - the gap is the finding.")
+
+
 def cmd_anchors(colors_js):
     """Show the slot-name lexicon, and re-derive it to check for drift.
 
@@ -1144,6 +1220,7 @@ def main():
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     for name, helptext in [("score", "rank candidates"),
+                           ("compare", "both modes side by side"),
                            ("show", "one candidate in full"),
                            ("combos", "which candidate fills another's gaps"),
                            ("emit-curated", "draft a CURATED block"),
@@ -1211,14 +1288,16 @@ def main():
 
     cands, errors = load_candidates(args.paths)
     for f, e in errors:
-        print(f"skipped {f}: {e}", file=sys.stderr)
+        print(f"{os.path.basename(f)}: {e}", file=sys.stderr)
     if not cands:
         print("no candidate palettes found", file=sys.stderr)
         return 1
 
     rows = evaluate(cands, stats, getattr(args, "mode", "fit-colourname"))
 
-    if args.cmd == "score":
+    if args.cmd == "compare":
+        cmd_compare(cands, stats)
+    elif args.cmd == "score":
         cmd_score(rows, stats)
     elif args.cmd == "show":
         for r in rows:

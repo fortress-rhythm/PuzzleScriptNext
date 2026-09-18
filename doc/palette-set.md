@@ -19,6 +19,7 @@ to build, this one says what exists and how to add the next one.
 | `src/Documentation/prelude.html` | User-facing list with credits |
 | `tools/palette_lib.py` | Shared colour maths, used by both tools |
 | `tools/palette_curate.py` | Rating *candidate* palettes — see `doc/palette-curation.md` |
+| `tools/palette_test.py` | Checks for both tools, including that the generated files above still match their generators |
 
 The palettes:
 
@@ -92,6 +93,7 @@ rated draft you correct; steps 4 and 5 are unchanged either way.
    ```sh
    uv run tools/palette_analysis.py --emit-js    # paste into colors.js
    uv run tools/palette_analysis.py --emit-refs > src/demo/palette-refs.txt
+   uv run tools/palette_test.py                  # confirms they match
    ```
 5. Add an alias index and a credit in `prelude.html` and in
    `paletteCredits` in `palettes_ui.js`.
