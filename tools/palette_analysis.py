@@ -16,9 +16,16 @@ Deliberately dependency-free so `uv run` needs no resolution step.
 """
 
 import argparse
-import colorsys
 import json
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+from palette_lib import (  # noqa: E402
+    ALIAS_OF, ARNE, CVD, SLOTS, analyse, contrast, dist, hsl, luminance,
+    load_builtins, rgb, simulate,
+)
 
 # --------------------------------------------------------------------- sources
 
@@ -51,81 +58,6 @@ SOURCES = {
                   c96c7f f1a8ca""".split(),
     },
 }
-
-# PuzzleScript's 21 real slots. gray/darkgray/lightgray are spelling aliases and
-# are emitted alongside their grey twins, not treated as extra colours.
-SLOTS = [
-    "black", "white", "grey", "darkgrey", "lightgrey",
-    "red", "darkred", "lightred",
-    "brown", "darkbrown", "lightbrown",
-    "orange", "yellow",
-    "green", "darkgreen", "lightgreen",
-    "blue", "lightblue", "darkblue",
-    "purple", "pink",
-]
-
-# Fallback source, used verbatim wherever a candidate cannot supply a slot.
-ARNE = {
-    "black": "#000000", "white": "#FFFFFF", "grey": "#9d9d9d",
-    "darkgrey": "#697175", "lightgrey": "#cccccc",
-    "red": "#be2633", "darkred": "#732930", "lightred": "#e06f8b",
-    "brown": "#a46422", "darkbrown": "#493c2b", "lightbrown": "#eeb62f",
-    "orange": "#eb8931", "yellow": "#f7e26b",
-    "green": "#44891a", "darkgreen": "#2f484e", "lightgreen": "#a3ce27",
-    "blue": "#1d57f7", "lightblue": "#B2DCEF", "darkblue": "#1B2632",
-    "purple": "#342a97", "pink": "#de65e2",
-}
-
-# ------------------------------------------------------------------- colour ops
-
-def rgb(h):
-    h = h.lstrip("#")
-    return (int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16))
-
-
-def hsl(h):
-    r, g, b = (c / 255 for c in rgb(h))
-    hh, ll, ss = colorsys.rgb_to_hls(r, g, b)
-    return hh * 360, ss, ll
-
-
-def luminance(h):
-    def chan(c):
-        c /= 255
-        return c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4
-    r, g, b = rgb(h)
-    return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
-
-
-def contrast(a, b):
-    la, lb = luminance(a), luminance(b)
-    hi, lo = max(la, lb), min(la, lb)
-    return (hi + 0.05) / (lo + 0.05)
-
-
-def dist(a, b):
-    return sum((x - y) ** 2 for x, y in zip(a, b)) ** 0.5
-
-
-CVD = {
-    "protanopia": [[0.152286, 1.052583, -0.204868],
-                   [0.114503, 0.786281, 0.099216],
-                   [-0.003882, -0.048116, 1.051998]],
-    "deuteranopia": [[0.367322, 0.860646, -0.227968],
-                     [0.280085, 0.672501, 0.047413],
-                     [-0.011820, 0.042940, 0.968881]],
-    "tritanopia": [[1.255528, -0.076749, -0.178779],
-                   [-0.078411, 0.930809, 0.147602],
-                   [0.004733, 0.691367, 0.303900]],
-}
-
-
-def simulate(h, matrix):
-    r, g, b = rgb(h)
-    return tuple(
-        max(0, min(255, row[0] * r + row[1] * g + row[2] * b)) for row in matrix
-    )
-
 
 # ------------------------------------------------------------------- mapping
 #
@@ -248,41 +180,7 @@ def first_pass(hexes):
     return fam
 
 
-# -------------------------------------------------------------------- checks
-
-def analyse(name, mapping):
-    values = [(s, mapping[s]) for s in SLOTS]
-
-    low_contrast = []
-    for i, (sa, ca) in enumerate(values):
-        for sb, cb in values[i + 1:]:
-            r = contrast(ca, cb)
-            if r < 1.3:
-                low_contrast.append((sa, sb, round(r, 3)))
-
-    cvd_flags = {k: [] for k in CVD}
-    for i, (sa, ca) in enumerate(values):
-        for sb, cb in values[i + 1:]:
-            normal = dist(rgb(ca), rgb(cb))
-            if normal <= 20:
-                continue
-            for kind, matrix in CVD.items():
-                sim = dist(simulate(ca, matrix), simulate(cb, matrix))
-                if sim < 15:
-                    cvd_flags[kind].append((sa, sb, round(normal, 1), round(sim, 1)))
-
-    seen = {}
-    for s, c in values:
-        seen.setdefault(c.lower(), []).append(s)
-    dupes = {c: names for c, names in seen.items() if len(names) > 1}
-
-    return {
-        "unique": len(seen),
-        "low_contrast": sorted(low_contrast, key=lambda t: t[2]),
-        "cvd": cvd_flags,
-        "dupes": dupes,
-    }
-
+# -------------------------------------------------------------------- report
 
 def report(name, src, mapping, prov, spares, res):
     print(f"\n{'=' * 74}\n{src['title']}  ({name})  —  {src['author']}\n{src['url']}\n{'=' * 74}")
@@ -320,52 +218,37 @@ def report(name, src, mapping, prov, spares, res):
             print(f"    ... and {len(flags) - 6} more")
 
 
-def load_builtins(path="src/js/colors.js"):
-    """The 14 shipped palettes, parsed straight out of colors.js.
-
-    The candidates' numbers mean nothing without knowing what normal looks like
-    for this engine - the rubric's 1.3 contrast floor flags a lot of pairs even
-    in palettes that have shipped for years.
-    """
-    import re
-    try:
-        text = open(path, encoding="utf-8").read()
-    except OSError:
-        return {}
-    body = text[text.index("colorPalettes = {"):]
-    out = {}
-    for m in re.finditer(r"(\w+)\s*:\s*\{(.*?)\}", body, re.S):
-        name, block = m.group(1), m.group(2)
-        pairs = dict(re.findall(r"(\w+)\s*:\s*\"(#[0-9a-fA-F]{6})\"", block))
-        if all(s in pairs for s in SLOTS):
-            out[name] = {s: pairs[s] for s in SLOTS}
-    return out
-
-
 def baseline():
-    builtins = load_builtins()
+    """The inherited palettes, as the yardstick the candidates are read against.
+
+    The fork's own three are excluded. They live in colors.js now, so a plain
+    read of the file returns seventeen palettes and the "shipped range" quietly
+    widens to include the very palettes being measured against it - which would
+    make the comparison meaningless in exactly the direction that flatters this
+    work. Fourteen is the number that means anything here.
+    """
+    builtins = load_builtins(exclude=tuple(SOURCES))
     if not builtins:
         return
-    print(f"\n{'=' * 74}\nBASELINE - the 14 shipped palettes, identical checks\n{'=' * 74}")
+    print(f"\n{'=' * 74}\nBASELINE - the {len(builtins)} inherited palettes, "
+          f"identical checks\n{'=' * 74}")
     print(f"  {'palette':<16} {'unique':>6} {'contrast<1.3':>13} {'cvd collapses':>14}")
     rows = []
     for name, mapping in builtins.items():
-        r = analyse(name, mapping)
+        r = analyse(mapping)
         rows.append((name, r["unique"], len(r["low_contrast"]),
                      sum(len(v) for v in r["cvd"].values())))
     for name, u, lc, cv in rows:
         print(f"  {name:<16} {u:>4}/21 {lc:>13} {cv:>14}")
     lo = min(r[2] for r in rows)
     hi = max(r[2] for r in rows)
-    print(f"\n  shipped range: {lo}-{hi} low-contrast pairs, "
+    print(f"\n  inherited range: {lo}-{hi} low-contrast pairs, "
           f"{min(r[3] for r in rows)}-{max(r[3] for r in rows)} CVD collapses")
 
 
 # Emitters. colors.js and the reference file are both generated from CURATED,
 # so the palette can never drift between what the engine uses and what the
 # copy-paste block says.
-
-ALIAS_OF = {"gray": "grey", "darkgray": "darkgrey", "lightgray": "lightgrey"}
 
 # Key order and padding copied from the existing entries in colors.js so the
 # new block is indistinguishable in style from the 14 it sits beside.
@@ -463,7 +346,7 @@ def main():
     out = {}
     for name, src in SOURCES.items():
         mapping, prov, spares = curated(name)
-        res = analyse(name, mapping)
+        res = analyse(mapping)
         out[name] = {
             "meta": {k: src[k] for k in ("title", "author", "url", "note")},
             "mapping": mapping, "provenance": prov, "spares": spares,

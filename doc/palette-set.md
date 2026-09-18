@@ -17,6 +17,8 @@ to build, this one says what exists and how to add the next one.
 | `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
 | `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
 | `src/Documentation/prelude.html` | User-facing list with credits |
+| `tools/palette_lib.py` | Shared colour maths, used by both tools |
+| `tools/palette_curate.py` | Rating *candidate* palettes — see `doc/palette-curation.md` |
 
 The palettes:
 
@@ -74,6 +76,10 @@ and why it cannot corrupt a game.
 
 ## Adding a fourth palette
 
+`doc/palette-curation.md` covers the stage before this one — finding candidates,
+rating them and deciding. Its tooling replaces steps 1-3 below with a fitted,
+rated draft you correct; steps 4 and 5 are unchanged either way.
+
 1. Add the source hex to `SOURCES` in `tools/palette_analysis.py`.
 2. `uv run tools/palette_analysis.py` — the raw hue-clustering pass plus the
    three checks, with the fourteen shipped palettes printed underneath as a
@@ -102,6 +108,15 @@ either sourced, or a stated addition.
   case.
 - **Duplicate hex** — how many of the 21 slots are actually distinct. Sharing is
   not automatically wrong; three of the fourteen built-ins do it.
+
+A fourth check was added later, in `tools/palette_lib.py`, and applies to both
+tools: within a ramp, **luminance must increase at every step**. `lightred`
+darker than `red` is a mapping error, and contrast and colourblindness both
+measure pairs in isolation, so neither notices a ramp running backwards. Ten of
+the fourteen inherited palettes have no such fault, and all three palettes above
+have none; `palette_curate.py audit` lists the exceptions, one of which
+(`proteus_night`'s `lightgreen`, a near-black navy) looks like an inherited
+copy-paste error rather than a stylistic choice.
 
 ## How these three came out
 
@@ -146,6 +161,11 @@ base palette, and the second game got the first one's colours.
 
 Fixed in `compiler.js` by copying at all three assignment sites. It is upstream
 behaviour, not fork-original, and worth reporting upstream.
+
+The ramp audit later turned up a second inherited defect worth reporting with
+it: `proteus_night` has `green` `#75ac8d`, a mid sage, and `lightgreen`
+`#061f2e`, a near-black navy. Nothing here changes it - repainting a shipped
+palette would repaint every existing game that uses it.
 
 ## Credits
 

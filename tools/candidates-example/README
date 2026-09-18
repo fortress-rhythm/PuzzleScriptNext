@@ -1,0 +1,24 @@
+Three candidate palettes, in the three formats the tool reads, so that
+`palette_curate.py` has something to run on out of the box and each parser is
+documented by example:
+
+    benten-pond.hex    one hex code per line       (Lospec .hex export)
+    dungeon-20.json    {name, author, colors[]}    (Lospec's JSON endpoint)
+    oekakinl.gpl       GIMP palette                (GIMP, Aseprite, Krita)
+
+    uv run tools/palette_curate.py score tools/candidates-example/
+    uv run tools/palette_curate.py sheet tools/candidates-example/ -o sheet.html
+
+These particular three are the palettes the fork already adopted at indices
+15-17, which makes them a useful regression check rather than a neutral sample:
+the fitter's output can be read against the hand-curated mapping in
+`tools/palette_analysis.py` to see where a human overrode the algorithm, and
+why. They are NOT the tool's recommendations - see doc/palette-curation.md for
+what the fitter gets wrong on each.
+
+A .pal (JASC-PAL) file works too; there simply is not one here.
+
+Credits, as in doc/palette-set.md:
+  Benten Pond   Terry Ross                   https://lospec.com/palette-list/benten-pond
+  Dungeon-20    Meaghan (goldentreesart)     https://lospec.com/palette-list/dungeon-20
+  Oekaki.nl     P-Tux7                       https://lospec.com/palette-list/oekakinl
