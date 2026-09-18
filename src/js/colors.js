@@ -26,7 +26,8 @@ colorPalettesAliases = {
 	20 : "ruststorm",
 	21 : "rustfairyochre",
 	22 : "endofallglory",
-	23 : "gloryrust"
+	23 : "gloryrust",
+	24 : "berrysepia"
 // --- end palette-set extension ---------------------------------------------
 };
 
@@ -684,6 +685,36 @@ whitingjp : {
 	darkblue		: "#44425f",
 	purple			: "#493556",
 	pink			: "#c197b0"
+	},
+	// Berry Nebula + Soggy Sepia CRT-20 - Lostinindigo and Digi (@Digitress) - https://lospec.com/palette-list/berry-nebula
+	// pooled from Berry Nebula by Lostinindigo and Soggy Sepia CRT-20 by Digi / @Digitress (lospec.com/palette-list/soggy-sepia-crt-20) - each supplies exactly what the other's notes say it lacks.
+	// Not in the source, added to fill PuzzleScript's fixed slots: yellow, darkblue.
+	// Source colours with no slot to occupy: #6cb9c9, #6f1d5c, #4f1446, #2e0a30, #0a0707, #140f0f, #d2cabd, #0d0505, #190b0b, #5b2e22, #e9d6ca, #070905, #0f130b, #242c13, #c7d7ac, #dbe6ca, #070509, #0f0b13, #887294, #c7bdce, #dbd6e0.
+	berrysepia : {
+	black   		: "#0d001a",
+	white			: "#e2ded5",
+	grey			: "#372e38",
+	darkgrey		: "#241a21",
+	lightgrey		: "#c4b8a6",
+	gray			: "#372e38",
+	darkgray		: "#241a21",
+	lightgray		: "#c4b8a6",
+	red				: "#b87258",
+	darkred			: "#3c1a13",
+	lightred		: "#ddbdac",
+	brown			: "#493e2d",
+	darkbrown		: "#30231a",
+	lightbrown		: "#a08e76",
+	orange			: "#d3a690",
+	yellow 			: "#d8d4a2",
+	green			: "#88aa58",
+	darkgreen		: "#374e22",
+	lightgreen		: "#b5ca90",
+	blue			: "#6d85a5",
+	lightblue		: "#6ceded",
+	darkblue		: "#1b3652",
+	purple			: "#6e5181",
+	pink			: "#b5a6bc"
 	}
 // --- end palette-set extension ---------------------------------------------
 

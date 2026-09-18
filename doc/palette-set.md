@@ -12,7 +12,7 @@ to build, this one says what exists and how to add the next one.
 
 | | |
 |---|---|
-| `src/js/colors.js` | Nine palettes at indices 15–23, inside a labelled fork block |
+| `src/js/colors.js` | Ten palettes at indices 15–24, inside a labelled fork block |
 | `tools/palette_analysis.py` | Derivation, the checks, and the code generators |
 | `src/demo/palette-refs.txt` | The same palettes as portable prelude blocks |
 | `src/js/palettes_ui.js` | The **PALETTES** panel: preview, apply, export |
@@ -35,8 +35,10 @@ The palettes:
 | 21 | `rustfairyochre` | Rust Gold 8 + FairyRust_8x + [Ochre Ruin](https://lospec.com/palette-list/ochre-ruin) | Trigo Mathmancer, KRYPTOCCULTIST, Quemis |
 | 22 | `endofallglory` | [End of All Glory](https://lospec.com/palette-list/end-of-all-glory) | SurrealEmber |
 | 23 | `gloryrust` | End of All Glory + FairyRust_8x | SurrealEmber, KRYPTOCCULTIST |
+| 24 | `berrysepia` | [Berry Nebula](https://lospec.com/palette-list/berry-nebula) + Soggy Sepia CRT-20 | Lostinindigo, Digi (@Digitress) |
 
-Four of them (`rustfairy`, `ruststorm`, `rustfairyochre`, `gloryrust`) are **unions**: pooled from more than one source palette. Nothing
+Five of them — `rustfairy`, `ruststorm`, `rustfairyochre`, `gloryrust` and
+`berrysepia` — are **unions**: pooled from more than one source palette. Nothing
 is blended — a union is exactly the colours of its parts, which is what keeps
 the result attributable to the people who made them.
 
@@ -62,14 +64,14 @@ anywhere. This is what you distribute.
 
 Author with the short form; export the long one when you publish. The
 **PALETTES** panel does the conversion, and `src/demo/palette-refs.txt` holds all
-nine ready to paste.
+ten ready to paste.
 
 The two forms now render identically in `puzzlescript-map-editor/` too. They
 did not before: the map editor read the base palette name and dropped every
 override, so the one representation meant to be portable was the one it drew in
 the wrong colours. It also never consulted its own numeric aliases, so
 `color_palette 3` fell back to arnecolors. Both are fixed, it carries all
-twenty-three palettes now, and its test suite checks that copy against
+twenty-four palettes now, and its test suite checks that copy against
 `src/js/colors.js` slot by slot whenever the two are checked out together.
 
 One detail that is easy to get wrong by hand: the block must also set
@@ -150,7 +152,7 @@ A fourth check was added later, in `tools/palette_lib.py`, and applies to both
 tools: within a ramp, **luminance must increase at every step**. `lightred`
 darker than `red` is a mapping error, and contrast and colourblindness both
 measure pairs in isolation, so neither notices a ramp running backwards. Ten of
-the fourteen inherited palettes have no such fault, and all nine palettes above
+the fourteen inherited palettes have no such fault, and all ten palettes above
 have none; `palette_curate.py audit` lists the exceptions, one of which
 (`proteus_night`'s `lightgreen`, a near-black navy) looks like an inherited
 copy-paste error rather than a stylistic choice.
@@ -165,7 +167,7 @@ near-black, `purple` `#342a97` is blue-violet, `pink` is magenta, `lightbrown`
 it is the most typical colour for only seven of the twenty-one slots.
 `palette_curate.py anchors` prints what the corpus actually means by each name.
 
-## How these nine came out
+## How these ten came out
 
 Measured against the fourteen inherited palettes, which span **26–75**
 low-contrast pairs and **0–13** colourblind collapses:
@@ -181,8 +183,9 @@ low-contrast pairs and **0–13** colourblind collapses:
 | `soggysepia` | 17/21 | 21/21 | 40 | 2 | 0 |
 | `endofallglory` | 17/21 | 21/21 | 36 | 2 | 0 |
 | `gloryrust` | 19/21 | 21/21 | 29 | 2 | 0 |
+| `berrysepia` | 19/21 | 21/21 | 36 | 2 | 0 |
 
-All nine are inside the inherited range, all nine have distinct values for
+All ten are inside the inherited range, all ten have distinct values for
 every slot, and none has a ramp that runs backwards.
 
 The two columns pull against each other, which is the honest summary of the
@@ -253,6 +256,43 @@ additions, the most of any palette here, because Storms and Cyan contributes
 exactly one non-blue colour. Neither source has a light neutral at all — the
 warm half tops out at L 58 — so without an added `white` and `lightgrey` the
 grey ramp would end at a mid-brown.
+
+### berrysepia, and combining to replace an invention
+
+`soggysepia` ships three **added** blues, because its source has no blue
+anywhere. Berry Nebula is made of nothing but blues and purples. That is the
+whole argument for the pairing — not that either palette is better, but that
+one's inventions are the other's real colours.
+
+Berry Nebula is worth understanding as a *gradient* rather than a palette:
+eight evenly-stepped colours along one path from a near-black purple at L 1 to
+a neon cyan at L 87, covering two of the nine hue families. Standalone it fills
+four of twenty-one slots and there is no point shipping it, which is why it
+exists here only in combination.
+
+Everything warm, green and neutral in `berrysepia` is Soggy Sepia's, unchanged
+from index 18. What changes is the blue ramp, `purple`, and `black`:
+
+| | soggysepia | berrysepia |
+|---|---|---|
+| `darkblue` | `#232648` — synthesised | `#1b3652` — relit from Berry Nebula's own blue |
+| `blue` | `#7378af` — synthesised | `#6d85a5` — **sourced** |
+| `lightblue` | `#babee7` — synthesised | `#6ceded` — **sourced** |
+| `purple` | `#887294` | `#6e5181` — Berry Nebula's, 5° from the anchor |
+| `black` | `#0a0707` | `#0d001a` — a purple-black, for a nebula |
+
+Three inventions become two sourced colours and one relit from a sourced one.
+Sourced goes 17 → 19 and the one remaining addition is `yellow`, which neither
+palette has.
+
+**One place the score had to lose.** Everything below L 40 on Berry Nebula's
+path is purple, so it cannot supply a dark blue. The fitter preferred its
+`#4f1446` for `darkblue` and scored that higher for being sourced — but it is a
+magenta-purple **sixty degrees** from what `darkblue` means, past the hue cap
+the borrow logic enforces everywhere else. Relighting Berry Nebula's own
+`#6d85a5` down to L 22 scores 0.2 lower and is a dark blue. That is the
+"pale cream as `darkbrown`" failure the rubric was written to catch, arriving
+by a different route.
 
 ### endofallglory against gloryrust
 

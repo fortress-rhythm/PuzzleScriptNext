@@ -309,4 +309,8 @@ var paletteCredits = {
         'palette pooled from "End of All Glory" by SurrealEmber and "FairyRust_8x" by '
         + 'KRYPTOCCULTIST (lospec.com/palette-list/fairyrust8x). darkbrown and pink '
         + 'are original additions.',
+    berrysepia:
+        'palette pooled from "Berry Nebula" by Lostinindigo '
+        + '(lospec.com/palette-list/berry-nebula) and "Soggy Sepia CRT-20" by '
+        + 'Digi / @Digitress. yellow and darkblue are original additions.',
 };

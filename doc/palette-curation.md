@@ -33,7 +33,7 @@ directory works; every command takes paths.
 
 The only step that is not optional is looking at the sheet. A score orders a
 reading queue; it cannot tell you a palette is beautiful. Benten Pond scores
-worst of the nine shipped palettes on every reading and was still the right
+worst of the ten shipped palettes on every reading and was still the right
 adoption.
 
 ## Where things go
@@ -50,6 +50,7 @@ your desktop, point at your desktop.
 | `emit-curated`, `block` | stdout — made to be read, corrected, and pasted | no |
 | `sheet` | the `-o` path; defaults to `./palette-sheet.html` | no, if you keep it in `tools/candidates/` |
 | `union` | the `-o` path, a `.gpl` file | no — it is a candidate, not a decision |
+| `preview` | the `-o` path; defaults to `./palette-preview.html` | no |
 | `verdict` | `tools/palette_verdicts.json`, always | **yes** — it is the record of your decisions |
 | `fetch` | the `-o` directory; defaults to `./candidates` | no |
 
@@ -76,7 +77,7 @@ So: Python is a build-time tool for this repository, not a dependency of the
 engine, the editor, the map editor, or anything you ship. A game author never
 runs it. If you only want to *use* the palettes, the PALETTES panel does
 preview, apply and export without touching a terminal, and
-`src/demo/palette-refs.txt` has all nine ready to paste.
+`src/demo/palette-refs.txt` has all ten ready to paste.
 
 You need Python only to rate a new candidate palette or to regenerate the
 generated files, and only `uv` — the scripts are dependency-free with PEP 723
@@ -110,6 +111,7 @@ uv run tools/palette_curate.py show   candidates/foo.hex    one in full
 uv run tools/palette_curate.py combos candidates/           who fills whose gaps
 uv run tools/palette_curate.py union a.gpl b.gpl -o both.gpl   pool them into one
 uv run tools/palette_curate.py audit                        check what already ships
+uv run tools/palette_curate.py preview --fork -o p.html     LOOK at what already ships
 uv run tools/palette_curate.py anchors                      the slot-name lexicon
 uv run tools/palette_curate.py verdict foo accept -m "..."  record a decision
 uv run tools/palette_curate.py emit-curated candidates/foo.hex
@@ -122,6 +124,25 @@ so `uv run` needs no resolution step.
 Start with `sheet`. The numbers are an index, not an answer: you cannot tell
 whether a palette is worth using without looking at it, and looking at twenty-one
 labelled chips is the entire job. The score exists to order the reading queue.
+
+## Looking at what already ships
+
+`sheet` renders candidates. `preview` does the same for the palettes already in
+`colors.js`, which nothing else did: the **PALETTES** panel shows them but needs
+a browser and a running engine, and `audit` prints their numbers without showing
+a single colour.
+
+```sh
+uv run tools/palette_curate.py preview --fork -o preview.html   # the fork's own
+uv run tools/palette_curate.py preview soggysepia berrysepia -o pair.html
+uv run tools/palette_curate.py preview -o all.html              # all of them
+```
+
+Each palette gets its twenty-one slots as labelled chips in ramp order, its
+numbers, both colourblindness simulations, and its portable prelude block. Two
+named palettes side by side is the quickest way to see what a change actually
+did — `soggysepia berrysepia` shows one palette's synthesised blues against the
+other's real ones at a glance.
 
 ## Where palettes come from
 
