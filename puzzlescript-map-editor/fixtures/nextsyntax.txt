@@ -1,0 +1,172 @@
+title Next Syntax
+author psmap tests
+homepage https://github.com/fortress-rhythm/PuzzleScriptNext
+case_sensitive
+color_palette ruststorm
+
+// Every PuzzleScript Next spelling that a parser written for classic
+// PuzzleScript trips over, in one small game that compiles. The homepage line
+// above has a // inside it and comes before this first comment on purpose: it
+// must not decide the comment style, and parentheses (like these) are text now.
+//
+// The shape is Charmroach's: tagged families, one-line objects, glyphs on the
+// header line, colours after a semicolon, a layer-group divider, and a comment
+// between a section heading and its map.
+
+====
+TAGS
+====
+
+Shade = Faint Dim Deep Full
+Glow = Faint Dim
+
+========
+OBJECTS
+========
+
+// The glyph sits on the header line and the colours follow the semicolon.
+Background .; Grey DarkGrey
+00000
+00100
+00000
+01000
+00000
+
+Wall #; DarkGrey Grey LightGrey
+22222
+11101
+11101
+00000
+22222
+
+// One header, four objects. The level uses the letters, the rules would use
+// the family name.
+Roach:right e; Black LightBrown Yellow
+..0..
+.001.
+00012
+.001.
+..0..
+
+Roach:left w; Black LightBrown Yellow
+..0..
+.100.
+21000
+.100.
+..0..
+
+Roach:up n; Black LightBrown Yellow
+..2..
+.010.
+00000
+.000.
+..0..
+
+Roach:down s; Black LightBrown Yellow
+..0..
+.000.
+00000
+.010.
+..2..
+
+// A tag class in a header defines all four at once, sharing one sprite.
+Ghost:directions; White
+.000.
+0...0
+0.0.0
+0...0
+.0.0.
+
+// A copy takes another object's matrix.
+Shadow copy:Wall; Black
+
+// Invisible markers, one per line, with nothing between them.
+Dark:Faint; #00002A30
+Dark:Dim;   #00002A58
+Dark:Deep;  #00002A80
+Dark:Full;  #00002AA8
+Night; transparent
+
+Witch:down; Black DarkBlue LightBlue Yellow
+..3..
+.222.
+.111.
+.111.
+.0.0.
+
+// Several single-character aliases on one header.
+MergedRoach N E S W; LightBlue Black White
+00000
+01110
+01210
+01110
+00000
+
+Nest o; Black White
+.111.
+1...1
+1...1
+1...1
+.111.
+
+=======
+LEGEND
+=======
+
+r = Roach:directions
+P = Witch:down
+* = Night
+x = Nest and Night
+player = Witch:down
+Opaque = Wall or MergedRoach or Ghost:directions
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Night
+Nest
+Witch:down, Wall, Roach:directions, Ghost:directions, MergedRoach, Shadow
+--
+Dark:Shade
+
+======
+RULES
+======
+
+[ > player | Roach:directions ] -> [ > player | > Roach:directions ]
+
+==============
+WINCONDITIONS
+==============
+
+All Nest on MergedRoach
+
+=======
+LEVELS
+=======
+
+message Herd the roaches onto the nest.
+
+section Footfall
+// A comment between the heading and its map is the Next idiom, and it must not
+// be read as a row of the level.
+#########
+#....s..#
+#..exo..#
+#...xxw.#
+#...n...#
+#.P....*#
+#########
+
+section Merged
+#######
+#.NE..#
+#.SW..#
+#..P..#
+#######
