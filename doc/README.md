@@ -23,8 +23,12 @@ The stage before the other two: rating candidate palettes you have not adopted
 yet, what the six axes mean, and what the fitter gets wrong. Long, and only
 worth reading when you have a pile of downloads to sort through.
 
-**4. [`map-editor-sync.md`](map-editor-sync.md) — the vendored map editor.**
-Why `puzzlescript-map-editor/` is a plain copy of a standalone repository, and
+**4. [`../puzzlescript-map-editor/README.md`](../puzzlescript-map-editor/README.md) — the map and sprite editor.**
+What it does, the keys, the spreadsheet and REXPaint bridges, the `psmap`
+command, and which PuzzleScript Next spellings it reads.
+
+**5. [`map-editor-sync.md`](map-editor-sync.md) — the standalone copy of it.**
+Why the editor is developed here and mirrored to a standalone repository, and
 how to keep the two in step. Only relevant if you touch that folder.
 
 ## If you just want to do the thing
@@ -37,6 +41,10 @@ how to keep the two in step. Only relevant if you touch that folder.
 | change a colour in a shipped palette | edit `palettes/<name>.json`, then `uv run tools/palette_analysis.py --write` |
 | add a palette you found on Lospec | `palette-curation.md`, *Adding a palette, with the tool* |
 | check nothing has drifted | `uv run tools/palette_test.py` |
+| edit a game's levels or sprites with the mouse | open `puzzlescript-map-editor/web/index.html`, or **MAP EDITOR** in the editor's toolbar |
+| see a game under every palette without editing it | the **Palette** dropdown in the map editor, or **PALETTES → in editor** in the engine editor |
+| make sure the map editor can open a game, in CI | `node puzzlescript-map-editor/src/cli.js check mygame.txt` |
+| run everything this fork checks | `npm test`, `npm run check:games`, `uv run tools/palette_test.py` |
 
 ## What is generated, and from what
 

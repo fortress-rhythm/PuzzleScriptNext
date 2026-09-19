@@ -23,12 +23,60 @@ Feel free to:
 
 ## This fork's own additions
 
-Documented separately, in [`doc/`](doc/README.md) — start with that index. The
-largest is the **palette set**: ten curated colour palettes at
-`color_palette` indices 15–24, a **PALETTES** panel in the editor, portable
-prelude blocks for games that must run on stock PuzzleScript, and the tooling
-to rate and adopt more. The palettes themselves live in
-[`palettes/`](palettes/), one file each.
+Documented separately, in [`doc/`](doc/README.md) — start with that index.
+
+* The **palette set**: ten curated colour palettes at `color_palette` indices
+  15–24, a **PALETTES** panel in the editor that previews any palette on the
+  running game, portable prelude blocks for games that must run on stock
+  PuzzleScript, and the tooling to rate and adopt more. The palettes themselves
+  live in [`palettes/`](palettes/), one file each.
+* The **map and sprite editor** in
+  [`puzzlescript-map-editor/`](puzzlescript-map-editor/README.md): a browser
+  grid editor that draws your levels with your own sprites and gives you
+  rectangular copy and paste over them, a **Sprites** workspace for the pixel
+  art in OBJECTS, a palette sampler, and `psmap`, the command-line side with
+  Excel and REXPaint bridges and a `check` you can run in CI. It reads the
+  PuzzleScript Next dialect — `//` comments, tags, `Name glyph; colours`
+  headers — as well as classic PuzzleScript. **MAP EDITOR** in the editor's
+  toolbar hands the open game across.
+* A **front page**, [`index.html`](index.html), linking everything above, so
+  a clone or a GitHub Pages deployment is one click from any tool.
+
+### Running it
+
+Clone or download, then open `index.html`. The editor and the map editor work
+straight off disk. The editor's EXPORT and SHARE and the map editor's example
+buttons fetch files, which a `file://` page cannot, so for those serve the
+folder:
+
+```sh
+./runserver.sh      # macOS / Linux: node if installed, else python3
+runserver.bat       # Windows: the same
+npm start           # from the repository root, if you have node
+```
+
+and open <http://localhost:8020/>.
+
+What needs what:
+
+| to | you need |
+|---|---|
+| play, write, edit games; use the map editor | a browser |
+| serve locally | Node 16+ *or* Python 3 |
+| run the checks: `npm test`, `npm run check:games` | Node 16+, no `npm install` — the map editor has no dependencies |
+| the palette tools in `tools/` | [uv](https://docs.astral.sh/uv/) — stdlib-only scripts, `uv run` needs no setup |
+| build the minified `bin/` and standalone template: `npm run build` | Node and `npm install`; its image tools want native binaries and fail on some machines, and nothing else depends on it |
+
+CI runs the first three on every push (`.github/workflows/check.yml`).
+
+### Publishing on GitHub Pages
+
+Once, in the repository settings: **Settings → Pages → Source: GitHub
+Actions**. From then on every push to `master` publishes the checkout as-is
+(`.github/workflows/pages.yml`), with the front page at
+`https://<you>.github.io/PuzzleScriptNext/` and the editor, map editor, docs
+and gallery under it. `.nojekyll` at the root keeps Pages from running Jekyll
+over the site.
 
 ## New Features and Fixes
 The latest version is Release v-26c02. 

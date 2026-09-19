@@ -36,6 +36,24 @@ exportClickLink.addEventListener("click", exportClick, false);
 var palettePreviewClickLink = document.getElementById("palettePreviewClickLink");
 if (palettePreviewClickLink)
 	palettePreviewClickLink.addEventListener("click", palettePreviewClick, false);
+
+// MAP EDITOR - fork-original. Hands the game in the editor to the map editor
+// in a new tab. A tab opened with window.open starts with a copy of this tab's
+// sessionStorage, which is how the source gets across without a server; the
+// map editor reads and clears `psmap.handoff` as it starts. On a file:// page
+// some browsers give each tab its own storage, in which case the map editor
+// opens empty and the game is one Open... away.
+var mapEditorClickLink = document.getElementById("mapEditorClickLink");
+if (mapEditorClickLink)
+	mapEditorClickLink.addEventListener("click", function () {
+		var source = editor.getValue();
+		var title = (source.match(/^title\s+(.+)$/mi) || [])[1] || 'game';
+		var fileName = title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') + '.txt';
+		try {
+			window.sessionStorage.setItem('psmap.handoff', JSON.stringify({ source: source, fileName: fileName }));
+		} catch (e) { /* storage blocked; the map editor will open empty */ }
+		window.open('../puzzlescript-map-editor/web/index.html', 'psmap');
+	}, false);
 var palettePanelClose = document.getElementById("palettePanelClose");
 if (palettePanelClose)
 	palettePanelClose.addEventListener("click", palettePreviewClick, false);

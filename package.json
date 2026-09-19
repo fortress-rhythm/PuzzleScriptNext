@@ -1,4 +1,17 @@
 {
+  "name": "puzzlescriptnext",
+  "private": true,
+  "description": "PuzzleScript Next - the fortress-rhythm fork, with the palette set and the map editor",
+  "engines": {
+    "node": ">=16"
+  },
+  "scripts": {
+    "start": "node puzzlescript-map-editor/src/serve.js --root . --port 8020",
+    "test": "node puzzlescript-map-editor/test/run.js",
+    "check:games": "node puzzlescript-map-editor/src/cli.js check src/demo/*.txt",
+    "check:palettes": "uv run tools/palette_test.py",
+    "build": "node compile.js"
+  },
   "dependencies": {
     "compress-images": "^2.0.5",
     "concat": "^1.0.3",
