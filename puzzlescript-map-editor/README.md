@@ -5,7 +5,14 @@ Map editing tools for [PuzzleScript](https://www.puzzlescript.net/) and
 the one operation every text editor gets wrong: **copying a rectangle and
 pasting it as a rectangle.**
 
-Zero dependencies. Node 16+.
+Zero dependencies. Node 16+ for the command line; the browser editor needs
+nothing at all.
+
+This is developed inside
+[fortress-rhythm/PuzzleScriptNext](https://github.com/fortress-rhythm/PuzzleScriptNext)
+as `puzzlescript-map-editor/`, where its test suite can reach the engine's
+demo games and palette table; the standalone repository is a copy of that
+folder. Either one works on its own.
 
 ---
 
@@ -44,7 +51,10 @@ cd puzzlescript-map-editor
 npm link          # optional, puts `psmap` on your PATH
 ```
 
-No `npm install` step — there are no dependencies.
+No `npm install` step — there are no dependencies. Inside a PuzzleScriptNext
+checkout the same folder is already there; `npm start` at the engine's root
+serves the whole thing, map editor included, and **MAP EDITOR** in the
+engine's editor toolbar opens the game you have open.
 
 ---
 
@@ -67,8 +77,35 @@ paste again; the clipboard is shared across the whole game.
 Tiles are drawn using **your game's real sprites**, read from the `OBJECTS`
 section, resolved through your `color_palette`, and stacked in `COLLISIONLAYERS`
 order — so `@ = Crate and Target` draws the target underneath the crate, exactly
-as the game will. A character with no legend entry is drawn as a loud red cross,
-because it means the level will not compile.
+as the game will. `Background` is drawn under every cell, as the engine draws
+it, so a sprite's transparent pixels show floor rather than void. An object
+that is transparent on purpose — a marker like `Night; transparent` — shows
+as a dotted box with its character in it, so you can find it again; a
+character with no legend entry at all is drawn as a loud red cross, because
+it means the level will not compile.
+
+### The Sprites workspace
+
+The **Sprites** button (or `Tab`) switches to the other grid in a PuzzleScript
+file: the sprite matrices in `OBJECTS`. Every object definition is listed with
+a thumbnail; pick one and its matrix is the grid, its colour list is the tile
+palette (`0`, `1`, `2`... and `.` for transparent), and every tool works the
+same — brush, rectangle, line, fill, marquee copy and paste, undo. The maps
+redraw with the new art as you paint. An object with no matrix gets a
+transparent `sprite_size` square the moment you select it. The size badge
+turns red if a sprite is not `sprite_size` square, since the engine will
+refuse it. **Download .txt** splices only the changed rows back, the same
+way it does for levels.
+
+### The palette sampler
+
+The **Palette** dropdown in the left panel redraws the whole game — tiles,
+maps, sprites — under any of the 24 palettes this build carries, without
+touching the file. The 21 slot swatches below it show the palette in use,
+outlined where this game's objects name the slot; click one to copy its hex.
+**Copy prelude line** gives the `color_palette name` line to adopt what you
+are looking at, and **Portable block** the same palette spelled out slot by
+slot, which runs on any PuzzleScript build.
 
 ### Palettes
 
@@ -103,12 +140,13 @@ refusing to open it; doing it without saying so is worse than either.
 | | |
 |---|---|
 | `M` `B` `R` `L` `G` `I` | select, brush, rect, line, fill, eyedropper |
-| `1`–`9`, `0` | pick one of the first ten tiles |
+| `1`–`9`, `0` | pick one of the first ten tiles (or colours, in Sprites) |
 | `Ctrl+C` / `Ctrl+X` / `Ctrl+V` | copy / cut / paste a rectangle |
-| `Ctrl+A` | select the whole level |
+| `Ctrl+A` | select the whole grid |
 | `Ctrl+Z` / `Ctrl+Shift+Z` | undo / redo |
-| `Delete` | clear the selection to background |
-| `[` / `]` | previous / next level |
+| `Delete` | clear the selection to background (transparent, in Sprites) |
+| `[` / `]` | previous / next level or sprite |
+| `Tab` | switch between Maps and Sprites |
 | `Escape` | cancel a paste or selection |
 | right-click | paint background, whatever the tool |
 
@@ -127,8 +165,32 @@ it out. On a page opened straight off disk the browser blocks scripted clipboard
 access, so the text appears in a box for you to copy by hand instead.
 
 The editor is plain HTML and JavaScript with no build step, so `web/index.html`
-also works opened directly from disk — only the "Try the example" button needs
-a server.
+also works opened directly from disk — only the "Try the example" buttons need
+a server. `web/index.html?game=path/to/game.txt` loads a game straight away,
+for deep links from a gallery or a served checkout.
+
+### PuzzleScript Next's dialect
+
+Games written for PuzzleScript Next read like this, and the parser knows all
+of it - a game using any of it used to open as a wall of red crosses:
+
+```
+// line comments; the first comment in a file decides the style, as the engine does
+Roach:right e; Black LightBrown Yellow      glyph on the header, colours after ;
+MergedRoach N E S W; LightBlue Black White  several glyph aliases on one header
+Dark:Faint; #00002A30                       one-line objects, alpha colours
+Dark:Dim;   #00002A58                       ...with nothing between them
+Ray:directions; transparent                 a tag class: four objects at once
+Shadow copy:Wall rot:right                  transforms after the names
+--                                          a layer-group divider in COLLISIONLAYERS
+Dark:Shade                                  a tag class from the TAGS section
+```
+
+A `TAGS` section is read, `Roach:directions` in the legend or the layers
+expands to every roach, and a comment between a `section` heading and its map
+is a comment. Sprites defined by `copy:` borrow the source matrix; other
+transforms (`rot:`, `flip:`) draw the base sprite unturned, which is enough to
+tell which object is which.
 
 ---
 
@@ -184,11 +246,19 @@ top-down on import, with undrawn cells falling through.
 ### Other commands
 
 ```sh
-psmap info mygame.txt                          # legend, colours, level sizes
+psmap info mygame.txt                          # legend, colours, level sizes, dialect
+psmap check mygame.txt other.txt ...           # can the editor open these? exit 1 if not
 psmap export mygame.txt -f csv                 # CSV or TSV instead of xlsx
 psmap import mygame.txt edited.csv --dry-run   # report changes, write nothing
 psmap import mygame.txt edited.xlsx --stdout   # print instead of overwriting
 ```
+
+`check` is for a game's own CI: it fails if a level uses a glyph nothing
+defines, an object cannot be drawn, the palette is not one this build carries
+or an override names a slot that does not exist, or the export/import round
+trip through any of the three bridges changes a byte. A file with no sections
+at all is reported as skipped rather than failed, so a glob over a folder that
+also holds a prelude-block library still passes.
 
 ---
 
@@ -228,7 +298,7 @@ npm test
 ```
 
 Covers the parser, all three bridges, the XLSX and `.xp` containers, and the
-round-trip guarantee. The corpus comes in three layers:
+round-trip guarantee. The corpus comes in four layers:
 
 - **`fixtures/games/`** — eight real games vendored into the repo, so the sweep
   runs anywhere, including CI with nothing else checked out. They were chosen to
@@ -238,10 +308,14 @@ round-trip guarantee. The corpus comes in three layers:
   licensing.
 - **`fixtures/*.txt`** — synthetic files for cases no real game happens to
   contain: a legend built entirely from characters Excel treats as formulas
-  (`=` `+` `-` `@` `,` `"` `\`), and a `case_sensitive` game where `P` and `p`
-  are different tiles.
-- **`../src/demo`** — when checked out beside PuzzleScriptNext, the full 94-game
-  sweep runs too. It self-skips otherwise.
+  (`=` `+` `-` `@` `,` `"` `\`), a `case_sensitive` game where `P` and `p`
+  are different tiles, and `nextsyntax.txt`, a small game in the PuzzleScript
+  Next dialect that exercises every spelling listed above and compiles under
+  the real engine.
+- **`../src/demo`** — inside PuzzleScriptNext, the full 94-game sweep runs
+  too. It self-skips otherwise.
+- **`../../charmroach/charmroach.txt`** — a real Next-dialect game, when its
+  repository is checked out beside the engine. Self-skips otherwise.
 
 The browser editor was verified by driving it headlessly against the same games.
 
@@ -258,9 +332,9 @@ src/sheet.js     the spreadsheet bridge
 src/rexpaint.js  REXPaint .xp reader/writer
 src/cp437.js     the code page REXPaint draws with
 src/rexbridge.js the REXPaint bridge, including the glyph mapping
-src/cli.js       the psmap command
-src/serve.js     tiny static server for `npm start`
-web/             the browser editor (no build step)
+src/cli.js       the psmap command, including `check`
+src/serve.js     tiny static server for `npm start`; `--root` serves any folder
+web/             the browser editor (no build step): maps, sprites, palette sampler
 fixtures/        synthetic edge cases, plus vendored real games under games/
 ```
 

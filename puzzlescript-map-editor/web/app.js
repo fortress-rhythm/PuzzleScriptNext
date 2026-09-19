@@ -8,6 +8,16 @@
 // rest of every row sideways and destroys the map. Everything else here -
 // sprites, flood fill, cross-level clipboard - exists to make that workflow
 // pleasant rather than merely possible.
+//
+// There are two workspaces over the same grid model. MAPS edits the level grids
+// from LEVELS, with tiles drawn as the game's own objects. SPRITES edits the
+// sprite matrices from OBJECTS - the ASCII art the tiles are drawn with - where
+// a "tile" is one of the object's colour indices. Both splice back into the
+// source file by line range, so a two-pixel edit is a two-line diff either way.
+//
+// The palette sampler redraws everything under any palette this build carries
+// without touching the file, so "would this game look better in soggysepia" is
+// a click rather than an edit-save-reload.
 
 (function () {
 
@@ -21,14 +31,29 @@ const state = {
     source: null,
     fileName: 'game.txt',
     game: null,
+
+    mode: 'levels',      // 'levels' | 'sprites'
+
+    // MAPS workspace.
     glyphs: {},
     glyphAt: () => undefined,
     glyphOrder: [],
     background: '.',
-
+    underlay: null,      // the background glyph, drawn under every cell
     levels: [],          // working copies: { rows: [string], name, gridIndex }
     outline: [],         // display order, including sections with no map yet
-    current: 0,
+    currentLevel: 0,
+
+    // SPRITES workspace.
+    sprites: [],         // working copies: { rows: [string], name, block, edited }
+    currentSprite: 0,
+    spriteGlyphs: {},
+    spriteGlyphOrder: [],
+
+    // Colours. `resolved` is what the game asked for; `paletteOverride` is the
+    // sampler's choice, or null for the game's own.
+    resolved: null,
+    paletteOverride: null,
 
     tool: 'select',
     ink: '.',
@@ -53,7 +78,22 @@ const ctx = canvas.getContext('2d');
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-function currentLevel() { return state.levels[state.current]; }
+const inSprites = () => state.mode === 'sprites';
+
+/** The list the active workspace edits, and the index into it. */
+function currentList() { return inSprites() ? state.sprites : state.levels; }
+function currentIndex() { return inSprites() ? state.currentSprite : state.currentLevel; }
+function setCurrentIndex(i) { if (inSprites()) state.currentSprite = i; else state.currentLevel = i; }
+
+function currentLevel() { return currentList()[currentIndex()]; }
+
+/** What "erase" paints: the background tile, or a transparent sprite pixel. */
+function eraseChar() { return inSprites() ? '.' : state.background; }
+
+/** The glyph lookup for the active workspace. */
+function glyphLookup() { return inSprites() ? spriteGlyphLookup : state.glyphAt; }
+function glyphOrder() { return inSprites() ? state.spriteGlyphOrder : state.glyphOrder; }
+function glyphTable() { return inSprites() ? state.spriteGlyphs : state.glyphs; }
 
 function levelSize(level) {
     return { w: Math.max(0, ...level.rows.map(r => r.length)), h: level.rows.length };
@@ -83,12 +123,15 @@ function normalise(sel) {
 
 /**
  * Snapshot before every mutation. Levels are small enough that copying the
- * whole grid is far simpler than a diff, and fast enough not to matter.
+ * whole grid is far simpler than a diff, and fast enough not to matter. An
+ * entry remembers which workspace it belongs to, so undoing a sprite edit
+ * from the maps view switches back to show what changed.
  */
 function pushUndo(label) {
     state.undo.push({
         label,
-        level: state.current,
+        mode: state.mode,
+        index: currentIndex(),
         rows: currentLevel().rows.slice(),
     });
     if (state.undo.length > 200) state.undo.shift();
@@ -97,13 +140,21 @@ function pushUndo(label) {
     refreshChrome();
 }
 
+function restore(entry, into) {
+    const list = entry.mode === 'sprites' ? state.sprites : state.levels;
+    const item = list[entry.index];
+    into.push({ label: entry.label, mode: entry.mode, index: entry.index, rows: item.rows.slice() });
+    item.rows = entry.rows;
+    if (state.mode !== entry.mode) setMode(entry.mode, true);
+    setCurrentIndex(entry.index);
+    if (entry.mode === 'sprites') syncSpriteToGame(item);
+    state.selection = null;
+}
+
 function undo() {
     const entry = state.undo.pop();
     if (!entry) return;
-    state.redo.push({ label: entry.label, level: entry.level, rows: state.levels[entry.level].rows.slice() });
-    state.levels[entry.level].rows = entry.rows;
-    state.current = entry.level;
-    state.selection = null;
+    restore(entry, state.redo);
     setStatus(`undo ${entry.label}`);
     fullRefresh();
 }
@@ -111,10 +162,7 @@ function undo() {
 function redo() {
     const entry = state.redo.pop();
     if (!entry) return;
-    state.undo.push({ label: entry.label, level: entry.level, rows: state.levels[entry.level].rows.slice() });
-    state.levels[entry.level].rows = entry.rows;
-    state.current = entry.level;
-    state.selection = null;
+    restore(entry, state.undo);
     setStatus(`redo ${entry.label}`);
     fullRefresh();
 }
@@ -123,22 +171,16 @@ function redo() {
 
 function loadSource(text, fileName) {
     const game = psgame.parseGame(text);
-    if (!game.grids.length) {
-        setStatus('No levels found in that file', true);
+    if (!game.grids.length && !game.blocks.length) {
+        setStatus('No levels or objects found in that file', true);
         return false;
     }
-
-    const resolved = palettes.resolvePalette(psgame.findPaletteSpec(game));
-    const glyphs = psgame.buildGlyphTable(game, resolved.palette);
 
     state.source = text;
     state.fileName = fileName || 'game.txt';
     state.game = game;
-    state.glyphs = glyphs;
-    state.glyphAt = makeGlyphLookup(glyphs, game.caseSensitive);
-    state.glyphOrder = Object.keys(glyphs).sort(glyphSortOrder(glyphs));
-    state.background = findBackgroundChar(glyphs, game.grids);
-    state.ink = state.glyphOrder[0] || '.';
+    state.paletteOverride = null;
+    rebuildGlyphs();
 
     // The level list mirrors the file's own order, including SECTION headings
     // that have no map under them yet. Leaving those out is what made a map
@@ -168,7 +210,17 @@ function loadSource(text, fileName) {
         }
     }
 
-    state.current = 0;
+    // One sprite per OBJECTS block - a tagged header such as Roach:directions
+    // is one drawing however many objects it defines.
+    state.sprites = game.blocks.map(block => ({
+        rows: block.sprite ? block.sprite.pixels.map(row => row.map(i => (i === null ? '.' : i.toString(36))).join('')) : [],
+        name: block.name,
+        block,
+        edited: false,
+    }));
+
+    state.currentLevel = 0;
+    state.currentSprite = 0;
     state.selection = null;
     state.clipboard = null;
     state.pasteAt = null;
@@ -179,16 +231,40 @@ function loadSource(text, fileName) {
     el('workspace').classList.remove('hidden');
     el('save').disabled = false;
 
+    setMode(game.grids.length ? 'levels' : 'sprites', true);
     buildPalette();
+    buildPalettePanel();
     fitZoom();
     fullRefresh();
     canvas.focus();
     // Say what the colours came from, and warn when this build could not honour
     // the game's request - the map would otherwise just look subtly wrong.
-    const p = state.palette;
+    const p = state.resolved;
     const note = p ? ` - palette ${palettes.describePalette(p)}` : '';
-    setStatus(`${state.levels.length} level(s) loaded${note}`, p ? !p.known : false);
+    const dialect = game.commentStyle === '//' ? ', PuzzleScript Next dialect' : '';
+    setStatus(`${state.levels.length} level(s), ${state.sprites.length} sprite(s) loaded${note}${dialect}`,
+        p ? !p.known : false);
     return true;
+}
+
+/**
+ * Resolve the palette and rebuild the glyph table for the maps view. Called on
+ * load, when the sampler picks another palette, and after a sprite edit so the
+ * maps redraw with the new art.
+ */
+function rebuildGlyphs() {
+    const game = state.game;
+    const spec = state.paletteOverride
+        ? { name: state.paletteOverride, overrides: [] }
+        : psgame.findPaletteSpec(game);
+    state.resolved = palettes.resolvePalette(spec);
+    const glyphs = psgame.buildGlyphTable(game, state.resolved.palette);
+    state.glyphs = glyphs;
+    state.glyphAt = makeGlyphLookup(glyphs, game.caseSensitive);
+    state.glyphOrder = Object.keys(glyphs).sort(glyphSortOrder(glyphs));
+    state.background = findBackgroundChar(glyphs, game.grids);
+    state.underlay = glyphs[state.background] || null;
+    if (!(state.ink in glyphs) && !inSprites()) state.ink = state.glyphOrder[0] || '.';
 }
 
 /** Mirrors the CLI's case handling so the editor agrees with psmap. */
@@ -220,20 +296,148 @@ function glyphSortOrder(glyphs) {
     return (a, b) => (rank(a) - rank(b)) || a.localeCompare(b);
 }
 
+// ----------------------------------------------------------------- sprites
+
+/**
+ * The "tiles" of a sprite: `.` for transparent and one entry per colour in the
+ * object's list, drawn as solid squares in the current palette.
+ */
+function buildSpriteGlyphs(sprite) {
+    const glyphs = {};
+    if (!sprite) return glyphs;
+    const palette = state.resolved ? state.resolved.palette : {};
+    glyphs['.'] = { char: '.', label: 'transparent', objects: [], renders: [], transparent: true, color: null };
+    sprite.block.colors.forEach((token, i) => {
+        const ch = i.toString(36);
+        const color = psgame.resolveColor(token, palette, true);
+        glyphs[ch] = {
+            char: ch,
+            label: `${token}${color ? '  ' + color.slice(0, 7).toLowerCase() : ''}`,
+            objects: [],
+            color: color ? color.slice(0, 7) : null,
+            renders: [{ name: token, colors: [color], sprite: null, layer: 0 }],
+            transparent: !color,
+        };
+    });
+    return glyphs;
+}
+
+function spriteGlyphLookup(ch) { return state.spriteGlyphs[ch]; }
+
+function refreshSpriteGlyphs() {
+    state.spriteGlyphs = buildSpriteGlyphs(currentLevel());
+    state.spriteGlyphOrder = Object.keys(state.spriteGlyphs);
+    if (inSprites() && !(state.ink in state.spriteGlyphs)) {
+        state.ink = state.spriteGlyphOrder[1] || '.';
+    }
+}
+
+/**
+ * Push an edited sprite's rows back into the parsed game so the maps view and
+ * the thumbnails draw the new art straight away. The sprite object is shared by
+ * every object the block defines, so it is changed in place.
+ */
+function syncSpriteToGame(sprite) {
+    const matrix = psgame.parseSpriteMatrix(sprite.rows);
+    const block = sprite.block;
+    if (matrix && block.sprite) {
+        block.sprite.width = matrix.width;
+        block.sprite.height = matrix.height;
+        block.sprite.pixels = matrix.pixels;
+    } else {
+        block.sprite = matrix;
+        for (const obj of state.game.objects.__order || []) {
+            if (obj.block === block) obj.sprite = matrix;
+        }
+    }
+    rebuildGlyphs();
+}
+
+/** A drawable glyph standing for one OBJECTS block, for the sprite list. */
+function blockGlyph(block) {
+    const palette = state.resolved ? state.resolved.palette : {};
+    return {
+        char: block.aliases.find(a => Array.from(a).length === 1) || '',
+        label: block.name,
+        objects: [block.name],
+        renders: [{
+            name: block.name,
+            colors: block.colors.map(c => psgame.resolveColor(c, palette, true)),
+            sprite: block.sprite || null,
+            layer: 0,
+        }],
+    };
+}
+
+// -------------------------------------------------------------------- modes
+
+/**
+ * Switch workspace. The selection and paste ghost belong to a grid, so they
+ * are dropped; the clipboard is kept, because copying a run of sprite pixels
+ * into another sprite is exactly what the workspace is for.
+ */
+function setMode(mode, silent) {
+    if (mode === 'sprites' && !state.sprites.length) {
+        setStatus('This file has no OBJECTS to edit', true);
+        return;
+    }
+    if (mode === 'levels' && !state.levels.length) {
+        setStatus('This file has no LEVELS to edit', true);
+        return;
+    }
+    const changed = state.mode !== mode;
+    state.mode = mode;
+    state.selection = null;
+    state.pasteAt = null;
+    state.drag = null;
+    for (const button of document.querySelectorAll('.mode')) {
+        button.setAttribute('aria-selected', String(button.dataset.mode === mode));
+    }
+    // A 5x5 sprite wants far bigger cells than a 30x20 level.
+    const slider = el('zoom');
+    slider.max = inSprites() ? '128' : '48';
+    slider.step = inSprites() ? '4' : '2';
+
+    el('tilesTitle').textContent = inSprites() ? 'Colours' : 'Tiles';
+    el('listTitle').textContent = inSprites() ? 'Sprites' : 'Levels';
+    el('listHint').textContent = inSprites()
+        ? 'Every OBJECTS block, in file order. Edits show up in the maps at once, and save splices only the changed rows.'
+        : 'Copy a rectangle in one level, switch to another, paste. The clipboard follows you.';
+    el('copylevel').textContent = inSprites() ? 'Copy sprite as text' : 'Copy level as text';
+
+    if (inSprites()) refreshSpriteGlyphs();
+    else if (!(state.ink in state.glyphs)) state.ink = state.glyphOrder[0] || '.';
+
+    if (!silent) {
+        buildPalette();
+        state.zoomPinned = false;
+        fitZoom();
+        fullRefresh();
+        canvas.focus();
+        if (changed) setStatus(inSprites()
+            ? 'Sprites: paint with colour indices. Every sprite must stay '
+              + `${state.game.spriteSize}×${state.game.spriteSize} (sprite_size).`
+            : 'Maps: paint with the game\'s tiles.');
+    }
+}
+
 // ------------------------------------------------------------------ palette
 
 function buildPalette() {
     const host = el('palette');
     host.innerHTML = '';
-    state.glyphOrder.forEach((ch, i) => {
-        const glyph = state.glyphs[ch];
+    const glyphs = glyphTable();
+    const order = glyphOrder();
+    const thumbOptions = inSprites() ? { checker: true } : { underlay: state.underlay };
+    order.forEach((ch) => {
+        const glyph = glyphs[ch];
         const button = document.createElement('button');
         button.className = 'swatch';
         button.setAttribute('aria-pressed', String(ch === state.ink));
         button.dataset.char = ch;
         button.title = `${ch} = ${glyph.label}`;
 
-        button.appendChild(render.glyphThumbnail(glyph, 22));
+        button.appendChild(render.glyphThumbnail(glyph, 22, thumbOptions));
 
         const key = document.createElement('span');
         key.className = 'key';
@@ -249,10 +453,11 @@ function buildPalette() {
         host.appendChild(button);
     });
 
-    const shortcuts = Math.min(10, state.glyphOrder.length);
+    const shortcuts = Math.min(10, order.length);
     el('paletteHint').textContent = shortcuts
-        ? `Keys 1-${shortcuts === 10 ? '0' : shortcuts} pick the first ${shortcuts} tiles. I picks up whatever is under the cursor.`
+        ? `Keys 1-${shortcuts === 10 ? '0' : shortcuts} pick the first ${shortcuts}. I picks up whatever is under the cursor. Right-click erases.`
         : '';
+    markUsedSlots();
 }
 
 function setInk(ch) {
@@ -262,11 +467,90 @@ function setInk(ch) {
     }
 }
 
+// ---------------------------------------------------------- palette sampler
+
+/**
+ * The sampler: a list of every palette this build carries, plus the 21 slots of
+ * whichever is showing. Choosing one re-resolves every colour name in the game
+ * and redraws; the source is never touched, and the prelude line you would
+ * need to adopt it is one click away.
+ */
+function buildPalettePanel() {
+    const select = el('paletteSelect');
+    select.innerHTML = '';
+    const own = state.game ? psgame.findPaletteSpec(state.game) : { name: 'arnecolors', overrides: [] };
+    const ownOption = document.createElement('option');
+    ownOption.value = '';
+    ownOption.textContent = `game's own (${own.name}${own.overrides.length ? ' + overrides' : ''})`;
+    select.appendChild(ownOption);
+    for (const { index, name } of palettes.paletteList()) {
+        const option = document.createElement('option');
+        option.value = name;
+        option.textContent = (index !== null ? `${index}  ` : '') + name;
+        select.appendChild(option);
+    }
+    select.value = state.paletteOverride || '';
+    renderSlots();
+}
+
+function renderSlots() {
+    const host = el('slots');
+    host.innerHTML = '';
+    if (!state.resolved) return;
+    const palette = state.resolved.palette;
+    for (const slot of palettes.PALETTE_SLOTS) {
+        const hex = palette[slot];
+        const button = document.createElement('button');
+        button.className = 'slot';
+        button.dataset.slot = slot;
+        button.style.background = hex || 'transparent';
+        button.title = `${slot}  ${(hex || '').toLowerCase()}\nclick to copy the hex`;
+        button.addEventListener('click', () => copyText(hex, `${slot} ${hex.toLowerCase()} copied`));
+        host.appendChild(button);
+    }
+    markUsedSlots();
+
+    const shown = state.paletteOverride
+        ? `Previewing ${state.resolved.resolved}. Nothing in the file has changed.`
+        : `The game's own palette: ${palettes.describePalette(state.resolved)}.`;
+    el('paletteNote').textContent = shown + ' Outlined slots are the ones this game\'s objects use.';
+}
+
+/** Outline the slots the game actually names, so a palette's fit is visible. */
+function markUsedSlots() {
+    if (!state.game) return;
+    const used = new Set();
+    for (const block of state.game.blocks) {
+        for (const c of block.colors) used.add(c.toLowerCase().replace('gray', 'grey'));
+    }
+    for (const button of document.querySelectorAll('.slot')) {
+        button.classList.toggle('used', used.has(button.dataset.slot));
+    }
+}
+
+function applyPalette(name) {
+    state.paletteOverride = name || null;
+    rebuildGlyphs();
+    if (inSprites()) refreshSpriteGlyphs();
+    buildPalette();
+    renderSlots();
+    fullRefresh();
+    setStatus(name
+        ? `Previewing "${name}" - the file is unchanged. "Copy prelude line" gives you the line to adopt it.`
+        : 'Back to the game\'s own palette.');
+}
+
+/** The palette name the sampler is showing, whichever way it was chosen. */
+function shownPaletteName() {
+    return state.resolved ? state.resolved.resolved : 'arnecolors';
+}
+
 // ------------------------------------------------------------------- levels
 
 function buildLevelList() {
     const host = el('levels');
     host.innerHTML = '';
+    if (inSprites()) { buildSpriteList(host); return; }
 
     for (const row of state.outline) {
         if (row.kind === 'empty') {
@@ -287,13 +571,36 @@ function buildLevelList() {
         const size = levelSize(level);
         const button = document.createElement('button');
         button.className = 'level-item' + (level.edited ? ' edited' : '');
-        button.setAttribute('aria-pressed', String(i === state.current));
+        button.setAttribute('aria-pressed', String(i === state.currentLevel));
         button.innerHTML =
             `<span class="lv-name"></span><span class="lv-meta">${size.w}×${size.h}</span>`;
         button.querySelector('.lv-name').textContent = level.name;
         button.addEventListener('click', () => selectLevel(i));
         host.appendChild(button);
     }
+}
+
+function buildSpriteList(host) {
+    state.sprites.forEach((sprite, i) => {
+        const block = sprite.block;
+        const size = sprite.rows.length ? levelSize(sprite) : null;
+        const button = document.createElement('button');
+        button.className = 'level-item sprite-item' + (sprite.edited ? ' edited' : '');
+        button.setAttribute('aria-pressed', String(i === state.currentSprite));
+        button.appendChild(render.glyphThumbnail(blockGlyph(block), 22, { checker: true }));
+        const text = document.createElement('span');
+        text.className = 'lv-text';
+        text.innerHTML = '<span class="lv-name"></span><span class="lv-meta"></span>';
+        text.querySelector('.lv-name').textContent = block.name
+            + (block.aliases.length ? '  ' + block.aliases.join(' ') : '');
+        text.querySelector('.lv-meta').textContent = size
+            ? `${size.w}×${size.h}  ${block.colors.length} colour${block.colors.length === 1 ? '' : 's'}`
+            : (block.colors.some(c => c.toLowerCase() !== 'transparent') ? 'solid - click to draw one' : 'invisible');
+        button.appendChild(text);
+        button.title = `${block.name}: ${block.colors.join(' ')}`;
+        button.addEventListener('click', () => selectLevel(i));
+        host.appendChild(button);
+    });
 }
 
 /**
@@ -305,7 +612,7 @@ function buildLevelList() {
  * save; the grid is spliced in directly beneath that section's own commands.
  */
 function addMapToSection(row) {
-    const reference = currentLevel();
+    const reference = state.levels[state.currentLevel];
     const size = reference ? levelSize(reference) : { w: 9, h: 7 };
     const w = Math.max(1, size.w);
     const h = Math.max(1, size.h);
@@ -326,7 +633,7 @@ function addMapToSection(row) {
     row.kind = 'level';
     row.index = index;
 
-    state.current = index;
+    state.currentLevel = index;
     state.selection = null;
     state.pasteAt = null;
     state.undo.length = 0;
@@ -338,11 +645,34 @@ function addMapToSection(row) {
     setStatus(`Added a ${w}×${h} map to section "${row.label}" - resize or paste into it`);
 }
 
+/**
+ * Give a sprite-less object a matrix, sprite_size square and transparent, so
+ * it can be drawn. Saved as an insertion just under the colours.
+ */
+function addMatrixToSprite(sprite) {
+    const n = Math.max(1, state.game.spriteSize || 5);
+    sprite.rows = [];
+    for (let y = 0; y < n; y++) sprite.rows.push('.'.repeat(n));
+    sprite.edited = true;
+    sprite.isNew = true;
+    syncSpriteToGame(sprite);
+    setStatus(`Gave "${sprite.name}" a ${n}×${n} matrix - it was a solid square before`);
+}
+
 function selectLevel(i) {
-    if (i === state.current) return;
-    state.current = i;
+    const list = currentList();
+    if (i < 0 || i >= list.length) return;
+    const same = i === currentIndex();
+    setCurrentIndex(i);
     state.selection = null;
     state.pasteAt = null;
+    if (inSprites()) {
+        if (!list[i].rows.length) addMatrixToSprite(list[i]);
+        refreshSpriteGlyphs();
+        buildPalette();
+    } else if (same) {
+        return;
+    }
     fitZoom();
     fullRefresh();
     canvas.focus();
@@ -386,8 +716,13 @@ function refreshChrome() {
     const level = currentLevel();
     if (!level) return;
     const size = levelSize(level);
-    el('levelTitle').textContent = level.name;
-    el('sizeBadge').textContent = `${size.w} × ${size.h}`;
+    el('levelTitle').textContent = inSprites()
+        ? `${level.name}  ·  ${level.block.colors.join(' ')}`
+        : level.name;
+    const expected = state.game ? state.game.spriteSize : 5;
+    const off = inSprites() && (size.w !== expected || size.h !== expected);
+    el('sizeBadge').textContent = `${size.w} × ${size.h}` + (off ? `  (sprite_size is ${expected})` : '');
+    el('sizeBadge').classList.toggle('warn', off);
     el('undo').disabled = !state.undo.length;
     el('redo').disabled = !state.redo.length;
     for (const button of document.querySelectorAll('.tool')) {
@@ -395,6 +730,10 @@ function refreshChrome() {
     }
     const row = el('levels').querySelector('.level-item[aria-pressed="true"]');
     if (row) row.classList.toggle('edited', !!level.edited);
+}
+
+function drawOptions() {
+    return inSprites() ? { checker: true } : { underlay: state.underlay };
 }
 
 function draw() {
@@ -413,7 +752,7 @@ function draw() {
 
     ctx.fillStyle = '#000';
     ctx.fillRect(0, 0, w * cell, h * cell);
-    render.drawGrid(ctx, level.rows, state.glyphAt, cell);
+    render.drawGrid(ctx, level.rows, glyphLookup(), cell, drawOptions());
 
     drawOverlay(cell, w, h);
 }
@@ -451,8 +790,8 @@ function drawOverlay(cell, w, h) {
         ctx.beginPath();
         ctx.rect(0, 0, w * cell, h * cell);
         ctx.clip();
-        render.drawGrid(ctx, clip.rows, state.glyphAt, cell,
-            { offsetX: x * cell, offsetY: y * cell, alpha: 0.75 });
+        render.drawGrid(ctx, clip.rows, glyphLookup(), cell,
+            Object.assign({ offsetX: x * cell, offsetY: y * cell, alpha: 0.75 }, drawOptions()));
         ctx.restore();
         outline({ x0: x, y0: y, x1: x + clip.w - 1, y1: y + clip.h - 1 }, cell, '#7ee787', [4, 3]);
     }
@@ -480,7 +819,12 @@ function setStatus(text, warn) {
     node.textContent = text;
     node.classList.toggle('warn', !!warn);
     clearTimeout(statusTimer);
-    if (text) statusTimer = setTimeout(() => { node.textContent = ''; }, 4000);
+    if (text) statusTimer = setTimeout(() => { node.textContent = ''; }, 6000);
+}
+
+/** After any change to the grid being edited. */
+function afterEdit() {
+    if (inSprites()) syncSpriteToGame(currentLevel());
 }
 
 // ------------------------------------------------------------------- tools
@@ -522,7 +866,8 @@ canvas.addEventListener('mousedown', (event) => {
         case 'brush':
             pushUndo('paint');
             state.drag = { kind: 'brush', erase, painted: true };
-            setCell(level, point.x, point.y, erase ? state.background : state.ink);
+            setCell(level, point.x, point.y, erase ? eraseChar() : state.ink);
+            afterEdit();
             break;
         case 'rect':
         case 'line':
@@ -530,7 +875,8 @@ canvas.addEventListener('mousedown', (event) => {
             break;
         case 'fill':
             pushUndo('fill');
-            floodFill(level, point.x, point.y, erase ? state.background : state.ink);
+            floodFill(level, point.x, point.y, erase ? eraseChar() : state.ink);
+            afterEdit();
             break;
         case 'pick': {
             const ch = getCell(level, point.x, point.y);
@@ -547,9 +893,13 @@ canvas.addEventListener('mousemove', (event) => {
     const point = cellFromEvent(event);
     state.hover = inBounds(level, point.x, point.y) ? point : null;
 
-    el('cursor').textContent = state.hover
-        ? `${point.x}, ${point.y}  "${getCell(level, point.x, point.y)}"`
-        : '';
+    if (state.hover) {
+        const ch = getCell(level, point.x, point.y);
+        const glyph = glyphLookup()(ch);
+        el('cursor').textContent = `${point.x}, ${point.y}  "${ch}"` + (glyph ? `  ${glyph.label}` : '  (unknown)');
+    } else {
+        el('cursor').textContent = '';
+    }
 
     if (state.pasteAt && state.clipboard) {
         state.pasteAt = { x: point.x, y: point.y };
@@ -560,7 +910,7 @@ canvas.addEventListener('mousemove', (event) => {
     if (state.drag) {
         if (state.drag.kind === 'brush') {
             if (inBounds(level, point.x, point.y)) {
-                setCell(level, point.x, point.y, state.drag.erase ? state.background : state.ink);
+                if (setCell(level, point.x, point.y, state.drag.erase ? eraseChar() : state.ink)) afterEdit();
             }
         } else if (state.drag.preview) {
             state.drag.preview = { x0: state.drag.from.x, y0: state.drag.from.y, x1: point.x, y1: point.y };
@@ -589,16 +939,19 @@ window.addEventListener('mouseup', () => {
     } else if (drag.kind === 'rect' && drag.preview) {
         pushUndo('rectangle');
         const sel = normalise(drag.preview);
-        const ch = drag.erase ? state.background : state.ink;
+        const ch = drag.erase ? eraseChar() : state.ink;
         for (let y = sel.y0; y <= sel.y1; y++) {
             for (let x = sel.x0; x <= sel.x1; x++) setCell(level, x, y, ch);
         }
+        afterEdit();
     } else if (drag.kind === 'line' && drag.preview) {
         pushUndo('line');
-        const ch = drag.erase ? state.background : state.ink;
+        const ch = drag.erase ? eraseChar() : state.ink;
         drawLine(level, drag.preview.x0, drag.preview.y0, drag.preview.x1, drag.preview.y1, ch);
+        afterEdit();
     }
-    draw();
+    if (drag.kind === 'brush') afterEdit();
+    fullRefresh();
 });
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
@@ -646,7 +999,7 @@ function copySelection(cut) {
         let row = '';
         for (let x = sel.x0; x <= sel.x1; x++) {
             const ch = getCell(level, x, y);
-            row += ch === undefined ? state.background : ch;
+            row += ch === undefined ? eraseChar() : ch;
         }
         rows.push(row);
     }
@@ -655,8 +1008,9 @@ function copySelection(cut) {
     if (cut) {
         pushUndo('cut');
         for (let y = sel.y0; y <= sel.y1; y++) {
-            for (let x = sel.x0; x <= sel.x1; x++) setCell(level, x, y, state.background);
+            for (let x = sel.x0; x <= sel.x1; x++) setCell(level, x, y, eraseChar());
         }
+        afterEdit();
     }
     setStatus(`${cut ? 'cut' : 'copied'} ${state.clipboard.w}×${state.clipboard.h}`);
     draw();
@@ -695,6 +1049,7 @@ function commitPaste(ox, oy) {
             placed++;
         }
     }
+    afterEdit();
 
     state.pasteAt = null;
     state.selection = { x0: ox, y0: oy, x1: ox + clip.w - 1, y1: oy + clip.h - 1 };
@@ -710,9 +1065,10 @@ function clearSelection() {
     if (!sel) return;
     pushUndo('clear');
     for (let y = sel.y0; y <= sel.y1; y++) {
-        for (let x = sel.x0; x <= sel.x1; x++) setCell(level, x, y, state.background);
+        for (let x = sel.x0; x <= sel.x1; x++) setCell(level, x, y, eraseChar());
     }
-    draw();
+    afterEdit();
+    fullRefresh();
 }
 
 // ------------------------------------------------------------------ resize
@@ -720,7 +1076,7 @@ function clearSelection() {
 function resize(action) {
     const level = currentLevel();
     const { w, h } = levelSize(level);
-    const bg = state.background;
+    const bg = eraseChar();
 
     // Refuse to delete the last row or column rather than producing an empty
     // level that PuzzleScript cannot parse.
@@ -738,7 +1094,15 @@ function resize(action) {
         case 'col-remove-left':  level.rows = level.rows.map(r => r.slice(1)); break;
         case 'col-remove-right': level.rows = level.rows.map(r => r.slice(0, -1)); break;
     }
+    afterEdit();
     state.selection = null;
+    if (inSprites()) {
+        const n = state.game.spriteSize;
+        const size = levelSize(level);
+        if (size.w !== n || size.h !== n) {
+            setStatus(`Sprites in this game are ${n}×${n} (sprite_size) - the engine will reject ${size.w}×${size.h}`, true);
+        }
+    }
     fullRefresh();
 }
 
@@ -746,9 +1110,10 @@ function resize(action) {
 
 /**
  * Rebuild the game file with the edited grids spliced in. Everything outside
- * the level grids - comments, level commands, other sections, line endings -
+ * the edited rows - comments, level commands, other sections, line endings -
  * comes through untouched, because applyGridEdits replaces line ranges rather
- * than regenerating the file.
+ * than regenerating the file. Sprite edits go the same way: an object's matrix
+ * rows are a line range in OBJECTS.
  */
 function buildOutput() {
     const edits = state.levels
@@ -756,12 +1121,21 @@ function buildOutput() {
         .map(l => (l.isNew
             ? { insertAfterLine: l.insertAfterLine, rows: l.rows }
             : { gridIndex: l.gridIndex, rows: l.rows }));
+    for (const s of state.sprites) {
+        if (!s.edited || !s.rows.length) continue;
+        const b = s.block;
+        if (b.spriteLines && b.spriteLines.length && !s.isNew) {
+            edits.push({ startLine: b.spriteLines[0], lineCount: b.spriteLines.length, rows: s.rows, indent: b.indent || '' });
+        } else {
+            edits.push({ startLine: b.spriteInsertAfterLine + 1, lineCount: 0, rows: s.rows });
+        }
+    }
     return psgame.applyGridEdits(state.game, edits);
 }
 
 /**
- * The current level as plain text, ready to paste into a LEVELS section or
- * straight into the PuzzleScript editor to try it out.
+ * The current grid as plain text, ready to paste into a LEVELS section, under
+ * an object's colours, or straight into the PuzzleScript editor to try it out.
  */
 function currentLevelText() {
     const level = currentLevel();
@@ -769,32 +1143,45 @@ function currentLevelText() {
 }
 
 /**
- * Copy that text out. The async clipboard API needs a secure context, which a
- * page opened straight off disk is not, so fall back to a selected textarea the
+ * Copy text out. The async clipboard API needs a secure context, which a page
+ * opened straight off disk is not, so fall back to a selected textarea the
  * user can copy by hand rather than failing silently.
  */
+function copyText(text, doneMessage, label) {
+    if (!text) return;
+    const ok = () => setStatus(doneMessage);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok, () => fallbackCopy(text, label));
+    } else {
+        fallbackCopy(text, label);
+    }
+}
+
 function copyCurrentLevel() {
     const text = currentLevelText();
     if (!text) return;
     const level = currentLevel();
     const size = levelSize(level);
-    const ok = () => setStatus(`Copied "${level.name}" (${size.w}×${size.h}) as text`);
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(ok, () => fallbackCopy(text));
-    } else {
-        fallbackCopy(text);
-    }
+    copyText(text, `Copied "${level.name}" (${size.w}×${size.h}) as text`);
 }
 
-function fallbackCopy(text) {
+function fallbackCopy(text, label) {
     const box = el('copyout');
     const area = el('copytext');
+    el('copyoutLabel').textContent = label || 'Select all and copy';
     area.value = text;
     box.classList.remove('hidden');
     area.focus();
     area.select();
+    area.scrollTop = 0;
+    area.scrollLeft = 0;
     setStatus('Press Ctrl/Cmd+C to copy, Escape to close', true);
+}
+
+/** Show text in the box regardless - for a prelude block you want to read. */
+function showText(text, label) {
+    fallbackCopy(text, label);
+    setStatus('');
 }
 
 function save() {
@@ -807,8 +1194,9 @@ function save() {
     link.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-    const changed = state.levels.filter(l => l.edited).length;
-    setStatus(`saved ${state.fileName} (${changed} level(s) changed)`);
+    const changedLevels = state.levels.filter(l => l.edited).length;
+    const changedSprites = state.sprites.filter(s => s.edited).length;
+    setStatus(`saved ${state.fileName} (${changedLevels} level(s), ${changedSprites} sprite(s) changed)`);
 }
 
 // ---------------------------------------------------------------- keyboard
@@ -816,7 +1204,7 @@ function save() {
 window.addEventListener('keydown', (event) => {
     if (!state.game) return;
     const target = event.target;
-    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) return;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT')) return;
 
     const mod = event.ctrlKey || event.metaKey;
 
@@ -860,8 +1248,14 @@ window.addEventListener('keydown', (event) => {
         case 'Enter':
             if (state.pasteAt) { commitPaste(state.pasteAt.x, state.pasteAt.y); event.preventDefault(); }
             return;
-        case '[': selectLevel(Math.max(0, state.current - 1)); return;
-        case ']': selectLevel(Math.min(state.levels.length - 1, state.current + 1)); return;
+        case '[': selectLevel(Math.max(0, currentIndex() - 1)); return;
+        case ']': selectLevel(Math.min(currentList().length - 1, currentIndex() + 1)); return;
+        case 'Tab':
+            // Tab flips between the two workspaces; Shift+Tab as well, since
+            // there are only two.
+            setMode(inSprites() ? 'levels' : 'sprites');
+            event.preventDefault();
+            return;
     }
 
     const tools = { m: 'select', b: 'brush', r: 'rect', l: 'line', g: 'fill', i: 'pick' };
@@ -871,7 +1265,7 @@ window.addEventListener('keydown', (event) => {
     // 1-9 then 0 pick the first ten tiles.
     if (/^[0-9]$/.test(event.key)) {
         const index = event.key === '0' ? 9 : Number(event.key) - 1;
-        const ch = state.glyphOrder[index];
+        const ch = glyphOrder()[index];
         if (ch !== undefined) setInk(ch);
     }
 });
@@ -880,6 +1274,9 @@ window.addEventListener('keydown', (event) => {
 
 for (const button of document.querySelectorAll('.tool')) {
     button.addEventListener('click', () => { state.tool = button.dataset.tool; refreshChrome(); });
+}
+for (const button of document.querySelectorAll('.mode')) {
+    button.addEventListener('click', () => setMode(button.dataset.mode));
 }
 for (const button of document.querySelectorAll('[data-resize]')) {
     button.addEventListener('click', () => resize(button.dataset.resize));
@@ -894,6 +1291,18 @@ el('zoom').addEventListener('input', (e) => {
     state.cell = Number(e.target.value);
     state.zoomPinned = true;      // stop auto-fitting once the zoom is chosen by hand
     draw();
+});
+
+el('paletteSelect').addEventListener('change', (e) => applyPalette(e.target.value || null));
+el('paletteLine').addEventListener('click', () => {
+    const name = shownPaletteName();
+    copyText(`color_palette ${name}`, `Copied "color_palette ${name}" - paste it into the prelude`,
+        'The prelude line, for PuzzleScript Next');
+});
+el('paletteBlock').addEventListener('click', () => {
+    const name = shownPaletteName();
+    showText(palettes.paletteToPreludeBlock(name),
+        `Portable prelude block for ${name} - runs on any PuzzleScript build`);
 });
 
 window.addEventListener('resize', () => {
@@ -935,18 +1344,43 @@ window.addEventListener('drop', (e) => {
     if (file) readFile(file);
 });
 
-// The example game, so the editor is explorable without finding a file first.
-el('demo').addEventListener('click', () => {
-    fetch('../fixtures/sokoban.txt')
+// The example games, so the editor is explorable without finding a file first.
+function loadExample(name) {
+    fetch(`../fixtures/${name}`)
         .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.text(); })
-        .then(text => loadSource(text, 'sokoban.txt'))
+        .then(text => loadSource(text, name))
         .catch(() => setStatus(
             'Could not load the example - serve this folder over http, or open your own file',
             true));
-});
+}
+el('demo').addEventListener('click', () => loadExample('sokoban.txt'));
+el('demoNext').addEventListener('click', () => loadExample('nextsyntax.txt'));
+
+// A game named in the URL loads itself: index.html?game=../../src/demo/sokoban.txt
+// This is how the PuzzleScript Next editor's MAP EDITOR link hands over the
+// game it has open (via sessionStorage, below), and how a gallery can deep-link.
+(function loadFromLocation() {
+    const params = new URLSearchParams(window.location.search);
+    const game = params.get('game');
+    if (game) {
+        fetch(game)
+            .then(r => { if (!r.ok) throw new Error(String(r.status)); return r.text(); })
+            .then(text => loadSource(text, game.split('/').pop()))
+            .catch(() => setStatus(`Could not fetch ${game}`, true));
+        return;
+    }
+    try {
+        const handed = window.sessionStorage && sessionStorage.getItem('psmap.handoff');
+        if (handed) {
+            sessionStorage.removeItem('psmap.handoff');
+            const parsed = JSON.parse(handed);
+            if (parsed && parsed.source) loadSource(parsed.source, parsed.fileName || 'game.txt');
+        }
+    } catch (e) { /* storage blocked - nothing to hand over */ }
+})();
 
 window.addEventListener('beforeunload', (event) => {
-    if (state.levels.some(l => l.edited)) {
+    if (state.levels.some(l => l.edited) || state.sprites.some(s => s.edited)) {
         event.preventDefault();
         event.returnValue = '';
     }
@@ -954,6 +1388,7 @@ window.addEventListener('beforeunload', (event) => {
 
 // Exposed for the test page.
 window.PSMapEditor = { state, loadSource, buildOutput, currentLevelText, copyCurrentLevel,
-    addMapToSection, copySelection, beginPaste, commitPaste, resize, undo, redo, fitZoom };
+    addMapToSection, copySelection, beginPaste, commitPaste, resize, undo, redo, fitZoom,
+    setMode, selectLevel, applyPalette, setInk };
 
 })();

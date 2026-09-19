@@ -14,6 +14,11 @@
 <header class="topbar">
   <div class="brand">PuzzleScript <b>Map Editor</b></div>
 
+  <nav class="modes" role="tablist" aria-label="Workspace">
+    <button class="mode" data-mode="levels" role="tab" title="Edit the level maps">Maps</button>
+    <button class="mode" data-mode="sprites" role="tab" title="Edit the object sprites - the ASCII art in OBJECTS">Sprites</button>
+  </nav>
+
   <div class="tools" role="toolbar" aria-label="Tools">
     <button class="tool" data-tool="select" title="Marquee select (M)">▦<span>select</span></button>
     <button class="tool" data-tool="brush"  title="Brush (B)">✎<span>brush</span></button>
@@ -42,18 +47,29 @@
 <main id="workspace" class="workspace hidden">
 
   <aside class="panel palette-panel">
-    <h2>Tiles</h2>
+    <h2 id="tilesTitle">Tiles</h2>
     <div id="palette" class="palette"></div>
     <div class="hint" id="paletteHint"></div>
+
+    <h2 class="with-control">
+      <span>Palette</span>
+      <select id="paletteSelect" title="Redraw the game under another palette - the file is not changed"></select>
+    </h2>
+    <div id="slots" class="slots" title="The 21 colour slots. Click one to copy its hex."></div>
+    <div class="palette-actions">
+      <button id="paletteLine" title="The one-line form: color_palette name. Runs on PuzzleScript Next.">Copy prelude line</button>
+      <button id="paletteBlock" title="The portable form: every slot spelled out. Runs on any PuzzleScript.">Portable block</button>
+    </div>
+    <div class="hint" id="paletteNote"></div>
   </aside>
 
   <section class="stage">
     <div class="stage-head">
       <span id="levelTitle" class="level-title"></span>
       <span id="sizeBadge" class="badge"></span>
-      <button id="copylevel" title="Copy this level as text, ready to paste into a LEVELS section">Copy level</button>
+      <button id="copylevel" title="Copy this grid as text, ready to paste into the source">Copy as text</button>
       <span class="spacer"></span>
-      <div class="resize" aria-label="Resize level">
+      <div class="resize" aria-label="Resize">
         <span>rows</span>
         <button data-resize="row-remove-top" title="Remove top row">−↑</button>
         <button data-resize="row-add-top" title="Add row at top">+↑</button>
@@ -73,7 +89,7 @@
 
     <div id="copyout" class="copyout hidden">
       <div class="copyout-head">
-        <span>Select all and copy</span>
+        <span id="copyoutLabel">Select all and copy</span>
         <button id="copyclose">Close</button>
       </div>
       <textarea id="copytext" readonly spellcheck="false"></textarea>
@@ -88,9 +104,9 @@
   </section>
 
   <aside class="panel levels-panel">
-    <h2>Levels</h2>
+    <h2 id="listTitle">Levels</h2>
     <div id="levels" class="levels"></div>
-    <div class="hint">
+    <div class="hint" id="listHint">
       Copy a rectangle in one level, switch to another, paste. The clipboard
       follows you.
     </div>
@@ -102,20 +118,23 @@
   <div class="welcome-inner">
     <h1>PuzzleScript Map Editor</h1>
     <p class="lede">
-      A grid editor for PuzzleScript levels, built around the one thing text
-      editors get wrong: copying a rectangle and pasting it <em>as</em> a
-      rectangle, overwriting rather than shoving rows sideways.
+      A grid editor for PuzzleScript levels and sprites, built around the one
+      thing text editors get wrong: copying a rectangle and pasting it <em>as</em>
+      a rectangle, overwriting rather than shoving rows sideways.
     </p>
     <ul class="features">
-      <li>Your real sprites, drawn from the game's <code>OBJECTS</code> section</li>
+      <li>Your real sprites, drawn from the game's <code>OBJECTS</code> section, in its own palette</li>
       <li>Marquee select, copy, cut and overwrite-paste, with a live ghost preview</li>
       <li>Paste across levels &mdash; the clipboard is shared</li>
       <li>Flood fill, rectangles, lines, eyedropper, unlimited undo</li>
-      <li>Resize from any edge; nothing else in your file is touched on save</li>
+      <li>A <b>Sprites</b> workspace for the ASCII art itself, with the same tools</li>
+      <li>Sample any of the 24 palettes on your game without touching the file</li>
+      <li>Reads PuzzleScript Next: <code>//</code> comments, tags, <code>Name glyph; colours</code></li>
     </ul>
     <div class="welcome-actions">
       <button id="open2" class="primary big">Open a game file&hellip;</button>
       <button id="demo" class="big">Try the example</button>
+      <button id="demoNext" class="big" title="A small game in the PuzzleScript Next dialect">Try the Next example</button>
     </div>
     <p class="fineprint">Everything happens in your browser. Nothing is uploaded.</p>
   </div>
