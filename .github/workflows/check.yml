@@ -1,0 +1,44 @@
+# What a contributor runs before pushing, run for them on every push and pull
+# request: the map editor's own suite (parser, bridges, the vendored-game
+# round trip, and the demo-game sweep, which only runs when the editor sits
+# inside this repository as it does here), the palette tooling's checks (that
+# the generated files still match palettes/, and that the vendored map editor
+# still matches its standalone repository when one is beside us - it is not,
+# in CI, so that part skips), and `psmap check` over every demo game, which is
+# the one that catches a parser regression against real games.
+#
+# Nothing here needs `npm install`: the map editor has no dependencies and the
+# Python tools are stdlib-only, run through uv so no environment is set up by
+# hand. compile.js (the minified bin/ build) is deliberately not run - its
+# image-compression dependencies need native binaries and are not something a
+# check should depend on.
+name: check
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Map editor test suite
+        run: npm test
+
+      - name: Every demo game opens in the map editor
+        run: npm run check:games
+
+      - name: Palette set, generated files and vendored copy
+        run: uv run tools/palette_test.py

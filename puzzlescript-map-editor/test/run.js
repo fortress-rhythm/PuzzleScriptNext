@@ -450,7 +450,7 @@ test('an insert with no rows is ignored', () => {
 test('an edit with neither a gridIndex nor an insert point is rejected', () => {
     const game = psgame.parseGame(SOKOBAN);
     assert.throws(() => psgame.applyGridEdits(game, [{ rows: ['##'] }]),
-        /gridIndex or an insertAfterLine/);
+        /gridIndex, an insertAfterLine or a startLine/);
 });
 
 test('a LEVEL command outranks the SECTION it sits under', () => {
@@ -663,6 +663,239 @@ test('all upstream demo games round-trip unchanged', () => {
     const files = fs.readdirSync(demoDir).filter(f => f.endsWith('.txt'))
         .map(f => path.join(demoDir, f));
     sweepRoundTrip(files, 'upstream demo games');
+});
+
+
+// ---------------------------------------------------------------------------
+// PuzzleScript Next dialect
+// ---------------------------------------------------------------------------
+
+const NEXT = fs.readFileSync(path.join(FIXTURES, 'nextsyntax.txt'), 'utf8');
+
+test('the comment style is decided by the first real comment', () => {
+    // A `//` inside a text-valued prelude line is not a comment.
+    assert.strictEqual(psgame.detectCommentStyle(['homepage https://x.y/z', '// hello']), '//');
+    assert.strictEqual(psgame.detectCommentStyle(['title a (b)', '(c)']), '()');
+    assert.strictEqual(psgame.detectCommentStyle(['Wall // brown']), '//');
+    assert.strictEqual(psgame.detectCommentStyle(['x(y)']), '()');
+    assert.strictEqual(psgame.detectCommentStyle(['Wall', 'Brown']), '()');
+});
+
+test('in the // style parentheses are text and // is stripped', () => {
+    const stripped = psgame.stripComments(['a // b', '(c) d', 'https://e'], '//');
+    assert.strictEqual(stripped[0].code, 'a');
+    assert.strictEqual(stripped[1].code, '(c) d');
+    assert.strictEqual(stripped[2].code, 'https://e');
+});
+
+test('reads every shape of Next object header', () => {
+    let h = psgame.parseObjectHeader('Roach:right e; Black LightBrown Yellow', '//');
+    assert.strictEqual(h.name, 'Roach:right');
+    assert.deepStrictEqual(h.aliases, ['e']);
+    assert.strictEqual(h.inlineColors, 'Black LightBrown Yellow');
+
+    h = psgame.parseObjectHeader('MergedRoach N E S W', '()');
+    assert.deepStrictEqual(h.aliases, ['N', 'E', 'S', 'W']);
+    assert.strictEqual(h.inlineColors, null);
+
+    h = psgame.parseObjectHeader('Shadow copy:Wall rot:right; Black', '//');
+    assert.deepStrictEqual(h.aliases, []);
+    assert.strictEqual(h.copyFrom, 'Wall');
+    assert.strictEqual(h.hasTransforms, true);
+
+    // In the classic style a semicolon is just another glyph, and so are the
+    // Pattern:Script mirror characters when they sit on the header line.
+    h = psgame.parseObjectHeader('Semi ;', '()');
+    assert.deepStrictEqual(h.aliases, [';']);
+    h = psgame.parseObjectHeader('Pipe | -', '()');
+    assert.deepStrictEqual(h.aliases, ['|', '-']);
+});
+
+test('a tagged header defines one object per tag value, sharing the sprite', () => {
+    const game = psgame.parseGame(NEXT);
+    for (const d of ['up', 'right', 'down', 'left']) {
+        const obj = game.objects[`ghost:${d}`];
+        assert.ok(obj, `Ghost:${d} missing`);
+        assert.strictEqual(obj.sprite, game.blocks.find(b => b.name === 'Ghost:directions').sprite);
+    }
+    assert.deepStrictEqual(game.properties['ghost:directions'],
+        ['Ghost:up', 'Ghost:right', 'Ghost:down', 'Ghost:left']);
+    // The TAGS section is read, on top of the built-in directions.
+    assert.deepStrictEqual(game.tags.shade, ['faint', 'dim', 'deep', 'full']);
+    assert.deepStrictEqual(psgame.expandTaggedName('Dark:Shade', game.tags),
+        ['Dark:faint', 'Dark:dim', 'Dark:deep', 'Dark:full']);
+    assert.deepStrictEqual(psgame.expandTaggedName('Wall', game.tags), ['Wall']);
+});
+
+test('one-line objects need no blank line between them', () => {
+    const game = psgame.parseGame(NEXT);
+    assert.deepStrictEqual(game.objects['dark:dim'].colors, ['#00002A58']);
+    assert.deepStrictEqual(game.objects['dark:full'].colors, ['#00002AA8']);
+    assert.deepStrictEqual(game.objects.night.colors, ['transparent']);
+    assert.strictEqual(game.objects['dark:full'].sprite, null);
+});
+
+test('copy: takes the source object\'s sprite', () => {
+    const game = psgame.parseGame(NEXT);
+    assert.strictEqual(game.objects.shadow.sprite, game.objects.wall.sprite);
+    assert.deepStrictEqual(game.objects.shadow.colors, ['Black']);
+});
+
+test('several single-character aliases on one header all map to the object', () => {
+    const { glyphs } = sheet.analyse(NEXT);
+    for (const ch of ['N', 'E', 'S', 'W']) {
+        assert.strictEqual(glyphs[ch].label, 'MergedRoach');
+        assert.strictEqual(glyphs[ch].renders[0].name, 'MergedRoach');
+    }
+});
+
+test('tag classes and properties resolve wherever a name may appear', () => {
+    const game = psgame.parseGame(NEXT);
+    assert.deepStrictEqual(psgame.resolveNames(game, 'Roach:directions'),
+        ['Roach:up', 'Roach:right', 'Roach:down', 'Roach:left']);
+    assert.deepStrictEqual(psgame.resolveNames(game, 'Opaque'),
+        ['Wall', 'MergedRoach', 'Ghost:up', 'Ghost:right', 'Ghost:down', 'Ghost:left']);
+    assert.deepStrictEqual(psgame.resolveNames(game, 'player'), ['Witch:down']);
+    assert.deepStrictEqual(psgame.resolveNames(game, 'nosuchthing'), []);
+    // Through the collision layers, past the `--` divider.
+    assert.strictEqual(game.collisionLayers.length, 5);
+    assert.strictEqual(game.layerIndex.get('ghost:up'), 3);
+    assert.strictEqual(game.layerIndex.get('dark:deep'), 4);
+    assert.strictEqual(game.layerIndex.get('roach:left'), 3);
+});
+
+test('a // comment under a section heading is not a level row', () => {
+    const game = psgame.parseGame(NEXT);
+    assert.strictEqual(game.grids.length, 2);
+    assert.strictEqual(game.grids[0].width, 9);
+    assert.strictEqual(game.grids[0].height, 7);
+    assert.strictEqual(game.grids[0].rows[0], '#########');
+    assert.strictEqual(psgame.labelForCommands(game.levels[0].commandsBefore), 'Footfall');
+});
+
+test('the Next fixture leaves no glyph unexplained', () => {
+    const { game, glyphs, background } = sheet.analyse(NEXT);
+    assert.deepStrictEqual(psgame.unknownGlyphs(game, glyphs), []);
+    assert.strictEqual(background, '.');
+    assert.strictEqual(game.commentStyle, '//');
+    assert.strictEqual(game.caseSensitive, true);
+    // Every glyph the levels use has something to draw.
+    for (const ch of ['e', 'w', 'n', 's', 'x', 'o', 'P', '*', '#', '.']) {
+        assert.ok(glyphs[ch], `glyph ${ch} missing`);
+        assert.ok(glyphs[ch].renders.length, `glyph ${ch} draws nothing`);
+    }
+    // An AND of two objects stacks them in collision-layer order.
+    assert.deepStrictEqual(glyphs.x.renders.map(r => r.name), ['Night', 'Nest']);
+});
+
+test('a legend property draws as its first member rather than a red cross', () => {
+    const { glyphs } = sheet.analyse(NEXT);
+    assert.strictEqual(glyphs.r.label, 'Roach:directions');
+    assert.deepStrictEqual(glyphs.r.renders.map(r => r.name), ['Roach:up']);
+    assert.ok(glyphs.r.color);
+});
+
+test('alpha colours keep their alpha for drawing but not for fills', () => {
+    assert.strictEqual(psgame.resolveColor('#00002a80', {}, true), '#00002A80');
+    assert.strictEqual(psgame.resolveColor('#00002a80', {}), '#00002A');
+    assert.strictEqual(psgame.resolveColor('#123f', {}, true), '#112233FF');
+    assert.strictEqual(psgame.resolveColor('#123f', {}), '#112233');
+    const { glyphs } = sheet.analyse(NEXT);
+    // The swatch colour of a translucent object is its opaque part.
+    const game = psgame.parseGame(NEXT);
+    assert.strictEqual(psgame.buildGlyphTable(game, {})['*'].color, null);
+    assert.ok(glyphs['.'].color.length === 7);
+});
+
+test('sprite_size is read from the prelude', () => {
+    assert.strictEqual(psgame.parseGame('title T\nsprite_size 10\n').spriteSize, 10);
+    assert.strictEqual(psgame.parseGame(SOKOBAN).spriteSize, 5);
+});
+
+test('sprite rows carry their source line ranges', () => {
+    const game = psgame.parseGame(NEXT);
+    const wall = game.blocks.find(b => b.name === 'Wall');
+    assert.strictEqual(wall.spriteLines.length, 5);
+    assert.strictEqual(game.lines[wall.spriteLines[0]], '22222');
+    assert.strictEqual(game.lines[wall.headerLine], 'Wall #; DarkGrey Grey LightGrey');
+    // An object with no matrix says where one would go.
+    const night = game.blocks.find(b => b.name === 'Night');
+    assert.deepStrictEqual(night.spriteLines, []);
+    assert.strictEqual(game.lines[night.spriteInsertAfterLine], 'Night; transparent');
+    // The classic layout too: header, colours, then the rows.
+    const classic = psgame.parseGame(SOKOBAN);
+    const player = classic.blocks.find(b => b.name === 'Player');
+    assert.strictEqual(player.spriteLines.length, 5);
+    assert.strictEqual(player.spriteLines[0], player.headerLine + 2);
+});
+
+test('an edited sprite splices back into OBJECTS and nothing else moves', () => {
+    const game = psgame.parseGame(NEXT);
+    const wall = game.blocks.find(b => b.name === 'Wall');
+    const rows = ['11111', '10001', '10001', '10001', '11111'];
+    const out = psgame.applyGridEdits(game, [
+        { startLine: wall.spriteLines[0], lineCount: wall.spriteLines.length, rows },
+    ]);
+    const again = psgame.parseGame(out);
+    assert.deepStrictEqual(again.objects.wall.sprite.pixels[1], [1, 0, 0, 0, 1]);
+    assert.deepStrictEqual(again.grids.map(g => g.rows), game.grids.map(g => g.rows));
+    // Only the five rows differ.
+    const a = NEXT.split('\n'), b = out.split('\n');
+    assert.strictEqual(a.length, b.length);
+    const changed = a.map((l, i) => (l === b[i] ? null : i)).filter(i => i !== null);
+    assert.deepStrictEqual(changed, wall.spriteLines);
+    // A matrix can be given to an object that had none.
+    const night = game.blocks.find(b => b.name === 'Night');
+    const out2 = psgame.applyGridEdits(game, [
+        { startLine: night.spriteInsertAfterLine + 1, lineCount: 0, rows: ['0....', '.0...', '..0..', '...0.', '....0'] },
+    ]);
+    assert.strictEqual(psgame.parseGame(out2).objects.night.sprite.height, 5);
+});
+
+test('Charmroach parses cleanly when it is checked out beside the engine', () => {
+    // The game this dialect support was written for. Its repository sits next
+    // to PuzzleScriptNext in the author's layout and in charmroach's own CI;
+    // anywhere else this is skipped, the way the demo sweep is.
+    const file = path.join(__dirname, '..', '..', '..', 'charmroach', 'charmroach.txt');
+    if (!fs.existsSync(file)) return;
+    const source = fs.readFileSync(file, 'utf8');
+    const { game, glyphs, background, resolved } = sheet.analyse(source);
+    assert.strictEqual(game.commentStyle, '//');
+    assert.strictEqual(resolved.known, true, 'its palette must be one this build carries');
+    assert.deepStrictEqual(psgame.unknownGlyphs(game, glyphs), []);
+    assert.ok(game.grids.length >= 9);
+    assert.strictEqual(background, '.');
+    for (const [ch, g] of Object.entries(glyphs)) {
+        assert.ok(g.renders.length, `glyph ${ch} (${g.label}) resolves to no object`);
+    }
+    // The whole family arrived, not just the first roach.
+    for (const d of ['up', 'right', 'down', 'left']) assert.ok(game.objects[`roach:${d}`]);
+    assert.ok(game.objects['dark:full']);
+    sweepRoundTrip([file], 'charmroach');
+});
+
+
+test('psmap check passes a sound game and names what is wrong with a broken one', () => {
+    const { checkGame } = require('../src/cli');
+    assert.deepStrictEqual(checkGame(NEXT), []);
+    assert.deepStrictEqual(checkGame(SOKOBAN), []);
+    // A glyph the legend does not know, and a palette this build lacks.
+    const broken = SOKOBAN.replace('color_palette arnecolors', 'color_palette nosuch').replace('#.*.*.O.#', '#.*.?.O.#');
+    const problems = checkGame(broken);
+    assert.ok(problems.some(p => p.includes('"?"')), problems.join('\n'));
+    assert.ok(problems.some(p => p.includes('nosuch')), problems.join('\n'));
+});
+
+test('a palette exports as the same portable block the engine produces', () => {
+    const palettes = require('../src/palettes');
+    const block = palettes.paletteToPreludeBlock('ruststorm');
+    assert.ok(block.startsWith('color_palette arnecolors black '));
+    // 24 names: 21 slots plus the three gray spellings.
+    assert.strictEqual(block.split(/\s+/).length, 2 + 24 * 2);
+    const list = palettes.paletteList();
+    assert.strictEqual(list[0].name, 'mastersystem');
+    assert.deepStrictEqual(list.find(p => p.name === 'ruststorm'), { index: 20, name: 'ruststorm' });
+    assert.strictEqual(palettes.PALETTE_SLOTS.length, 21);
 });
 
 

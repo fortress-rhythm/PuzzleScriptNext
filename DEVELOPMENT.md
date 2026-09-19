@@ -38,7 +38,7 @@ If you need to do it again, just run Step 3.
 
 If you load `src/editor.html` directly, by double-clicking it or whatever, exporting won't work because the browser sandboxing prevents the `XMLHttpRequest` for `standalone_inlined.txt` from working.  
 To get it to work you need to run it from a server.
-The Windows batch file `runserver.bat` runs a local http server using python.
+`runserver.bat` (Windows) and `runserver.sh` (macOS, Linux) serve the checkout on port 8020, using node if it is installed and python otherwise; `npm start` does the same. The front page is the root `index.html`.
 
 Also, remember you need to run `compile.js` to generate the updated `standalone_inlined.txt` template whenever you make changes.
 

@@ -3,27 +3,29 @@
 # dependencies = []
 # ///
 """
-Keep the vendored copy of puzzlescript-map-editor in step with its own repo.
+Keep the standalone puzzlescript-map-editor repository in step with the copy
+that lives here.
 
-    uv run tools/sync_map_editor.py --check     does the copy match? (exit 1 if not)
-    uv run tools/sync_map_editor.py             standalone -> vendored
-    uv run tools/sync_map_editor.py --reverse   vendored -> standalone
+    uv run tools/sync_map_editor.py --check     do the two match? (exit 1 if not)
+    uv run tools/sync_map_editor.py             this repo's copy -> standalone
+    uv run tools/sync_map_editor.py --reverse   standalone -> this repo's copy
 
-`puzzlescript-map-editor/` inside this repository is a plain copy of the
-standalone repository of the same name - not a submodule, not a subtree, just
-thirty-odd tracked files that happen to be identical. That is deliberate: the
-map editor's test suite reaches up into `../../src/demo` and `../../src/js` for
-the real-game corpus and the palette table, which only works when it sits
-*inside* this repository. A submodule would give the same layout but would not
-let the copy carry its own LICENSE line, and a subtree would drag two histories
-together for no gain.
+`puzzlescript-map-editor/` inside this repository is the map editor. The
+standalone repository of the same name is a plain copy of it - not a
+submodule, not a subtree, just thirty-odd tracked files that are identical
+except for the LICENSE line. It exists so the editor can be cloned, `npm
+link`ed and published on its own; the copy here is the one that is developed,
+because its test suite reaches up into `../src/demo` and `../src/js` for the
+real-game corpus and the palette table, and only works when it sits inside
+this repository.
 
-What the arrangement does not do is notice when the two copies drift. The
+What the arrangement does not do by itself is notice when the two drift. The
 palette drift check in `palette_test.py` compares `src/palettes.js` against
 `colors.js`, which is a check on the *data*; edit `src/psgame.js` in one copy
-and nothing anywhere fails. This script is that missing check.
+and nothing anywhere fails. This script is that missing check, and the
+ordinary test run calls it.
 
-The standalone repository is canonical. Edit it there, run this, commit both.
+This repository's copy is canonical. Edit it here, run this, commit both.
 
 Dependency-free, so `uv run` needs no resolution step.
 """
@@ -102,11 +104,11 @@ def copy_files(src_root, dst_root, rels):
 
 def main():
     ap = argparse.ArgumentParser(
-        description="Keep the vendored puzzlescript-map-editor in step with its repo.")
+        description="Keep the standalone puzzlescript-map-editor repo in step with the copy here.")
     ap.add_argument("--check", action="store_true",
                     help="report drift and exit 1 if there is any; change nothing")
     ap.add_argument("--reverse", action="store_true",
-                    help="copy vendored -> standalone instead of the usual direction")
+                    help="copy standalone -> this repo instead of the usual direction")
     ap.add_argument("--standalone", default=None,
                     help="path to the standalone repo (default: this repo's sibling)")
     args = ap.parse_args()
@@ -128,22 +130,22 @@ def main():
         if differing or only_v or only_s:
             n = len(differing) + len(only_v) + len(only_s)
             print(f"\n  {n} file(s) out of step. Run one of:")
-            print("    uv run tools/sync_map_editor.py            standalone -> vendored")
-            print("    uv run tools/sync_map_editor.py --reverse  vendored -> standalone")
+            print("    uv run tools/sync_map_editor.py            this repo -> standalone (the usual way)")
+            print("    uv run tools/sync_map_editor.py --reverse  standalone -> this repo")
             return 1
-        print("  vendored copy matches the standalone repository")
+        print("  the standalone repository matches this repository's copy")
         return 0
 
-    src, dst, label = ((vendored, standalone, "vendored -> standalone")
+    src, dst, label = ((standalone, vendored, "standalone -> this repo")
                        if args.reverse else
-                       (standalone, vendored, "standalone -> vendored"))
-    todo = list(differing) + (only_v if args.reverse else only_s)
+                       (vendored, standalone, "this repo -> standalone"))
+    todo = list(differing) + (only_s if args.reverse else only_v)
     print(f"  {label}")
     if not todo:
         print("  already in step - nothing to do")
         return 0
     copy_files(src, dst, todo)
-    missing = (only_s if args.reverse else only_v)
+    missing = (only_v if args.reverse else only_s)
     if missing:
         print("\n  present only in the destination, left alone - delete by hand "
               "if they are stale:")

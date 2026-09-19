@@ -4,13 +4,24 @@
 // A tiny static file server, so `npm start` opens the web editor without
 // pulling in a dependency. It serves the project root, because the editor loads
 // its parser from ../src and the example game from ../fixtures.
+//
+// `--root <dir>` serves a different folder instead - PuzzleScriptNext's
+// runserver scripts use it to serve the whole engine checkout, map editor
+// included, from one port. The front page is that folder's index.html, or
+// web/index.html when there is none (the map editor on its own).
 
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const ROOT = path.resolve(__dirname, '..');
-const PORT = Number(process.env.PORT) || 8080;
+function argValue(flag) {
+    const i = process.argv.indexOf(flag);
+    return i >= 0 ? process.argv[i + 1] : null;
+}
+
+const ROOT = path.resolve(argValue('--root') || process.env.PSMAP_ROOT || path.join(__dirname, '..'));
+const PORT = Number(argValue('--port') || process.env.PORT) || 8080;
+const FRONT = fs.existsSync(path.join(ROOT, 'index.html')) ? '/index.html' : '/web/index.html';
 
 const TYPES = {
     '.html': 'text/html; charset=utf-8',
@@ -20,6 +31,13 @@ const TYPES = {
     '.txt': 'text/plain; charset=utf-8',
     '.svg': 'image/svg+xml',
     '.png': 'image/png',
+    '.gif': 'image/gif',
+    '.jpg': 'image/jpeg',
+    '.ico': 'image/x-icon',
+    '.woff': 'font/woff',
+    '.woff2': 'font/woff2',
+    '.ttf': 'font/ttf',
+    '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
 const server = http.createServer((req, res) => {
@@ -30,7 +48,8 @@ const server = http.createServer((req, res) => {
         res.writeHead(400).end('Bad request');
         return;
     }
-    if (urlPath === '/') urlPath = '/web/index.html';
+    if (urlPath === '/') urlPath = FRONT;
+    if (urlPath.endsWith('/')) urlPath += 'index.html';
 
     // Resolve inside ROOT and refuse anything that escapes it.
     const target = path.resolve(ROOT, '.' + urlPath);
@@ -50,6 +69,6 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-    process.stdout.write(`Map editor running at http://localhost:${PORT}/\n`);
+    process.stdout.write(`Serving ${ROOT}\n  at http://localhost:${PORT}/\n`);
     process.stdout.write('Press Ctrl+C to stop.\n');
 });

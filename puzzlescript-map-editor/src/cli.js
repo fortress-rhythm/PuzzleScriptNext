@@ -6,13 +6,15 @@ const path = require('path');
 const sheet = require('./sheet');
 const palettes = require('./palettes');
 const rexbridge = require('./rexbridge');
-const { applyGridEdits } = require('./psgame');
+const psgame = require('./psgame');
+const { applyGridEdits } = psgame;
 
 const USAGE = `psmap - PuzzleScript map tooling
 
   psmap export <game.txt> [-o dest]     level grids -> spreadsheet or .xp files
   psmap import <game.txt> <edited>      edits -> spliced back into the game file
   psmap info   <game.txt>               summarise levels and legend
+  psmap check  <game.txt>...            can the editor read this game? (exit 1 if not)
 
 Options
   -o, --output <path>   where to write (default: alongside the input)
@@ -57,6 +59,7 @@ function main(argv) {
     if (command === 'export') return doExport(opts);
     if (command === 'import') return doImport(opts);
     if (command === 'info') return doInfo(opts);
+    if (command === 'check') return doCheck(opts);
 
     process.stderr.write(`Unknown command "${command}".\n\n${USAGE}`);
     return 2;
@@ -219,7 +222,15 @@ function doInfo(opts) {
     const { game, glyphs, grids, background, resolved } = sheet.analyse(source);
 
     process.stdout.write(`palette: ${palettes.describePalette(resolved)}\n`);
+    process.stdout.write(`dialect: ${game.commentStyle === '//' ? 'PuzzleScript Next (// comments)' : 'classic (( ) comments)'}`
+        + `, sprite_size ${game.spriteSize}${game.caseSensitive ? ', case_sensitive' : ''}\n`);
+    process.stdout.write(`objects: ${game.blocks.length} definition(s), ${(game.objects.__order || []).length} object(s)\n`);
     process.stdout.write(`background char: "${background}"\n`);
+    const unknown = psgame.unknownGlyphs(game, glyphs);
+    if (unknown.length) {
+        process.stdout.write(`\nUNKNOWN glyphs in levels (the game will not compile):\n`);
+        for (const u of unknown) process.stdout.write(`  "${u.char}"  x${u.count}\n`);
+    }
     process.stdout.write(`\nglyphs (${Object.keys(glyphs).length}):\n`);
     for (const ch of Object.keys(glyphs).sort()) {
         const g = glyphs[ch];
@@ -249,6 +260,85 @@ function doInfo(opts) {
     return 0;
 }
 
+/**
+ * Everything that has to hold for the editor to show a game the way the game
+ * shows itself, in one exit code, so a game repository can run it in CI:
+ *
+ *   - every glyph in every level is one the legend or OBJECTS explains
+ *   - every glyph draws something, or is a declared invisible marker
+ *   - the palette is one this build carries, with every override applied
+ *   - export then import with no edits gives the file back byte for byte,
+ *     through the spreadsheet, CSV and REXPaint paths
+ *
+ * A failure here is either a bug in the game (an undefined glyph) or a gap in
+ * this parser (a spelling it does not read yet), and both are worth a red X.
+ */
+function doCheck(opts) {
+    const files = opts._.slice(1);
+    if (!files.length) { process.stderr.write('Need at least one game file.\n'); return 2; }
+    let bad = 0;
+    for (const file of files) {
+        const source = readGame(file);
+        const label = path.basename(file);
+        // A .txt with no section at all is not a game - a prelude block
+        // library, say - and a glob over a demo folder will meet those.
+        if (!sheet.analyse(source).game.sections.length) {
+            process.stdout.write(`skip  ${label}  (no sections - not a game)\n`);
+            continue;
+        }
+        const problems = checkGame(source);
+        if (!problems.length) {
+            const { game, glyphs, resolved } = sheet.analyse(source);
+            process.stdout.write(`ok    ${label}  ${game.grids.length} level(s), ${Object.keys(glyphs).length} glyphs, `
+                + `${game.blocks.length} objects, palette ${resolved.resolved}\n`);
+            continue;
+        }
+        bad++;
+        process.stdout.write(`FAIL  ${label}\n`);
+        for (const p of problems) process.stdout.write(`      ${p}\n`);
+    }
+    return bad ? 1 : 0;
+}
+
+/** The problems `psmap check` would report for this source, as strings. */
+function checkGame(source) {
+    const problems = [];
+    let analysed;
+    try {
+        analysed = sheet.analyse(source);
+    } catch (e) {
+        return [`parser threw: ${e.message}`];
+    }
+    const { game, glyphs, resolved } = analysed;
+    if (!game.grids.length) problems.push('no level grids found');
+    for (const u of psgame.unknownGlyphs(game, glyphs)) {
+        problems.push(`glyph "${u.char}" appears ${u.count} time(s) in the levels but is not defined`);
+    }
+    for (const [ch, g] of Object.entries(glyphs)) {
+        if (!g.renders.length) problems.push(`glyph "${ch}" (${g.label}) resolves to no object`);
+    }
+    if (!resolved.known) problems.push(`palette "${resolved.name}" is not one this build carries`);
+    if (resolved.unknownKeys.length) problems.push(`palette overrides ignored: ${resolved.unknownKeys.join(', ')}`);
+
+    const roundTrips = [
+        ['xlsx', () => sheet.fromWorkbook(source, sheet.toWorkbook(source).buffer)],
+        ['csv', () => sheet.fromDelimited(source, sheet.toDelimited(source, 'csv'), 'csv')],
+        ['xp', () => {
+            const out = rexbridge.toRexFiles(source);
+            return rexbridge.fromRexFiles(source, out.files, out.sidecar);
+        }],
+    ];
+    for (const [name, run] of roundTrips) {
+        try {
+            const { game: g, edits } = run();
+            if (applyGridEdits(g, edits) !== source) problems.push(`${name} round trip changed the file`);
+        } catch (e) {
+            problems.push(`${name} round trip threw: ${e.message}`);
+        }
+    }
+    return problems;
+}
+
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { main, parseArgs };
+module.exports = { main, parseArgs, checkGame };

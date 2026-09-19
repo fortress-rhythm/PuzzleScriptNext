@@ -766,9 +766,62 @@ function describePalette(resolved) {
     return resolved.name + (parts.length ? ` (${parts.join('; ')})` : '');
 }
 
+// The 21 real slots, in ramp order. gray/darkgray/lightgray are spelling
+// aliases of their grey twins, so they are exported but not shown twice.
+// Mirrors PALETTE_SLOTS in PuzzleScriptNext's palettes_ui.js.
+const PALETTE_SLOTS = [
+    'black', 'darkgrey', 'grey', 'lightgrey', 'white',
+    'darkred', 'red', 'lightred',
+    'darkbrown', 'brown', 'lightbrown',
+    'orange', 'yellow',
+    'darkgreen', 'green', 'lightgreen',
+    'darkblue', 'blue', 'lightblue',
+    'purple', 'pink',
+];
+
+const PALETTE_EXPORT_ORDER = [
+    'black', 'white', 'grey', 'darkgrey', 'lightgrey',
+    'gray', 'darkgray', 'lightgray',
+    'red', 'darkred', 'lightred', 'brown', 'darkbrown', 'lightbrown',
+    'orange', 'yellow', 'green', 'darkgreen', 'lightgreen',
+    'blue', 'lightblue', 'darkblue', 'purple', 'pink',
+];
+
+/**
+ * Every palette this build carries, in alias order so the number shown is the
+ * one you would write in a prelude: [{ index, name }].
+ */
+function paletteList() {
+    const ordered = [];
+    const indices = Object.keys(colorPalettesAliases).map(Number)
+        .filter(n => !Number.isNaN(n)).sort((a, b) => a - b);
+    for (const i of indices) {
+        const name = colorPalettesAliases[i];
+        if (name in colorPalettes) ordered.push({ index: i, name });
+    }
+    for (const name of Object.keys(colorPalettes)) {
+        if (!ordered.some(o => o.name === name)) ordered.push({ index: null, name });
+    }
+    return ordered;
+}
+
+/**
+ * A palette as a portable prelude line: the base palette plus every slot
+ * spelled out, so a game written against a fork-only palette still runs on
+ * stock PuzzleScript. The same text PuzzleScript Next's PALETTES panel exports.
+ */
+function paletteToPreludeBlock(name, base) {
+    base = base || 'arnecolors';
+    const p = colorPalettes[name];
+    if (!p) return '';
+    const pairs = PALETTE_EXPORT_ORDER.filter(k => k in p).map(k => k + ' ' + p[k]);
+    return 'color_palette ' + base + ' ' + pairs.join(' ');
+}
+
 const PALETTES_API = {
     colorPalettes, colorPalettesAliases, resolvePalette, literalColor,
-    describePalette,
+    describePalette, PALETTE_SLOTS, PALETTE_EXPORT_ORDER, paletteList,
+    paletteToPreludeBlock,
 };
 
 if (typeof module !== 'undefined' && module.exports) module.exports = PALETTES_API;

@@ -15,6 +15,21 @@
 //   - inside LEVELS, lines beginning with a level command verb are commands
 //   - every other non-blank line is a grid row, one non-whitespace char per tile
 //   - blank lines separate levels
+//
+// PuzzleScript Next's own dialect is understood as well, because a game written
+// for it is otherwise unreadable here - every one of these turned Charmroach
+// into a wall of red crosses:
+//   - `//` line comments. The first comment in the file decides the style, as
+//     in parser.js matchComment(): a game uses `//` or `( )`, never both
+//   - `Name glyph glyph; colour colour` object headers, with the colours on the
+//     header line after a semicolon (only in the `//` style, where `;` cannot
+//     be a glyph)
+//   - several single-character aliases on one header: `MergedRoach N E S W`
+//   - `copy:`, `rot:` and the other transforms after the names
+//   - a TAGS section, and `Roach:directions` defining four objects at once
+//   - properties and tag classes wherever an object name may appear: the
+//     legend, COLLISIONLAYERS (`Dark:Shade`), and `--` layer-group dividers
+//   - 8-digit hex colours with an alpha channel
 
 const SECTION_NAMES = [
     'objects', 'legend', 'sounds', 'collisionlayers',
@@ -24,8 +39,26 @@ const SECTION_NAMES = [
 // Matches parser.js `cmds` in parseLevel().
 const LEVEL_COMMANDS = ['goto', 'level', 'link', 'message', 'section', 'title', 'input'];
 
+// Prelude settings whose value is free text running to the end of the line.
+// parser.js reads these with matchAll(), so a `//` or `(` inside them is never
+// seen by the comment matcher - `homepage https://...` must not pick the style.
+const PRELUDE_TEXT_PARAMS = ['title', 'author', 'homepage', 'custom_font', 'text_controls',
+    'text_message_continue', 'debug_switch', 'export_options'];
+
+// Object header modifiers, from parser.js reg_objmodi. The first of these on a
+// header line ends the run of names and glyphs.
+const RE_OBJECT_MODIFIER = /^(canvas|copy|flip|rot|scale|shift|text|translate):/i;
+
+// Tags every game has without declaring them, from parser.js's initial state.
+const BUILTIN_TAGS = {
+    directions: ['up', 'right', 'down', 'left'],
+    horizontal: ['right', 'left'],
+    vertical: ['up', 'down'],
+};
+
 const RE_EQUALS_ROW = /^=+\s*$/;
 const RE_LEVEL_COMMAND = new RegExp(`^(${LEVEL_COMMANDS.join('|')})\\b`, 'i');
+const RE_PRELUDE_TEXT = new RegExp(`^(${PRELUDE_TEXT_PARAMS.join('|')})\\b`, 'i');
 
 /**
  * Split source into lines, keeping each line's terminator separately so the
@@ -63,16 +96,55 @@ function joinLines(lines, endings) {
 }
 
 /**
+ * Which comment style a file uses: '()' or '//'.
+ *
+ * PuzzleScript Next decides this the first time its comment matcher meets
+ * either a `(` or a `//` at the start of a token, and from then on the other
+ * one is ordinary text (`//` style) or a warning (`()` style). Doing the same
+ * here is what lets a `//` game's `(` in a MESSAGE survive, and a `()` game's
+ * `//` in a URL stay a URL.
+ *
+ * Text-valued prelude lines are skipped because parser.js swallows their value
+ * whole and never looks inside it - `homepage https://example.com` is the
+ * common case, and it comes before any real comment in most files.
+ */
+function detectCommentStyle(lines) {
+    for (const line of lines) {
+        const text = line.trim();
+        if (!text) continue;
+        if (RE_PRELUDE_TEXT.test(text)) continue;
+        const paren = text.indexOf('(');
+        // `//` only counts at a token boundary; `https://` is not a comment.
+        const slash = text.search(/(^|\s)\/\//);
+        if (paren < 0 && slash < 0) continue;
+        if (slash < 0) return '()';
+        if (paren < 0) return '//';
+        return paren < slash ? '()' : '//';
+    }
+    return '()';
+}
+
+/**
  * Strip PuzzleScript comments for the purpose of *classifying* a line.
  * The original text is never modified - this is only used to decide whether a
  * line is blank, a section header, or grid content.
  *
- * PuzzleScript comments are (nested parentheses) and may span lines, so this
- * runs as a single pass over the whole file and returns per-line "code only"
- * text plus the comment nesting depth at the start of each line.
+ * Classic PuzzleScript comments are (nested parentheses) and may span lines, so
+ * this runs as a single pass over the whole file and returns per-line "code
+ * only" text plus the comment nesting depth at the start of each line. In the
+ * `//` style a comment runs from a `//` at a token boundary to the end of the
+ * line, and parentheses are just characters.
  */
-function stripComments(lines) {
+function stripComments(lines, style) {
+    style = style || detectCommentStyle(lines);
     const out = [];
+    if (style === '//') {
+        for (const line of lines) {
+            const m = line.match(/(^|\s)\/\//);
+            out.push({ code: m ? line.slice(0, m.index) : line, startDepth: 0 });
+        }
+        return out;
+    }
     let depth = 0;
     for (const line of lines) {
         const startDepth = depth;
@@ -117,53 +189,264 @@ function findSections(lines, stripped) {
 }
 
 /**
- * Parse the OBJECTS section into { name -> { name, aliases, colors } }.
- * Objects are separated by blank lines; the first line is names, an optional
- * second line is colours, and any remaining lines are the sprite matrix.
+ * Parse the TAGS section into { tagname -> [values] }, lower-cased, on top of
+ * the built-in `directions`, `horizontal` and `vertical`.
+ *
+ *     Shade = Faint Dim Deep Full
+ *
+ * A tag class named in an object identifier (`Dark:Shade`) stands for each of
+ * its values in turn, and that is the whole reason this parser needs to know
+ * about tags at all: it is how one header line defines several objects.
  */
-function parseObjects(lines, stripped, section) {
+function parseTags(lines, stripped, section) {
+    const tags = {};
+    for (const [k, v] of Object.entries(BUILTIN_TAGS)) tags[k] = v.slice();
+    if (!section) return tags;
+    for (let i = section.start; i < section.end; i++) {
+        const code = stripped[i].code.trim();
+        if (!code || RE_EQUALS_ROW.test(code)) continue;
+        const m = code.match(/^(\S+)\s*=\s*(.+)$/);
+        if (!m) continue;
+        const values = m[2].split(/\s+/).filter(Boolean).map(v => v.toLowerCase());
+        // A tag may be built from other tags: `Glow = Faint Dim` is plain
+        // values, but `All = Shade Extra` would expand Shade. Resolve one level
+        // at a time, in file order, the way the compiler sees them.
+        const flat = [];
+        for (const v of values) {
+            if (tags[v]) flat.push(...tags[v]);
+            else flat.push(v);
+        }
+        tags[m[1].toLowerCase()] = flat;
+    }
+    return tags;
+}
+
+/**
+ * Expand an identifier with tag parts into the concrete names it stands for.
+ *
+ *     Roach:directions  ->  Roach:up Roach:right Roach:down Roach:left
+ *     Dark:Shade        ->  Dark:Faint Dark:Dim Dark:Deep Dark:Full
+ *     Roach:right       ->  Roach:right         (a value, not a class)
+ *     Wall              ->  Wall
+ *
+ * Several tag parts multiply out. The parts keep the casing they were written
+ * with, except that a tag value is spelled the way the TAGS section spelled it,
+ * since that is what the rest of the file will use. Returns [ident] unchanged
+ * when nothing in it is a tag class, so callers can test `length > 1 ||
+ * result[0] !== ident` to know whether anything happened.
+ */
+function expandTaggedName(ident, tags) {
+    const parts = ident.split(':');
+    if (parts.length < 2) return [ident];
+    let combos = [[parts[0]]];
+    let expanded = false;
+    for (const part of parts.slice(1)) {
+        const values = tags[part.toLowerCase()];
+        const options = values ? values : [part];
+        if (values) expanded = true;
+        const next = [];
+        for (const c of combos) for (const v of options) next.push([...c, v]);
+        combos = next;
+    }
+    return expanded ? combos.map(c => c.join(':')) : [ident];
+}
+
+/**
+ * Split an OBJECTS header line into its parts.
+ *
+ *     Player P                        classic: a name and an alias
+ *     MergedRoach N E S W             several glyph aliases
+ *     Roach:right e; Black Yellow     Next: glyph, then colours after `;`
+ *     Ghost copy:Player rot:right     transforms end the run of names
+ *
+ * The `;` form is only legal in the `//` comment style - in the `()` style a
+ * semicolon is just another glyph, and parser.js agrees.
+ */
+function parseObjectHeader(text, commentStyle) {
+    let head = text;
+    let inlineColors = null;
+    if (commentStyle === '//') {
+        const semi = text.indexOf(';');
+        if (semi >= 0) {
+            head = text.slice(0, semi);
+            inlineColors = text.slice(semi + 1).trim();
+        }
+    }
+    const tokens = head.trim().split(/\s+/).filter(Boolean);
+    const name = tokens[0] || '';
+    const aliases = [];
+    let i = 1;
+    for (; i < tokens.length; i++) {
+        const t = tokens[i];
+        // Only a `keyword:` modifier ends the names. `-` and `|` are
+        // Pattern:Script mirror shorthands on a transform line, but on the
+        // header line parser.js reads them as glyphs, and games use them.
+        if (RE_OBJECT_MODIFIER.test(t)) break;
+        aliases.push(t);
+    }
+    const modifiers = tokens.slice(i).join(' ');
+    const copy = modifiers.match(/\bcopy:\s*(\S+)/i);
+    return {
+        name,
+        aliases,
+        inlineColors,
+        copyFrom: copy ? copy[1] : null,
+        hasTransforms: i < tokens.length,
+    };
+}
+
+/**
+ * Parse the OBJECTS section into { name -> { name, aliases, colors, sprite } }.
+ *
+ * Objects are separated by blank lines; the first line is the header (names,
+ * glyphs, transforms, and in the `//` style the colours after a `;`), an
+ * optional next line is colours, and any remaining lines are the sprite matrix.
+ *
+ * Each header produces one *block* - the thing you would edit in a sprite
+ * editor, with its source line range - and one or more *objects*: a tagged
+ * header such as `Roach:directions` yields four, all sharing the block's
+ * colours and sprite. The map is keyed lower-case because PuzzleScript is
+ * case-insensitive unless the prelude says otherwise; `names` keeps the
+ * casing the file actually uses. `objects.__order` lists the objects in
+ * declaration order and `objects.__blocks` the blocks; neither is enumerable,
+ * so `Object.keys(objects)` is still just the names.
+ *
+ * `properties` collects the names that stand for several objects at once -
+ * `Roach:directions` itself, once expanded - so the legend and the collision
+ * layers can use them.
+ */
+function parseObjects(lines, stripped, section, tags, commentStyle) {
+    tags = tags || parseTags(lines, stripped, null);
     const objects = {};
     const order = [];
+    const blocks = [];
+    const properties = {};
     Object.defineProperty(objects, '__order', { value: order, enumerable: false });
+    Object.defineProperty(objects, '__blocks', { value: blocks, enumerable: false });
+    Object.defineProperty(objects, '__properties', { value: properties, enumerable: false });
     if (!section) return objects;
 
-    let block = [];
+    let block = [];      // [{ code, line }]
     const flush = () => {
-        if (!block.length) return;
-        const nameLine = block[0].trim();
-        // Object names may be followed by aliases and (in Next) a copy: directive.
-        const tokens = nameLine.split(/\s+/).filter(Boolean);
-        if (tokens.length) {
-            const name = tokens[0];
-            const aliases = tokens.slice(1).filter(t => !t.includes(':'));
+        if (!block.length) { block = []; return; }
+        const header = parseObjectHeader(block[0].code, commentStyle);
+        if (header.name) {
             let colors = [];
             let spriteStart = 1;
-            if (block.length > 1) {
-                const maybeColors = block[1].trim();
+            if (header.inlineColors !== null) {
+                colors = header.inlineColors.split(/\s+/).filter(Boolean);
+            } else if (block.length > 1) {
+                const maybeColors = block[1].code.trim();
                 if (maybeColors && looksLikeColorLine(maybeColors)) {
                     colors = maybeColors.split(/\s+/).filter(Boolean);
                     spriteStart = 2;
                 }
             }
-            const sprite = parseSpriteMatrix(block.slice(spriteStart));
-            // `names` keeps the original casing, which is what a level grid and
-            // the legend actually contain; the map is keyed lower-case because
-            // PuzzleScript is case-insensitive unless the prelude says otherwise.
-            const entry = { name, aliases, colors, sprite, names: [name, ...aliases] };
-            objects[name.toLowerCase()] = entry;
-            for (const a of aliases) objects[a.toLowerCase()] = entry;
-            order.push(entry);
+            // Transform lines (`rot:right`, `text: A`) may follow the matrix on
+            // their own lines; they are not rows of it.
+            const spriteRows = block.slice(spriteStart)
+                .filter(r => !RE_OBJECT_MODIFIER.test(r.code.trim()));
+            const sprite = parseSpriteMatrix(spriteRows.map(r => r.code));
+            const entry = {
+                name: header.name,
+                aliases: header.aliases,
+                colors,
+                sprite,
+                names: [header.name, ...header.aliases],
+                copyFrom: header.copyFrom,
+                headerLine: block[0].line,
+                // Where the sprite rows live, so an edited sprite can be spliced
+                // back exactly as a level can. An object with no matrix records
+                // the line a new one would follow.
+                spriteLines: sprite ? spriteRows.map(r => r.line) : [],
+                spriteInsertAfterLine: block[Math.min(spriteStart, block.length) - 1].line,
+                indent: sprite ? (lines[spriteRows[0].line].match(/^\s*/)[0]) : '',
+            };
+            blocks.push(entry);
+
+            const expanded = expandTaggedName(header.name, tags);
+            const concrete = [];
+            for (const fullName of expanded) {
+                // Every expansion shares the block's colours and sprite. A
+                // `rot:` transform would turn the sprite per direction in the
+                // engine; here the base drawing stands for all of them.
+                const obj = fullName === header.name ? entry
+                    : Object.assign({}, entry, { name: fullName, names: [fullName], aliases: [], block: entry });
+                if (fullName === header.name) entry.block = entry;
+                objects[fullName.toLowerCase()] = obj;
+                order.push(obj);
+                concrete.push(fullName);
+            }
+            if (concrete.length > 1 || concrete[0] !== header.name) {
+                properties[header.name.toLowerCase()] = concrete;
+                // The glyph aliases on a tagged header attach to the property,
+                // which the engine rejects in a level - but keep them findable.
+                for (const a of header.aliases) properties[a.toLowerCase()] = concrete;
+            } else {
+                for (const a of header.aliases) objects[a.toLowerCase()] = entry;
+            }
         }
         block = [];
     };
 
+    // Does this line continue the block that is open, or start a new one? A
+    // blank line always ends a block, but the `;` header form lets a game write
+    // one object per line with nothing between them:
+    //
+    //     Dark:Faint; #00002A30
+    //     Dark:Dim;   #00002A58
+    //
+    // parser.js knows because it tracks what it expects next; the equivalent
+    // here is that once a block has its colours, a line is a sprite row only if
+    // it looks like one *for that block* - every character an index into its
+    // colour list. Anything else is the next object's header.
+    const blockHasColors = () => {
+        if (!block.length) return false;
+        const header = parseObjectHeader(block[0].code, commentStyle);
+        if (header.inlineColors !== null) return true;
+        return block.length > 1 && looksLikeColorLine(block[1].code.trim());
+    };
+    const blockColorCount = () => {
+        const header = parseObjectHeader(block[0].code, commentStyle);
+        const text = header.inlineColors !== null ? header.inlineColors : block[1].code.trim();
+        return text.split(/\s+/).filter(Boolean).length;
+    };
+    const isSpriteRowFor = (text, colorCount) => {
+        if (!/^[0-9a-z.]+$/i.test(text)) return false;
+        for (const ch of text) {
+            if (ch === '.') continue;
+            if (parseInt(ch, 36) >= colorCount) return false;
+        }
+        return true;
+    };
+    const startsNewObject = (text) => {
+        if (!block.length) return false;
+        if (commentStyle === '//' && text.includes(';')) return true;
+        if (RE_OBJECT_MODIFIER.test(text)) return false;      // `rot:right` on its own line
+        if (/^text:/i.test(text)) return false;
+        if (!blockHasColors()) return false;
+        if (block.length === 1 && looksLikeColorLine(text)) return false;
+        return !isSpriteRowFor(text, blockColorCount());
+    };
+
     for (let i = section.start; i < section.end; i++) {
         const code = stripped[i].code;
-        if (!code.trim()) { flush(); continue; }
-        if (RE_EQUALS_ROW.test(code.trim())) continue;
-        block.push(code);
+        const text = code.trim();
+        if (!text) { flush(); continue; }
+        if (RE_EQUALS_ROW.test(text)) continue;
+        if (startsNewObject(text)) flush();
+        block.push({ code, line: i });
     }
     flush();
+
+    // `copy:` - an object drawn with another's sprite. Resolved after the whole
+    // section is read because the source may be declared later.
+    for (const obj of blocks) {
+        if (!obj.copyFrom || obj.sprite) continue;
+        const source = objects[obj.copyFrom.toLowerCase()]
+            || objects[(expandTaggedName(obj.copyFrom, tags)[0] || '').toLowerCase()];
+        if (source && source.sprite) obj.sprite = source.sprite;
+    }
     return objects;
 }
 
@@ -238,7 +521,7 @@ function parseLegend(lines, stripped, section) {
             expansion,
             objects,
             op: op ? op.toLowerCase() : null,
-            placeable: key.length === 1,
+            placeable: Array.from(key).length === 1,
             line: i,
         };
     }
@@ -249,6 +532,10 @@ function parseLegend(lines, stripped, section) {
  * Parse COLLISIONLAYERS into an array of layers, each a list of object names,
  * bottom layer first. A renderer needs this to stack a tile like
  * `@ = Crate and Target` in the order the game itself would draw it.
+ *
+ * PuzzleScript Next adds two things that are not object names: a `--` line
+ * (with optional arrow decoration) that opens a new layer group, and `->`
+ * between names. Neither is a layer, so both are dropped here.
  */
 function parseCollisionLayers(lines, stripped, section) {
     const layers = [];
@@ -256,22 +543,66 @@ function parseCollisionLayers(lines, stripped, section) {
     for (let i = section.start; i < section.end; i++) {
         const code = stripped[i].code.trim();
         if (!code || RE_EQUALS_ROW.test(code)) continue;
-        const names = code.split(',').map(t => t.trim()).filter(Boolean);
+        if (/^--/.test(code)) continue;
+        const names = code.replace(/->/g, ',').split(',').map(t => t.trim()).filter(Boolean);
         if (names.length) layers.push(names);
     }
     return layers;
 }
 
 /**
- * Map each object name to the index of the collision layer it sits on.
+ * Everything a name in the legend or the collision layers stands for, as a
+ * list of concrete object names in declaration casing.
+ *
+ *     Wall               -> [Wall]
+ *     Roach:directions   -> the four roaches       (a tag class)
+ *     Opaque             -> Wall, MergedRoach, ... (a legend property)
+ *     Dark:Shade         -> Dark:Faint, ...
+ *
+ * Legend entries are followed so an alias of an alias resolves, with a guard
+ * against a legend that loops. An unknown name resolves to nothing, and the
+ * caller decides how loudly to say so.
  */
-function buildLayerIndex(collisionLayers) {
+function resolveNames(game, ident, seen) {
+    seen = seen || new Set();
+    const key = String(ident).toLowerCase();
+    if (seen.has(key)) return [];
+    seen.add(key);
+
+    const obj = game.objects[key];
+    if (obj) return [obj.name];
+
+    const property = game.objects.__properties && game.objects.__properties[key];
+    if (property) return property.flatMap(n => resolveNames(game, n, seen));
+
+    const tagged = expandTaggedName(ident, game.tags || BUILTIN_TAGS);
+    if (tagged.length > 1 || tagged[0] !== ident) {
+        return tagged.flatMap(n => resolveNames(game, n, seen));
+    }
+
+    const entry = game.legend[ident] || (game.legendByLower && game.legendByLower[key]);
+    if (entry) return entry.objects.flatMap(n => resolveNames(game, n, seen));
+    return [];
+}
+
+/**
+ * Map each object name to the index of the collision layer it sits on.
+ *
+ * Layer entries are written as objects, properties or tag classes; every one is
+ * expanded to the concrete objects underneath, so `Witch:directions` on layer 5
+ * puts `Witch:down` on layer 5. The name as written is kept too.
+ */
+function buildLayerIndex(collisionLayers, game) {
     const index = new Map();
     collisionLayers.forEach((names, i) => {
         for (const n of names) {
-            // A layer entry may be a property name covering several objects;
-            // storing it as written is enough for ordering purposes.
-            if (!index.has(n.toLowerCase())) index.set(n.toLowerCase(), i);
+            const key = n.toLowerCase();
+            if (!index.has(key)) index.set(key, i);
+            if (!game) continue;
+            for (const concrete of resolveNames(game, n)) {
+                const ck = concrete.toLowerCase();
+                if (!index.has(ck)) index.set(ck, i);
+            }
         }
     });
     return index;
@@ -428,40 +759,62 @@ function emptySections(commands, ownsFollowingGrid) {
  */
 function parseGame(source) {
     const { lines, endings, dominant } = splitLines(source);
-    const stripped = stripComments(lines);
+    const commentStyle = detectCommentStyle(lines);
+    const stripped = stripComments(lines, commentStyle);
     const sections = findSections(lines, stripped);
     const byName = {};
     for (const s of sections) byName[s.name] = s;
 
-    const objects = parseObjects(lines, stripped, byName.objects);
+    const tags = parseTags(lines, stripped, byName.tags);
+    const objects = parseObjects(lines, stripped, byName.objects, tags, commentStyle);
     const legend = parseLegend(lines, stripped, byName.legend);
     const collisionLayers = parseCollisionLayers(lines, stripped, byName.collisionlayers);
     const levelBlocks = parseLevels(lines, stripped, byName.levels);
 
-    // `case_sensitive` in the prelude decides whether P and p are one tile or two.
-    const preludeEnd = sections.length ? sections[0].headerLine : lines.length;
-    let caseSensitive = false;
-    for (let i = 0; i < preludeEnd; i++) {
-        if (/^case_sensitive\b/i.test(stripped[i].code.trim())) { caseSensitive = true; break; }
+    // The legend keyed case-insensitively as well, for games that write `wall`
+    // in one place and `Wall` in another. Exact matches are tried first.
+    const legendByLower = {};
+    for (const [k, v] of Object.entries(legend)) {
+        if (!(k.toLowerCase() in legendByLower)) legendByLower[k.toLowerCase()] = v;
     }
 
-    return {
+    // Prelude settings the editor cares about. `case_sensitive` decides whether
+    // P and p are one tile or two; `sprite_size` is what every sprite must be.
+    const preludeEnd = sections.length ? sections[0].headerLine : lines.length;
+    let caseSensitive = false;
+    let spriteSize = 5;
+    for (let i = 0; i < preludeEnd; i++) {
+        const code = stripped[i].code.trim();
+        if (/^case_sensitive\b/i.test(code)) caseSensitive = true;
+        const m = code.match(/^sprite_size\s+(\d+)/i);
+        if (m) spriteSize = Number(m[1]);
+    }
+
+    const game = {
         source,
         lines,
         endings,
         dominantEnding: dominant,
+        commentStyle,
         stripped,
         sections,
         sectionByName: byName,
         caseSensitive,
+        spriteSize,
+        tags,
         objects,
+        blocks: objects.__blocks || [],
+        properties: objects.__properties || {},
         collisionLayers,
-        layerIndex: buildLayerIndex(collisionLayers),
+        layerIndex: null,
         legend,
+        legendByLower,
         levelBlocks,
         levels: groupLevels(levelBlocks),
         grids: levelBlocks.filter(b => b.kind === 'grid'),
     };
+    game.layerIndex = buildLayerIndex(collisionLayers, game);
+    return game;
 }
 
 /**
@@ -474,16 +827,37 @@ function parseGame(source) {
 function buildGlyphTable(game, palette) {
     const glyphs = {};
 
+    // What a legend entry actually puts in a cell. `Crate and Target` is both;
+    // `Roach:directions` is a property and cannot be placed, so the first member
+    // stands in for it on screen rather than a red cross - the compiler will
+    // say the rest. Names are expanded through properties, tag classes and
+    // other legend entries alike.
+    const concreteFor = (objectNames, op) => {
+        if (op === 'or') {
+            const all = objectNames.flatMap(n => resolveNames(game, n));
+            return all.length ? [all[0]] : [];
+        }
+        return objectNames.flatMap(n => {
+            const resolved = resolveNames(game, n);
+            // An `and` of a property is not a thing the engine accepts either,
+            // but drawing one of it is better than nothing.
+            return resolved.length > 1 && !game.objects[n.toLowerCase()] ? [resolved[0]] : resolved;
+        });
+    };
+
     // The drawable form of a glyph: one entry per object it expands to, in
     // legend order, each with its palette-resolved colours and sprite matrix.
     // `@ = Crate and Target` therefore draws as Target with Crate on top.
-    const rendersFor = (objectNames) => objectNames.map(n => {
+    const rendersFor = (objectNames, op) => concreteFor(objectNames, op).map(n => {
         const obj = game.objects[n.toLowerCase()];
         if (!obj) return null;
         const layer = game.layerIndex ? game.layerIndex.get(obj.name.toLowerCase()) : undefined;
         return {
             name: obj.name,
-            colors: obj.colors.map(c => resolveColor(c, palette)),
+            // Alpha is kept for drawing - a `#00002A80` night shade really is
+            // translucent in the game - but `color` below stays opaque for
+            // spreadsheets and swatches.
+            colors: obj.colors.map(c => resolveColor(c, palette, true)),
             sprite: obj.sprite || null,
             layer: layer === undefined ? Infinity : layer,
         };
@@ -492,8 +866,8 @@ function buildGlyphTable(game, palette) {
         // Objects missing from COLLISIONLAYERS keep their legend order at the top.
         .sort((a, b) => a.layer - b.layer);
 
-    const colorFor = (objectNames) => {
-        for (const n of objectNames) {
+    const colorFor = (objectNames, op) => {
+        for (const n of concreteFor(objectNames, op)) {
             const obj = game.objects[n.toLowerCase()];
             if (!obj) continue;
             for (const c of obj.colors) {
@@ -546,8 +920,8 @@ function buildGlyphTable(game, palette) {
             char: key,
             label: entry.expansion,
             objects: entry.objects,
-            color: colorFor(entry.objects),
-            renders: rendersFor(entry.objects),
+            color: colorFor(entry.objects, entry.op),
+            renders: rendersFor(entry.objects, entry.op),
             source: 'legend',
         });
     }
@@ -555,7 +929,37 @@ function buildGlyphTable(game, palette) {
     return glyphs;
 }
 
-function resolveColor(token, palette) {
+/**
+ * Every glyph a game's levels actually use that the glyph table cannot
+ * explain, with how often each appears. Empty for a game that compiles.
+ */
+function unknownGlyphs(game, glyphs) {
+    const lookup = (() => {
+        if (game.caseSensitive) return ch => glyphs[ch];
+        const folded = new Map();
+        for (const [ch, g] of Object.entries(glyphs)) folded.set(ch.toLowerCase(), g);
+        return ch => glyphs[ch] || folded.get(String(ch).toLowerCase());
+    })();
+    const counts = new Map();
+    for (const grid of game.grids) {
+        for (const row of grid.rows) {
+            for (const ch of Array.from(row)) {
+                if (lookup(ch)) continue;
+                counts.set(ch, (counts.get(ch) || 0) + 1);
+            }
+        }
+    }
+    return [...counts].map(([char, count]) => ({ char, count }));
+}
+
+/**
+ * A colour token as CSS hex, or null for `transparent` and the unknown.
+ *
+ * PuzzleScript accepts #RGB, #RGBA, #RRGGBB and #RRGGBBAA. The alpha channel
+ * is dropped unless `keepAlpha` is set, because a spreadsheet fill or a swatch
+ * has no use for it - a canvas does.
+ */
+function resolveColor(token, palette, keepAlpha) {
     if (!token) return null;
     const t = token.toLowerCase();
     if (t === 'transparent') return null;
@@ -564,9 +968,12 @@ function resolveColor(token, palette) {
     }
     if (/^#[0-9a-f]{6}$/i.test(token)) return token.toUpperCase();
     if (/^#[0-9a-f]{4}$/i.test(token)) {
-        return '#' + token.slice(1, 4).split('').map(c => c + c).join('');
+        const rgb = '#' + token.slice(1, 4).split('').map(c => c + c).join('').toUpperCase();
+        return keepAlpha ? rgb + (token[4] + token[4]).toUpperCase() : rgb;
     }
-    if (/^#[0-9a-f]{8}$/i.test(token)) return '#' + token.slice(1, 7).toUpperCase();
+    if (/^#[0-9a-f]{8}$/i.test(token)) {
+        return keepAlpha ? token.toUpperCase() : '#' + token.slice(1, 7).toUpperCase();
+    }
     if (palette && palette[t]) return palette[t].toUpperCase();
     return null;
 }
@@ -616,19 +1023,31 @@ function findPaletteName(game) {
  * `edits` is an array of { gridIndex, rows: [string] }. Grids may change size:
  * rows are spliced in place of the original line range, so growing or shrinking
  * a level works without touching neighbouring levels.
+ *
+ * Two other shapes of edit use the same splice: { insertAfterLine, rows } puts
+ * a new grid into a section that had none, and { startLine, lineCount, rows }
+ * replaces any run of lines - which is how an edited sprite matrix in the
+ * OBJECTS section goes back, since a sprite is a grid of characters too.
  */
 function applyGridEdits(game, edits) {
     const lines = game.lines.slice();
     const endings = game.endings.slice();
     const grids = game.grids;
 
-    // Two kinds of operation, both expressed as a line range to splice:
-    // replacing an existing grid, or inserting a new one into a section that
-    // has none yet. Sorting by start line descending keeps every index valid
-    // as we go, whichever kind it is.
+    // Every operation is a line range to splice: replacing an existing grid,
+    // inserting a new one into a section that has none yet, or replacing an
+    // arbitrary range. Sorting by start line descending keeps every index
+    // valid as we go, whichever kind it is.
     const ops = [];
     for (const e of edits) {
-        if (e.gridIndex !== undefined && e.gridIndex !== null) {
+        if (e.startLine !== undefined && e.startLine !== null) {
+            ops.push({
+                start: e.startLine,
+                count: e.lineCount || 0,
+                indent: e.indent || '',
+                rows: e.rows,
+            });
+        } else if (e.gridIndex !== undefined && e.gridIndex !== null) {
             const grid = grids[e.gridIndex];
             if (!grid) {
                 throw new Error(`No such grid index ${e.gridIndex} (file has ${grids.length})`);
@@ -648,7 +1067,7 @@ function applyGridEdits(game, edits) {
                 rows: e.rows,
             });
         } else {
-            throw new Error('An edit needs either a gridIndex or an insertAfterLine');
+            throw new Error('An edit needs a gridIndex, an insertAfterLine or a startLine');
         }
     }
     ops.sort((a, b) => b.start - a.start);
@@ -682,15 +1101,22 @@ const PSGAME_API = {
     findPaletteSpec,
     SECTION_NAMES,
     LEVEL_COMMANDS,
+    BUILTIN_TAGS,
     parseGame,
     parseObjects,
+    parseObjectHeader,
+    parseTags,
+    expandTaggedName,
+    resolveNames,
     parseLegend,
     parseLevels,
     groupLevels,
     buildGlyphTable,
+    unknownGlyphs,
     resolveColor,
     findPaletteName,
     applyGridEdits,
+    detectCommentStyle,
     stripComments,
     joinLines,
     splitLines,
