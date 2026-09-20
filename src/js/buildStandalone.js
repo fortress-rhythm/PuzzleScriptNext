@@ -75,7 +75,7 @@ function buildStandalone(sourceCode) {
 	var htmlString = standalone_HTML_String.concat("");
 	const title = state.metadata.title ? state.metadata.title : "PuzzleScript Next Game";
 
-	var homepage = state.metadata.homepage ? state.metadata.homepage : "https://www.puzzlescript.net";
+	var homepage = state.metadata.homepage ? state.metadata.homepage : "https://fortress-rhythm.github.io/PuzzleScriptNext/";
 	if (!homepage.match(/^https?:\/\//))
 		homepage = "https://" + homepage;		// todo: could do better URL validation here
 	const homepage_stripped = escapeHtmlChars(homepage.replace(/^https?:\/\//,''));

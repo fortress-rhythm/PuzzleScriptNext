@@ -11,7 +11,9 @@
 # Python tools are stdlib-only, run through uv so no environment is set up by
 # hand. compile.js (the minified bin/ build) is deliberately not run - its
 # image-compression dependencies need native binaries and are not something a
-# check should depend on.
+# check should depend on. The export template is checked instead, because that
+# is the part of that build people actually depend on: if it drifts behind src/,
+# every game exported from the editor ships a stale engine.
 name: check
 
 on:
@@ -42,3 +44,6 @@ jobs:
 
       - name: Palette set, generated files and vendored copy
         run: uv run tools/palette_test.py
+
+      - name: The standalone export template is current
+        run: npm run check:export

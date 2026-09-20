@@ -1,6 +1,9 @@
-// The client ID of a GitHub OAuth app registered at https://github.com/settings/developers.
-// The “callback URL” of that app points to https://www.puzzlescript.net/auth.html.
-// If you’re running from another host name, sharing might not work.
+// SHARE and cloud save talk to GitHub with a personal access token, which the
+// user pastes into auth_pat.html (see getAuthURL below - it is derived from
+// whatever host this editor is served from). No OAuth app, no callback URL and
+// no fixed host name, so sharing works from this fork's own site or a local
+// server. src/auth.html is the old OAuth callback page, kept for reference; it
+// points at an endpoint that only answers for puzzlescript.net.
 
 maximumsavedprojects = 50;
 

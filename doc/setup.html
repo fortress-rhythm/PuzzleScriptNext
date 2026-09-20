@@ -19,6 +19,25 @@
     margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
+  /* the menu: same markup as the front page */
+  .sitemenu {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(18,19,26,0.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .sitemenu nav {
+    max-width: 900px; margin: 0 auto; padding: 0 24px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  }
+  .sitemenu a {
+    display: inline-block; padding: 11px 10px; color: var(--dim);
+    text-decoration: none; font-size: 14px; border-bottom: 2px solid transparent;
+  }
+  .sitemenu a:hover { color: var(--text); }
+  .sitemenu a.here { color: var(--text); border-bottom-color: var(--accent); }
+  .sitemenu a.brand { color: var(--text); font-weight: 600; padding-left: 0; margin-right: 8px; }
+  .sitemenu .spacer { flex: 1 1 auto; }
+  @media (max-width: 640px) { .sitemenu nav { padding: 0 16px; } .sitemenu .spacer { display: none; } }
   main { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
   @media (max-width: 640px) { main { padding: 28px 16px 48px; } }
   h1 { font-size: 30px; letter-spacing: -0.4px; margin: 0 0 6px; }
@@ -62,6 +81,21 @@
 </style>
 </head>
 <body>
+
+<div class="sitemenu">
+  <nav>
+    <a class="brand" href="../index.html">PuzzleScript Next</a>
+    <a href="../src/editor.html">Editor</a>
+    <a href="../puzzlescript-map-editor/web/index.html">Map editor</a>
+    <a href="../src/Gallery/index.html">Gallery</a>
+    <a href="../src/Documentation/documentation.html">Docs</a>
+    <a class="here" href="setup.html">Setup</a>
+    <span class="spacer"></span>
+    <a href="../index.html#commandline">Command line</a>
+    <a href="https://github.com/fortress-rhythm/PuzzleScriptNext">GitHub</a>
+  </nav>
+</div>
+
 <main>
 
   <h1>Setup &amp; Running <small>PuzzleScript Next, fortress-rhythm fork</small></h1>
@@ -320,10 +354,20 @@ PORT=8081 npm start     <span class="c"># another port (set PORT=8081 first, on 
 
   <h2 id="template"><span class="step">6</span> Rebuilding the standalone template</h2>
   <p>
-    <code>src/standalone_inlined.txt</code> is generated from <code>src/standalone.html</code> with
-    its CSS and JS inlined, and it is <b>committed to the repository</b> — a fresh clone can export
-    without building anything. Rebuild it only when you have changed <code>standalone.html</code> or
-    something it pulls in:
+    <code>src/standalone_inlined.txt</code> is <code>src/standalone.html</code> with the engine and its
+    stylesheet inlined, and it is <b>committed to the repository</b>, so a fresh clone can export
+    without building anything. But it is a copy: <b>change anything under <code>src/js/</code> and every
+    game you export still carries the old engine</b> until you rebuild it. That is not hypothetical —
+    the committed template had drifted far enough behind that exported games contained none of this
+    fork's palettes.
+  </p>
+  <pre><code>npm run check:export      <span class="c"># is the template current? CI runs this too</span>
+npm run build:template    <span class="c"># rebuild it: no npm install, no native binaries</span></code></pre>
+  <p>
+    <code>tools/inline_standalone.js</code> behind those two does the one job the big build does for the
+    template, with no dependencies, so it works on machines where <code>compile.js</code> cannot. Run it
+    whenever you touch the engine, and commit the result. The full build does the same thing on its way
+    to the minified <code>bin/</code> site:
   </p>
   <pre><code>cd /path/to/PuzzleScriptNext     <span class="c"># the root; compile.js resolves ./src and ./bin from here</span>
 npm install                      <span class="c"># once</span>
@@ -349,9 +393,10 @@ npm run build                    <span class="c"># = node compile.js</span></cod
   <h2 id="checks"><span class="step">7</span> The checks to run before you push</h2>
   <pre><code>npm test                 <span class="c"># map editor suite: parser, bridges, round trip</span>
 npm run check:games      <span class="c"># every demo game still opens in the map editor</span>
-npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span></code></pre>
+npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span>
+npm run check:export     <span class="c"># the export template still matches src/js</span></code></pre>
   <p>
-    These three are exactly what <code>.github/workflows/check.yml</code> runs on every push and pull
+    These four are exactly what <code>.github/workflows/check.yml</code> runs on every push and pull
     request, on Node 22, with no <code>npm install</code> step. Green locally means green in CI.
   </p>
   <p>

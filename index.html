@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PuzzleScript Next</title>
-<meta name="description" content="PuzzleScript Next, this fork: the engine and editor, the map editor, the palette set, the documentation and the gallery, all from one page.">
+<meta name="description" content="Every tool in this fork from one page: the engine and its editor, the map and sprite editor, the palette set, the command line, the documentation and the gallery.">
 <link rel="shortcut icon" type="image/x-icon" href="src/Documentation/ico/favicon.ico">
 <style>
   :root {
@@ -17,73 +17,115 @@
     margin: 0; background: var(--bg); color: var(--text);
     font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   }
-  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
-  h1 { font-size: 30px; letter-spacing: -0.4px; margin: 0 0 6px; }
+
+  /* the menu: same markup on every page of this fork that has one */
+  .sitemenu {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(18,19,26,0.92); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+  }
+  .sitemenu nav {
+    max-width: 960px; margin: 0 auto; padding: 0 24px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 2px;
+  }
+  .sitemenu a {
+    display: inline-block; padding: 11px 10px; color: var(--dim);
+    text-decoration: none; font-size: 14px; border-bottom: 2px solid transparent;
+  }
+  .sitemenu a:hover { color: var(--text); }
+  .sitemenu a.here { color: var(--text); border-bottom-color: var(--accent); }
+  .sitemenu a.brand { color: var(--text); font-weight: 600; padding-left: 0; margin-right: 8px; }
+  .sitemenu .spacer { flex: 1 1 auto; }
+  @media (max-width: 640px) { .sitemenu nav { padding: 0 16px; } .sitemenu .spacer { display: none; } }
+
+  main { max-width: 960px; margin: 0 auto; padding: 36px 24px 64px; }
+  @media (max-width: 640px) { main { padding: 24px 16px 48px; } }
+  h1 { font-size: 32px; letter-spacing: -0.4px; margin: 0 0 8px; }
   h1 small { font-size: 14px; color: var(--dim); font-weight: 400; margin-left: 10px; }
-  .lede { color: var(--dim); margin: 0 0 28px; max-width: 640px; }
-  h2 { font-size: 12px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--dim); margin: 28px 0 10px; }
-  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .lede { color: var(--dim); margin: 0 0 24px; max-width: 660px; }
+  h2 {
+    font-size: 12px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--dim);
+    margin: 36px 0 12px; padding-top: 16px; border-top: 1px solid var(--line);
+  }
+  h2:first-of-type { border-top: 0; padding-top: 0; }
+  p, li { max-width: 760px; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
   a.card {
     display: block; padding: 14px 16px; background: var(--panel); border: 1px solid var(--line);
     border-radius: 10px; color: inherit; text-decoration: none;
   }
   a.card:hover { border-color: var(--accent); background: var(--panel-2); }
   a.card > b { display: block; font-size: 16px; margin-bottom: 4px; }
-  a.card span { color: var(--dim); font-size: 13px; }
+  a.card span { color: var(--dim); font-size: 13px; display: block; }
   a.card.primary { border-color: var(--accent); background: var(--accent-soft); }
-  p, li { max-width: 720px; }
+  a.card .md { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
   code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; }
   pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; overflow-x: auto; font-size: 13px; }
-  table { border-collapse: collapse; font-size: 14px; }
-  td, th { text-align: left; padding: 6px 14px 6px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  pre code { background: none; padding: 0; }
+  pre .c { color: var(--dim); }
+  table { border-collapse: collapse; font-size: 14px; width: 100%; }
+  td, th { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
   th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td code { white-space: nowrap; }
+  .box { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
+  .box > :first-child { margin-top: 0; }
+  .box > :last-child { margin-bottom: 0; }
   .fine { color: var(--dim); font-size: 13px; }
   a { color: var(--accent); }
 </style>
 </head>
 <body>
+
+<div class="sitemenu">
+  <nav>
+    <a class="brand here" href="index.html">PuzzleScript Next</a>
+    <a href="src/editor.html">Editor</a>
+    <a href="puzzlescript-map-editor/web/index.html">Map editor</a>
+    <a href="src/Gallery/index.html">Gallery</a>
+    <a href="src/Documentation/documentation.html">Docs</a>
+    <a href="doc/setup.html">Setup</a>
+    <span class="spacer"></span>
+    <a href="#commandline">Command line</a>
+    <a href="https://github.com/fortress-rhythm/PuzzleScriptNext">GitHub</a>
+  </nav>
+</div>
+
 <main>
   <h1>PuzzleScript Next <small>fortress-rhythm fork</small></h1>
   <p class="lede">
-    The engine and its editor, plus this fork's own additions: a curated palette set,
-    a map and sprite editor that draws your game's real tiles, and the tools that keep
-    them honest. Everything on this page runs in the browser as it is checked out.
-    Nothing needs installing.
+    The engine and its editor, plus this fork's own additions: a curated palette set, a map and
+    sprite editor that draws your game's real tiles, and the tooling that keeps them honest.
+    Everything below runs in the browser from a bare checkout — nothing needs installing until you
+    want the command line.
   </p>
 
-  <h2>Make</h2>
+  <h2 id="make">Make</h2>
   <div class="cards">
     <a class="card primary" href="src/editor.html">
       <b>Editor</b>
-      <span>Write, run and export games. The <b>PALETTES</b> link previews any palette on your game; <b>MAP EDITOR</b> hands the open game to the map editor.</span>
+      <span>Write, run, debug and export games. <b>PALETTES</b> previews any palette on the running
+      game; <b>MAP EDITOR</b> hands the open game across; <b>EXPORT</b> builds a standalone HTML file.</span>
     </a>
     <a class="card primary" href="puzzlescript-map-editor/web/index.html">
       <b>Map &amp; sprite editor</b>
-      <span>Rectangular copy and paste over your levels, drawn with your own sprites. A Sprites workspace for the pixel art, and a palette sampler.</span>
+      <span>Rectangular copy and paste over your levels, drawn with your own sprites. A Sprites
+      workspace for the pixel art, and a palette sampler.</span>
     </a>
-    <a class="card" href="src/index.html">
-      <b>Gallery</b>
-      <span>The upstream front page: example games to play and load.</span>
+    <a class="card" href="src/play.html">
+      <b>Play a game by link</b>
+      <span>Open a gist, a URL or a demo game: <code>play.html?p=</code>, <code>?url=</code>, <code>?demo=</code>.</span>
     </a>
   </div>
 
-  <h2>Read</h2>
+  <h2 id="play">Play</h2>
   <div class="cards">
-    <a class="card" href="src/Documentation/documentation.html">
-      <b>Documentation</b>
-      <span>PuzzleScript, PuzzleScript Plus and Pattern:Script features, merged.</span>
+    <a class="card" href="src/Gallery/index.html">
+      <b>Gallery</b>
+      <span>Every example game that runs on this build, with a hack link into the editor.</span>
     </a>
-    <a class="card" href="doc/setup.html">
-      <b>Setup &amp; running</b>
-      <span>Install the toolchain, serve the checkout so <b>EXPORT</b> works, and which folder every command has to be run from.</span>
-    </a>
-    <a class="card" href="doc/README.md">
-      <b>This fork's additions</b>
-      <span>The palette set, the map editor, and how they are kept in step. (Markdown: read it on GitHub.)</span>
-    </a>
-    <a class="card" href="puzzlescript-map-editor/README.md">
-      <b>Map editor manual</b>
-      <span>Keys, the spreadsheet and REXPaint bridges, the <code>psmap</code> command.</span>
+    <a class="card" href="src/index.html">
+      <b>Engine front page</b>
+      <span>The upstream landing page: featured games and first steps.</span>
     </a>
     <a class="card" href="src/demo/palette-refs.txt">
       <b>Portable palette blocks</b>
@@ -91,36 +133,103 @@
     </a>
   </div>
 
-  <h2>Running this locally</h2>
-  <p>
-    Download or clone the repository and double-click <code>index.html</code>. The editor and the
-    map editor both work straight off disk. Three things need a local web server, because a page
-    opened from a file cannot fetch other files: the editor's <b>EXPORT</b> and <b>SHARE</b>, and
-    the map editor's <i>Try the example</i> buttons. For those:
-  </p>
-  <pre>./runserver.sh          # macOS, Linux (uses node if present, else python3)
-runserver.bat           # Windows
-npm start               # the same, from the repository root</pre>
-  <p>
-    then open <a href="http://localhost:8020/">http://localhost:8020/</a>. The
-    <a href="doc/setup.html">setup page</a> has the long version: installing the toolchain, proving
-    the export template loaded, and where each command has to be run from.
-  </p>
+  <h2 id="learn">Learn</h2>
+  <div class="cards">
+    <a class="card primary" href="doc/setup.html">
+      <b>Setup &amp; running</b>
+      <span>Install the toolchain, serve the checkout so EXPORT works, and which folder each command
+      has to be run from.</span>
+    </a>
+    <a class="card" href="src/Documentation/documentation.html">
+      <b>Engine documentation</b>
+      <span>PuzzleScript, PuzzleScript Plus and Pattern:Script features, merged — this fork's copy.</span>
+    </a>
+    <a class="card" href="src/Documentation/rules101.html">
+      <b>First steps</b>
+      <span>Rules 101, for a first game.</span>
+    </a>
+    <a class="card" href="https://github.com/fortress-rhythm/PuzzleScriptNext/blob/master/doc/README.md">
+      <b>This fork's additions <span class="md">on GitHub</span></b>
+      <span>The palette set, the map editor, and how they are kept in step. Start with this index.</span>
+    </a>
+    <a class="card" href="https://github.com/fortress-rhythm/PuzzleScriptNext/blob/master/doc/palette-set.md">
+      <b>The palette set <span class="md">on GitHub</span></b>
+      <span>Ten curated palettes, how to use one in a game, and how to add another.</span>
+    </a>
+    <a class="card" href="https://github.com/fortress-rhythm/PuzzleScriptNext/blob/master/puzzlescript-map-editor/README.md">
+      <b>Map editor manual <span class="md">on GitHub</span></b>
+      <span>Keys, the spreadsheet and REXPaint bridges, and the <code>psmap</code> command.</span>
+    </a>
+  </div>
 
-  <table>
-    <tr><th>You want to</th><th>You need</th></tr>
-    <tr><td>Play, write or edit games; use the map editor</td><td>A browser. Nothing else.</td></tr>
-    <tr><td>Serve locally (EXPORT, SHARE, the examples)</td><td>Node 16+ <i>or</i> Python 3, whichever is installed</td></tr>
-    <tr><td>Run the checks (<code>npm test</code>, <code>npm run check:games</code>)</td><td>Node 16+. No <code>npm install</code>: the map editor has no dependencies</td></tr>
-    <tr><td>Rate, adopt or regenerate palettes (<code>tools/*.py</code>)</td><td><a href="https://docs.astral.sh/uv/">uv</a>. The scripts are stdlib-only; <code>uv run</code> needs no setup step</td></tr>
-    <tr><td>Use <code>psmap</code> from any folder</td><td>Node, then <code>npm link</code> inside <code>puzzlescript-map-editor/</code></td></tr>
-    <tr><td>Build the minified <code>bin/</code> and the standalone template (<code>npm run build</code>)</td><td>Node and <code>npm install</code>. Its image tools need native binaries and fail on some machines; nothing else here depends on it</td></tr>
-  </table>
+  <h2 id="export">Exporting and sharing a game</h2>
+  <div class="box">
+    <p>
+      <b>EXPORT</b> builds a single self-contained HTML file: your source is substituted into
+      <code>src/standalone_inlined.txt</code>, the template committed in this repository. It needs
+      one thing from you — the editor has to be <b>served over HTTP</b>, because a page opened as
+      <code>file://</code> cannot fetch the template, and the export then fails with
+      <i>&ldquo;still downloading html template&rdquo;</i> forever. Run <code>npm start</code> and use
+      <a href="http://localhost:8020/src/editor.html">localhost:8020</a>, or use this site.
+      <a href="doc/setup.html#export">The setup page proves it in three checks.</a>
+    </p>
+    <p class="fine">
+      Exported games link back to this site unless the game sets its own <code>homepage</code> in the
+      prelude. <b>SHARE</b> (a gist link) works from any host in this fork: it asks for a GitHub
+      personal access token through <code>auth_pat.html</code> rather than an OAuth callback.
+      <code>npm run check:export</code> verifies the template before you rely on it.
+    </p>
+  </div>
 
+  <h2 id="commandline">The command line</h2>
   <p class="fine">
-    Published from the repository root by <code>.github/workflows/pages.yml</code>. The upstream
-    project is <a href="https://github.com/david-pfx/PuzzleScriptNext">david-pfx/PuzzleScriptNext</a>;
-    its stable release lives at <a href="https://puzzlescriptnext.polyomino.com/">puzzlescriptnext.polyomino.com</a>.
+    All of these are run from the repository root. Node 18+ for the <code>npm</code> and
+    <code>psmap</code> lines, <a href="https://docs.astral.sh/uv/">uv</a> for the palette tools;
+    neither needs <code>npm install</code>.
+    <a href="doc/setup.html#where">Where each command has to be run from, in detail.</a>
+  </p>
+  <table>
+    <tr><th>Command</th><th>What it does</th></tr>
+    <tr><td><code>npm start</code></td><td>Serve this checkout at <a href="http://localhost:8020/">localhost:8020</a> (or <code>runserver.sh</code> / <code>runserver.bat</code>)</td></tr>
+    <tr><td><code>npm test</code></td><td>The map editor's suite: parser, spreadsheet and REXPaint bridges, round trip</td></tr>
+    <tr><td><code>npm run check:games</code></td><td>Every demo game still opens in the map editor</td></tr>
+    <tr><td><code>npm run check:palettes</code></td><td>The palette set, its generated files and the vendored map editor copy</td></tr>
+    <tr><td><code>npm run check:export</code></td><td>The standalone export template is present and complete</td></tr>
+    <tr><td><code>npm run build</code></td><td>Minified <code>bin/</code> site and a rebuilt export template (needs <code>npm install</code>)</td></tr>
+    <tr><td><code>psmap export &lt;game&gt;</code></td><td>Level grids out to .xlsx, .csv, .tsv or REXPaint .xp</td></tr>
+    <tr><td><code>psmap import &lt;game&gt; &lt;edited&gt;</code></td><td>Edited grids spliced back in, leaving every other line alone</td></tr>
+    <tr><td><code>psmap info &lt;game&gt;</code></td><td>Summarise levels, glyphs and legend</td></tr>
+    <tr><td><code>psmap check &lt;game&gt;…</code></td><td>Can the editor read this game? Exit 1 if not — the CI-friendly one</td></tr>
+    <tr><td><code>uv run tools/palette_analysis.py</code></td><td>Rate the shipped palettes; <code>--write</code> regenerates everything derived from <code>palettes/</code></td></tr>
+    <tr><td><code>uv run tools/palette_curate.py</code></td><td>Rate and adopt candidate palettes you have not shipped yet</td></tr>
+    <tr><td><code>uv run tools/palette_test.py</code></td><td>The palette checks on their own</td></tr>
+    <tr><td><code>uv run tools/sync_map_editor.py</code></td><td>Keep the standalone map editor repository in step with the copy here</td></tr>
+  </table>
+  <p class="fine">
+    <code>psmap</code> is <code>node puzzlescript-map-editor/src/cli.js</code>; run
+    <code>npm link</code> inside <code>puzzlescript-map-editor/</code> to get the short name.
+    The engine's own tests live at <a href="src/tests/tests.html">src/tests/tests.html</a> and run in a browser.
+  </p>
+
+  <h2 id="upstream">Upstream, and who made this</h2>
+  <p>
+    PuzzleScript Next is <b>David Smith's</b> project, and this is a fork of it. For the engine as its
+    author ships it, and for support, go there rather than here:
+    <a href="https://puzzlescriptnext.polyomino.com/">the stable release</a>,
+    <a href="https://david-pfx.github.io/PuzzleScriptNext/src/index.html">the dev version</a> and
+    <a href="https://github.com/david-pfx/PuzzleScriptNext">david-pfx/PuzzleScriptNext</a>, with the
+    <a href="https://groups.google.com/g/puzzlescript">PuzzleScript forum</a> for questions.
+    The engine in turn combines
+    <a href="https://github.com/increpare/PuzzleScript">PuzzleScript by increpare</a>,
+    <a href="https://github.com/Auroriax/PuzzleScriptPlus">PuzzleScript Plus by Auroriax</a>,
+    <a href="https://clementsparrow.github.io/Pattern-Script">Pattern:Script by Clement Sparrow</a> and
+    <a href="https://github.com/david-pfx/PuzzleFAB">PuzzleFAB</a>.
+  </p>
+  <p class="fine">
+    This fork adds the palette set, the map and sprite editor, this front page and the setup page:
+    <a href="https://github.com/fortress-rhythm/PuzzleScriptNext">fortress-rhythm/PuzzleScriptNext</a>,
+    published from the repository root by <code>.github/workflows/pages.yml</code>.
+    Example games in the gallery and in <code>src/demo/</code> keep their own authors' links and credits.
   </p>
 </main>
 </body>
