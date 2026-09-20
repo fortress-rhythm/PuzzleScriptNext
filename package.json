@@ -10,6 +10,8 @@
     "test": "node puzzlescript-map-editor/test/run.js",
     "check:games": "node puzzlescript-map-editor/src/cli.js check src/demo/*.txt",
     "check:palettes": "uv run tools/palette_test.py",
+    "check:export": "node tools/inline_standalone.js --check",
+    "build:template": "node tools/inline_standalone.js",
     "build": "node compile.js"
   },
   "dependencies": {
