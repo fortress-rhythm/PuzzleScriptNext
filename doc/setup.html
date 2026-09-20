@@ -222,9 +222,10 @@ cd             <span class="c"># Windows cmd, no argument: prints the folder you
     </tr>
     <tr>
       <td><code>npm run check:games</code></td>
-      <td>the repo root, in a shell that expands <code>*</code> (bash, zsh, Git Bash)</td>
-      <td>In <code>cmd</code> or PowerShell the glob is passed through literally and the run fails
-          with <code>No such file: src/demo/*.txt</code> (exit 2). See Troubleshooting.</td>
+      <td>the repository root</td>
+      <td>The script's argument, <code>src/demo/*.txt</code>, is relative to the root.
+          The pattern itself is safe in any shell: <code>psmap check</code> expands what
+          <code>cmd</code> and PowerShell leave alone.</td>
     </tr>
     <tr>
       <td><code>npm run check:palettes</code></td>
@@ -388,11 +389,9 @@ npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span>
     </tr>
     <tr>
       <td><code>No such file: src/demo/*.txt</code></td>
-      <td><code>check:games</code> relies on the shell expanding the glob, and <code>cmd</code> and
-        PowerShell don't. Run it from Git Bash, or point npm at bash once:
-        <code>npm config set script-shell "C:\Program Files\Git\bin\bash.exe"</code>.
-        In PowerShell you can also spell it out:
-        <code>node puzzlescript-map-editor/src/cli.js check (gci src/demo/*.txt).FullName</code>.</td>
+      <td>You are not at the repository root, or you are on a build from before
+        <code>psmap check</code> learned to expand a glob the shell left alone (which is what
+        <code>cmd</code> and PowerShell do, unlike bash). Update, or run it from Git Bash.</td>
     </tr>
     <tr>
       <td><code>EADDRINUSE</code></td>
@@ -410,12 +409,19 @@ npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span>
         state, not a cache. Hard-reload with <b>Ctrl+Shift+R</b>.</td>
     </tr>
     <tr>
-      <td>Two tween/LATE warnings on every compile</td>
-      <td>Not a setup problem. They fire whenever a game has <code>tween_length</code> in the prelude
-        <i>and</i> any <code>late</code> rule group, with no check that the two interact
-        (<code>src/js/compiler.js:3822-3826</code>). Relevant only if a LATE rule rewrites a cell and
-        layer that something tweened into — tweens are keyed by destination cell plus collision
-        layer, not by object.</td>
+      <td>Tween / LATE warnings on compile</td>
+      <td>Not a setup problem, and no longer a blanket warning: the compiler now names the individual
+        LATE rules that add or remove objects on a layer something can move on, which are the ones that
+        can drop a slide or hand it to the wrong object. A game whose LATE rules only swap objects
+        within a layer, or only touch marker layers, compiles silently.</td>
+    </tr>
+    <tr>
+      <td>Tweening does not look like tweening</td>
+      <td>A tween that outlives its turn is cut off, so the gap between turns is the ceiling: keep
+        <code>tween_length</code> below <code>again_interval</code> (0.15s by default) in a game that uses
+        <b>again</b>, and below <code>key_repeat_interval</code> (0.2s) for a held key. Under that,
+        <code>0.05</code> is three frames at 60Hz and reads as a jump; around <code>0.1</code> reads as
+        movement.</td>
     </tr>
   </table>
 
