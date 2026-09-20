@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Setup &amp; Running</title>
+<meta name="description" content="Install the toolchain, serve the checkout, and make EXPORT work: where every command has to be run from, and what goes wrong when it isn't.">
+<link rel="shortcut icon" type="image/x-icon" href="../src/Documentation/ico/favicon.ico">
+<style>
+  :root {
+    --bg: #12131a; --panel: #1a1c25; --panel-2: #21242f; --line: #2e3242;
+    --text: #e6e8f0; --dim: #8b90a4; --accent: #6ea8fe; --accent-soft: rgba(110,168,254,0.16);
+    --warn: #ffb454; --warn-soft: rgba(255,180,84,0.12); --warn-line: rgba(255,180,84,0.4);
+    --good: #7ddba3; --good-soft: rgba(125,219,163,0.10); --good-line: rgba(125,219,163,0.35);
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 24px 60px; }
+  @media (max-width: 640px) { main { padding: 28px 16px 48px; } }
+  h1 { font-size: 30px; letter-spacing: -0.4px; margin: 0 0 6px; }
+  h1 small { font-size: 14px; color: var(--dim); font-weight: 400; margin-left: 10px; }
+  .lede { color: var(--dim); margin: 0 0 24px; max-width: 660px; }
+  h2 {
+    font-size: 12px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--dim);
+    margin: 34px 0 10px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  h2 .step {
+    display: inline-block; min-width: 20px; margin-right: 8px; padding: 0 6px;
+    background: var(--accent-soft); color: var(--accent); border-radius: 4px; letter-spacing: 0;
+  }
+  h3 { font-size: 15px; margin: 22px 0 6px; }
+  p, li { max-width: 720px; }
+  ol, ul { padding-left: 22px; }
+  li { margin: 4px 0; }
+  code { font-family: var(--mono); font-size: 13px; background: var(--panel-2); padding: 1px 5px; border-radius: 4px; white-space: nowrap; }
+  pre { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; overflow-x: auto; font-size: 13px; }
+  pre code { background: none; padding: 0; white-space: pre; }
+  pre .c { color: var(--dim); }
+  pre .here { color: var(--accent); }
+  table { border-collapse: collapse; font-size: 14px; width: 100%; margin: 10px 0; }
+  td, th { text-align: left; padding: 7px 14px 7px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--dim); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td:first-child { white-space: normal; }
+  .box { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 14px 16px; margin: 14px 0; }
+  .box > :first-child { margin-top: 0; }
+  .box > :last-child { margin-bottom: 0; }
+  .box b.tag { display: block; font-size: 12px; letter-spacing: 0.6px; text-transform: uppercase; margin-bottom: 6px; }
+  .warn { border-color: var(--warn-line); background: var(--warn-soft); }
+  .warn b.tag { color: var(--warn); }
+  .good { border-color: var(--good-line); background: var(--good-soft); }
+  .good b.tag { color: var(--good); }
+  .note b.tag { color: var(--accent); }
+  .fine { color: var(--dim); font-size: 13px; }
+  a { color: var(--accent); }
+  nav.toc { margin: 0 0 8px; font-size: 14px; }
+  nav.toc a { margin-right: 14px; display: inline-block; }
+  .src { color: var(--dim); font-size: 12px; font-family: var(--mono); }
+</style>
+</head>
+<body>
+<main>
+
+  <h1>Setup &amp; Running <small>PuzzleScript Next, fortress-rhythm fork</small></h1>
+  <p class="lede">
+    Everything here runs in a browser off a bare checkout — but three things (the editor's
+    <b>EXPORT</b> and <b>SHARE</b>, and the map editor's example loader) need the folder served
+    over HTTP, and a handful of commands only work from the right folder. This page is about
+    getting both right the first time.
+  </p>
+
+  <nav class="toc">
+    <a href="#quick">The 60-second version</a>
+    <a href="#install">1 Install</a>
+    <a href="#root">2 The repository root</a>
+    <a href="#where">3 Where to run what</a>
+    <a href="#serve">4 Serve it</a>
+    <a href="#export">5 Prove EXPORT works</a>
+    <a href="#template">6 Rebuild the template</a>
+    <a href="#checks">7 The checks</a>
+    <a href="#trouble">Troubleshooting</a>
+  </nav>
+
+  <h2 id="quick">The 60-second version</h2>
+  <pre><code>git clone https://github.com/fortress-rhythm/PuzzleScriptNext.git
+cd PuzzleScriptNext          <span class="c">&lt;-- the repository root. Almost everything is run from here.</span>
+npm start                    <span class="c">&lt;-- leave this terminal open</span></code></pre>
+  <p>Then open <a href="http://localhost:8020/src/editor.html">http://localhost:8020/src/editor.html</a>.</p>
+
+  <div class="box warn">
+    <b class="tag">The mistake this page exists to prevent</b>
+    <p>
+      If the address bar says <code>file:///</code>, you are not running the editor — you are
+      opening it. Writing, running and debugging games works fine that way, which is exactly why
+      it is easy to stay there for months. But the browser blocks a <code>file://</code> page from
+      fetching other files, so the EXPORT template never loads and every export reports
+      <i>&ldquo;Can't export yet - still downloading html template.&rdquo;</i> forever.
+      It is never downloading. It failed at page load.
+    </p>
+    <p>
+      Worse, the real message is hidden: the fetch fails at startup and prints
+      <i>&ldquo;Couldn't find standalone template. Is there a connection problem to the internet?&rdquo;</i>,
+      and then your first <b>Run</b> calls <code>clearConsole()</code> and wipes it.
+      <span class="src">src/js/buildStandalone.js:14-27 &middot; src/js/toolbar.js:14 &middot; src/js/editor.js:244</span>
+    </p>
+  </div>
+
+  <h2 id="install"><span class="step">1</span> Install the toolchain</h2>
+  <table>
+    <tr><th>For</th><th>Install</th><th>Check it worked</th></tr>
+    <tr>
+      <td><b>Node 18+</b><br><span class="fine">serving, the checks, the build</span></td>
+      <td><a href="https://nodejs.org">nodejs.org</a> LTS<br>
+          <code>winget install OpenJS.NodeJS.LTS</code><br>
+          <code>brew install node</code></td>
+      <td><code>node --version</code></td>
+    </tr>
+    <tr>
+      <td><b>uv</b><br><span class="fine">the palette tools in <code>tools/</code></span></td>
+      <td><a href="https://docs.astral.sh/uv/">docs.astral.sh/uv</a><br>
+          <code>winget install astral-sh.uv</code><br>
+          <code>curl -LsSf https://astral.sh/uv/install.sh | sh</code></td>
+      <td><code>uv --version</code></td>
+    </tr>
+    <tr>
+      <td><b>git</b><br><span class="fine">cloning and pushing</span></td>
+      <td><a href="https://git-scm.com">git-scm.com</a><br>
+          <code>winget install Git.Git</code></td>
+      <td><code>git --version</code></td>
+    </tr>
+  </table>
+  <p>
+    That is the whole stack. <b><code>npm install</code> is not part of normal setup</b> — the map
+    editor has no dependencies at all and the Python tools are stdlib-only, so <code>npm start</code>,
+    <code>npm test</code> and the palette checks all run on a fresh clone with nothing installed.
+    You need <code>npm install</code> for exactly one thing: <a href="#template">rebuilding the
+    standalone template and the minified <code>bin/</code></a>.
+  </p>
+  <p class="fine">
+    <code>package.json</code> declares Node&nbsp;16+ and CI runs Node&nbsp;22. Anything current is fine.
+    No Node at all? <code>runserver.sh</code> and <code>runserver.bat</code> fall back to
+    <code>python3 -m http.server</code>, which is enough to serve the site (but not to run the checks).
+  </p>
+
+  <h2 id="root"><span class="step">2</span> The repository root, and how to be sure you are in it</h2>
+  <pre><code>PuzzleScriptNext/                      <span class="here">&lt;== THE REPOSITORY ROOT. Be here.</span>
+  index.html                           the front page
+  package.json                         npm start / test / check:* / build live here
+  compile.js                           the bin/ build (cwd-sensitive - see below)
+  runserver.sh  runserver.bat          the same server, without npm
+  src/                                 the engine and its editor
+    editor.html                        <span class="c">what you actually open</span>
+    standalone.html                    the EXPORT template's source
+    standalone_inlined.txt             the EXPORT template itself, ~589 KB, committed
+    tests/tests.html                   the engine's browser test suite
+  puzzlescript-map-editor/             <span class="c">has its OWN package.json - the trap in step 3</span>
+  palettes/   tools/                   the palette set and its tooling
+  doc/                                 you are reading this from here</code></pre>
+
+  <h3>Opening a terminal in the right folder</h3>
+  <ul>
+    <li><b>Windows, easiest:</b> open the folder in File Explorer, click the address bar, type
+      <code>powershell</code> (or <code>cmd</code>) and press Enter. The terminal starts in that folder.</li>
+    <li><b>Windows, typed:</b> <code>cd /d D:\code\PuzzleScriptNext</code> — the <code>/d</code>
+      matters when you are changing drive as well as folder.</li>
+    <li><b>macOS / Linux:</b> <code>cd ~/code/PuzzleScriptNext</code>.</li>
+    <li><b>VS Code:</b> open the repository as the folder, and its integrated terminal is already
+      at the root.</li>
+  </ul>
+
+  <div class="box good">
+    <b class="tag">Three ways to prove where you are</b>
+    <pre><code>git rev-parse --show-toplevel   <span class="c"># prints the root, from anywhere inside the repo</span>
+pwd            <span class="c"># macOS / Linux: prints the folder you are in</span>
+cd             <span class="c"># Windows cmd, no argument: prints the folder you are in</span></code></pre>
+    <p class="fine">
+      Or just look: if <code>index.html</code>, <code>package.json</code> and <code>compile.js</code>
+      are all sitting next to each other, you are at the root.
+      <code>ls package.json</code> / <code>dir package.json</code> settles it in one line.
+    </p>
+  </div>
+
+  <h2 id="where"><span class="step">3</span> Where each command has to be run from</h2>
+
+  <div class="box note">
+    <b class="tag">The npm rule, which explains most of the surprises</b>
+    <p>
+      <code>npm run &lt;script&gt;</code> walks <b>up</b> from your current folder until it finds a
+      <code>package.json</code>, and then runs the script with the working directory set to
+      <b>that package's folder</b> — not to wherever you typed the command. So:
+    </p>
+    <ul>
+      <li>You can be in <code>src/</code> and <code>npm start</code> still works: npm walks up,
+        finds the root <code>package.json</code>, and re-roots itself before running.</li>
+      <li>But this repository contains a <b>second</b> package,
+        <code>puzzlescript-map-editor/</code>, with its own <code>start</code> and <code>test</code>.
+        Stand in that folder and npm finds <i>its</i> manifest first and never looks at the root one.</li>
+      <li>Outside the repository entirely, npm finds nothing (or some unrelated
+        <code>package.json</code> further up) and says <code>Missing script: "start"</code>.</li>
+    </ul>
+    <p>
+      Plain commands — <code>node compile.js</code>, <code>uv run tools/…</code> — get no such help.
+      They resolve their paths against the folder you are standing in.
+    </p>
+  </div>
+
+  <table>
+    <tr><th>Command</th><th>Run it from</th><th>What happens if you don't</th></tr>
+    <tr>
+      <td><code>npm start</code></td>
+      <td>anywhere inside the repo <i>except</i> <code>puzzlescript-map-editor/</code></td>
+      <td>From inside that folder you get <i>its</i> <code>start</code>: the map editor alone,
+          on port <b>8080</b>, with no engine editor served at all. Looks like it worked.</td>
+    </tr>
+    <tr>
+      <td><code>npm test</code></td>
+      <td>anywhere inside the repo</td>
+      <td>Harmless twin: both manifests run the same map-editor suite.</td>
+    </tr>
+    <tr>
+      <td><code>npm run check:games</code></td>
+      <td>the repo root, in a shell that expands <code>*</code> (bash, zsh, Git Bash)</td>
+      <td>In <code>cmd</code> or PowerShell the glob is passed through literally and the run fails
+          with <code>No such file: src/demo/*.txt</code> (exit 2). See Troubleshooting.</td>
+    </tr>
+    <tr>
+      <td><code>npm run check:palettes</code></td>
+      <td>anywhere inside the repo</td>
+      <td>Needs <code>uv</code> on the PATH; the script finds its own data either way.</td>
+    </tr>
+    <tr>
+      <td><code>npm install</code>, <code>npm run build</code></td>
+      <td>anywhere inside the repo</td>
+      <td>Inside <code>puzzlescript-map-editor/</code> you would install <i>its</i> (empty)
+          dependencies and find no <code>build</code> script.</td>
+    </tr>
+    <tr>
+      <td><code>node compile.js</code></td>
+      <td><b>the repository root, and only there</b></td>
+      <td>It writes <code>./bin</code> and <code>./src/standalone_inlined.txt</code> relative to the
+          current folder. Run elsewhere it either crashes or quietly builds into the wrong place.
+          <code>npm run build</code> is the same thing, re-rooted for you.</td>
+    </tr>
+    <tr>
+      <td><code>uv run tools/palette_test.py</code></td>
+      <td>the repo root <i>as written</i></td>
+      <td>Only the path to the script matters — it locates <code>palettes/</code> from its own
+          location, so a full path works from anywhere.</td>
+    </tr>
+    <tr>
+      <td><code>./runserver.sh</code>, <code>runserver.bat</code></td>
+      <td>anywhere at all</td>
+      <td>Nothing: both <code>cd</code> to their own folder first, by design.</td>
+    </tr>
+    <tr>
+      <td><code>node puzzlescript-map-editor/src/cli.js check mygame.txt</code></td>
+      <td>the repo root (the path is relative to you)</td>
+      <td>Adjust the path, or <code>npm link</code> the package and just type <code>psmap</code>.</td>
+    </tr>
+    <tr>
+      <td><code>npm link</code></td>
+      <td><b>inside <code>puzzlescript-map-editor/</code></b></td>
+      <td>The one command that belongs in that folder: it puts <code>psmap</code> on your PATH.</td>
+    </tr>
+  </table>
+
+  <h2 id="serve"><span class="step">4</span> Serve the checkout</h2>
+  <p>From the repository root, any one of these:</p>
+  <pre><code>npm start               <span class="c"># node puzzlescript-map-editor/src/serve.js --root . --port 8020</span>
+./runserver.sh          <span class="c"># macOS / Linux; node if present, else python3</span>
+runserver.bat           <span class="c"># Windows; same fallback</span>
+PORT=8081 npm start     <span class="c"># another port (set PORT=8081 first, on Windows cmd)</span></code></pre>
+  <p>
+    The server is <code>puzzlescript-map-editor/src/serve.js</code>: about seventy lines, no
+    dependencies, serves the folder given by <code>--root</code> and refuses anything that escapes
+    it. It sends <code>Cache-Control: no-store</code>, so an ordinary reload picks up your edits.
+    Leave it running in its own terminal; <b>Ctrl+C</b> stops it.
+  </p>
+
+  <table>
+    <tr><th>Page</th><th>Address</th></tr>
+    <tr><td>Front page</td><td><a href="http://localhost:8020/">http://localhost:8020/</a></td></tr>
+    <tr><td><b>Editor</b> — the one you want</td><td><a href="http://localhost:8020/src/editor.html">http://localhost:8020/src/editor.html</a></td></tr>
+    <tr><td>Map &amp; sprite editor</td><td><a href="http://localhost:8020/puzzlescript-map-editor/web/index.html">http://localhost:8020/puzzlescript-map-editor/web/index.html</a></td></tr>
+    <tr><td>Gallery / play-only page</td><td><a href="http://localhost:8020/src/index.html">http://localhost:8020/src/index.html</a></td></tr>
+    <tr><td>Upstream documentation</td><td><a href="http://localhost:8020/src/Documentation/documentation.html">http://localhost:8020/src/Documentation/documentation.html</a></td></tr>
+    <tr><td>Engine test suite</td><td><a href="http://localhost:8020/src/tests/tests.html">http://localhost:8020/src/tests/tests.html</a></td></tr>
+  </table>
+  <p class="fine">
+    Bookmark the editor address, not the file on disk. Port 8020 is deliberate: stock PuzzleScript
+    and PuzzleScript Plus can be served alongside on their own ports.
+  </p>
+
+  <h2 id="export"><span class="step">5</span> Prove EXPORT actually works</h2>
+  <p>Cheapest check first. Any one of these is conclusive.</p>
+  <ol>
+    <li>Open <a href="http://localhost:8020/src/standalone_inlined.txt">/src/standalone_inlined.txt</a>
+      directly. You should get roughly 589&nbsp;KB of HTML beginning <code>&lt;!doctype html&gt;</code>
+      and containing <code>__GAMETITLE__</code> placeholders. A 404 means the file is missing —
+      go to step&nbsp;6.</li>
+    <li>Open DevTools → Network <i>before</i> reloading the editor, then reload. There should be one
+      request for <code>standalone_inlined.txt</code>, status 200. It is fired once at page load and
+      never retried.</li>
+    <li>Reload the editor and click <b>EXPORT</b> <i>before</i> you Run anything. Because Run clears
+      the console, this is the only moment the startup failure is still readable.</li>
+  </ol>
+  <p>
+    A successful export writes a single self-contained HTML file with your source substituted into
+    the template's <code>__GAMEDAT__</code> slot. That file <i>is</i> meant to be double-clicked —
+    unlike the editor.
+  </p>
+  <p class="fine">
+    <b>SHARE</b> needs the server too, plus a GitHub account: it uploads the built game as a gist and
+    hands you a link. First use walks you through creating a token.
+  </p>
+
+  <h2 id="template"><span class="step">6</span> Rebuilding the standalone template</h2>
+  <p>
+    <code>src/standalone_inlined.txt</code> is generated from <code>src/standalone.html</code> with
+    its CSS and JS inlined, and it is <b>committed to the repository</b> — a fresh clone can export
+    without building anything. Rebuild it only when you have changed <code>standalone.html</code> or
+    something it pulls in:
+  </p>
+  <pre><code>cd /path/to/PuzzleScriptNext     <span class="c"># the root; compile.js resolves ./src and ./bin from here</span>
+npm install                      <span class="c"># once</span>
+npm run build                    <span class="c"># = node compile.js</span></code></pre>
+  <p>
+    That writes <code>./src/standalone_inlined.txt</code> (used by the editor you serve) and the
+    minified <code>./bin/standalone_inlined.txt</code>, alongside the whole optimised
+    <code>bin/</code> site.
+  </p>
+  <div class="box warn">
+    <b class="tag">This build is the fragile part of the stack</b>
+    <p>
+      <code>compile.js</code> pulls in <code>compress-images</code> and <code>gifsicle</code>, which
+      want native binaries and fail on some machines — Windows especially. CI deliberately skips it.
+      Nothing else in the project depends on it, and the committed template means a failed build
+      never costs you the ability to export. If it breaks and you need only the template, the legacy
+      <code>inline.bat</code> does that one job (<code>inliner standalone.html &gt; standalone_inlined.txt</code>)
+      — run it from inside <code>src/</code>, since its paths assume that, and note it wants a global
+      <code>inliner</code> CLI that is not in <code>package.json</code>.
+    </p>
+  </div>
+
+  <h2 id="checks"><span class="step">7</span> The checks to run before you push</h2>
+  <pre><code>npm test                 <span class="c"># map editor suite: parser, bridges, round trip</span>
+npm run check:games      <span class="c"># every demo game still opens in the map editor</span>
+npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span></code></pre>
+  <p>
+    These three are exactly what <code>.github/workflows/check.yml</code> runs on every push and pull
+    request, on Node 22, with no <code>npm install</code> step. Green locally means green in CI.
+  </p>
+  <p>
+    The engine's own tests are browser-based and separate: serve the site and open
+    <code>/src/tests/tests.html</code>. To add a case, compile and play in the editor, press
+    <b>Ctrl/Cmd+J</b>, and paste what it prints into
+    <code>src/tests/resources/testdata.js</code> (play sessions) or
+    <code>errormessage_testdata.js</code> (compile errors). See <code>DEVELOPMENT.md</code>.
+  </p>
+
+  <h2 id="trouble">Troubleshooting</h2>
+  <table>
+    <tr><th>Symptom</th><th>Cause and fix</th></tr>
+    <tr>
+      <td><i>Can't export yet - still downloading html template.</i></td>
+      <td>The template fetch failed at page load and will never retry. Nine times in ten you are on
+        <code>file://</code>: serve the folder and use the <code>localhost:8020</code> address.
+        Otherwise work through <a href="#export">step 5</a>.</td>
+    </tr>
+    <tr>
+      <td><i>Couldn't find standalone template.</i></td>
+      <td>The honest version of the same failure, printed at startup — and erased by your first Run.
+        If you are already served over HTTP, the file is missing: <a href="#template">step 6</a>.</td>
+    </tr>
+    <tr>
+      <td><code>npm ERR! Missing script: "start"</code></td>
+      <td>You are outside the repository, or inside <code>puzzlescript-map-editor/</code> where
+        <code>check:games</code> and <code>build</code> do not exist. <code>cd</code> to the root.</td>
+    </tr>
+    <tr>
+      <td>The server starts, but on <b>8080</b>, and only the map editor is there</td>
+      <td>Classic: <code>npm start</code> run from inside <code>puzzlescript-map-editor/</code>.
+        That package's <code>start</code> has no <code>--root</code> or <code>--port</code>, so
+        <code>serve.js</code> falls back to its own defaults. Ctrl+C, <code>cd ..</code>, start again.</td>
+    </tr>
+    <tr>
+      <td><code>No such file: src/demo/*.txt</code></td>
+      <td><code>check:games</code> relies on the shell expanding the glob, and <code>cmd</code> and
+        PowerShell don't. Run it from Git Bash, or point npm at bash once:
+        <code>npm config set script-shell "C:\Program Files\Git\bin\bash.exe"</code>.
+        In PowerShell you can also spell it out:
+        <code>node puzzlescript-map-editor/src/cli.js check (gci src/demo/*.txt).FullName</code>.</td>
+    </tr>
+    <tr>
+      <td><code>EADDRINUSE</code></td>
+      <td>Port 8020 is taken — often a server you left running in another window.
+        <code>PORT=8081 npm start</code>, or close the other one.</td>
+    </tr>
+    <tr>
+      <td>Front page loads, the editor 404s</td>
+      <td>The server is rooted somewhere other than the repository. Check the
+        <code>Serving &lt;path&gt;</code> line it printed on startup.</td>
+    </tr>
+    <tr>
+      <td>Your JS edit doesn't show up</td>
+      <td>The server sends <code>no-store</code>, so this is usually the page holding compiled game
+        state, not a cache. Hard-reload with <b>Ctrl+Shift+R</b>.</td>
+    </tr>
+    <tr>
+      <td>Two tween/LATE warnings on every compile</td>
+      <td>Not a setup problem. They fire whenever a game has <code>tween_length</code> in the prelude
+        <i>and</i> any <code>late</code> rule group, with no check that the two interact
+        (<code>src/js/compiler.js:3822-3826</code>). Relevant only if a LATE rule rewrites a cell and
+        layer that something tweened into — tweens are keyed by destination cell plus collision
+        layer, not by object.</td>
+    </tr>
+  </table>
+
+  <p class="fine" style="margin-top:28px">
+    <a href="../index.html">Front page</a> &middot;
+    <a href="README.md">This fork's documentation</a> &middot;
+    <a href="../DEVELOPMENT.md">DEVELOPMENT.md</a> (upstream's build and test notes) &middot;
+    <a href="../puzzlescript-map-editor/README.md">Map editor manual</a>
+  </p>
+
+</main>
+</body>
+</html>

@@ -4,6 +4,11 @@ Everything in this folder is fork-original — it describes work that is not in
 upstream PuzzleScript. Upstream's own documentation is in
 `src/Documentation/`, and the root `README.md` is the fork's changelog.
 
+[`setup.html`](setup.html) is the setup and running guide — installing the
+toolchain, serving the checkout so the editor's **EXPORT** works, and which
+folder each command has to be run from. Open it in a browser; on the published
+site it is linked from the front page.
+
 ## Read these in this order
 
 **1. [`palette-set.md`](palette-set.md) — what the palettes are.**
@@ -45,6 +50,7 @@ how to keep the two in step. Only relevant if you touch that folder.
 | see a game under every palette without editing it | the **Palette** dropdown in the map editor, or **PALETTES → in editor** in the engine editor |
 | make sure the map editor can open a game, in CI | `node puzzlescript-map-editor/src/cli.js check mygame.txt` |
 | run everything this fork checks | `npm test`, `npm run check:games`, `uv run tools/palette_test.py` |
+| set up a machine from scratch, or work out why EXPORT does nothing | [`setup.html`](setup.html) |
 
 ## What is generated, and from what
 
