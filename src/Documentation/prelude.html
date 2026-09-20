@@ -522,9 +522,18 @@ late [ Temp ] -> [ ]</code></pre>
         Every object that moves in movement phase will have that movement animated.
         Stationary objects or those that are moved by rules are not affected.</p>
 
-        <p>If the next turn starts (by user input) before the tween has finished, it immediately completes. 
-            For this reason, you should set the tween_length very low, somewhere between 0.05 and 0.075 seconds, 
-            but at least lower than the AGAIN_INTERVAL and KEY_REPEAT_INTERVAL, and to avoid using it in games that use REALTIME_INTERVAL.
+        <p>If the next turn starts before the tween has finished, it immediately completes, so the gap
+            between turns is the ceiling on what anyone can see. Keep <b>tween_length</b> below
+            <b>again_interval</b> (0.15 seconds unless you set it) in a game that uses <b>again</b>, and below
+            <b>key_repeat_interval</b> (0.2 seconds unless you set it) so a held key does not cut the slide short.
+            Avoid tweening altogether in games that use <b>realtime_interval</b>.
+        </p>
+        <p>Under that ceiling, choose the length for legibility rather than for safety.
+            0.05 is three frames at 60Hz: it takes the hard edge off a jump, but it does not read as movement.
+            Around 0.1 does, and still lands comfortably inside a default again beat.
+            Stay nearer 0.05 to 0.075 when the game shortens <b>again_interval</b>, leans on key repeat,
+            or chains several <b>again</b> turns to a keypress.
+            <img src="../images/psnext.png" title="PuzzleScript Next" height="16">
         </p>
         <p>So what happens if an object moves, tweening is enabled and an <b>afx</b> animation is triggered for the object? 
           The answer currently is that tweening takes priority.
@@ -532,7 +541,13 @@ late [ Temp ] -> [ ]</code></pre>
           <img src="../images/psnext.png" title="PuzzleScript Next" height="16">
         </p>
         <p>Note that it has a number of limitations, and while it works well for simple games, it might not be powerful enough for complex ones.
-          Additionally, LATE rules can interfere with this system, so it's not recommended to use these rules in games that use them.
+          Additionally, LATE rules can interfere with this system. A tween is recorded against the cell and the
+          collision layer an object moved into, not against the object itself, so a LATE rule that adds or removes
+          objects on a layer something can move on may drop a slide or hand it to the wrong object. LATE rules that
+          only swap one object for another on the same layer - the usual trick for facings and markers - and rules
+          that work on layers nothing ever moves on, are safe. The editor names the LATE rules that are actually at
+          risk when it compiles, so you no longer have to avoid LATE rules wholesale.
+          <img src="../images/psnext.png" title="PuzzleScript Next" height="16">
         </p>
       </dd>
 
