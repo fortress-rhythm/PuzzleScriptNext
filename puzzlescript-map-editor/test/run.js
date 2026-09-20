@@ -886,6 +886,20 @@ test('psmap check passes a sound game and names what is wrong with a broken one'
     assert.ok(problems.some(p => p.includes('nosuch')), problems.join('\n'));
 });
 
+test('psmap check expands a glob the shell left behind', () => {
+    const { expandGlobs } = require('../src/cli');
+    // cmd.exe and PowerShell pass `fixtures/*.txt` through verbatim; bash does not.
+    const hits = expandGlobs([path.join(FIXTURES, '*.txt')]);
+    assert.ok(hits.length >= 1, 'expected at least one fixture game');
+    assert.ok(hits.every(f => fs.existsSync(f)), hits.join(', '));
+    assert.ok(hits.some(f => path.basename(f) === 'sokoban.txt'), hits.join(', '));
+    // Ordinary paths are untouched, and a pattern that matches nothing is kept
+    // as typed so the "No such file" message still names it.
+    const plain = path.join(FIXTURES, 'sokoban.txt');
+    assert.deepStrictEqual(expandGlobs([plain]), [plain]);
+    assert.deepStrictEqual(expandGlobs(['nowhere-at-all/*.txt']), ['nowhere-at-all/*.txt']);
+});
+
 test('a palette exports as the same portable block the engine produces', () => {
     const palettes = require('../src/palettes');
     const block = palettes.paletteToPreludeBlock('ruststorm');

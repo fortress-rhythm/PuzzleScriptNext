@@ -260,6 +260,31 @@ function doInfo(opts) {
     return 0;
 }
 
+// bash and zsh expand `src/demo/*.txt` before we ever see it; cmd.exe and
+// PowerShell hand the pattern over untouched, which used to make
+// `npm run check:games` fail on Windows with "No such file: src/demo/*.txt".
+// Expand whatever the shell left behind. A pattern in the last path segment is
+// all that is supported, which is all the scripts here use. An argument that
+// matches nothing is passed through, so the error still names what you typed.
+function expandGlobs(args) {
+    const out = [];
+    for (const arg of args) {
+        if (!/[*?]/.test(arg) || fs.existsSync(arg)) { out.push(arg); continue; }
+        const dir = path.dirname(arg);
+        const pattern = path.basename(arg);
+        if (/[*?]/.test(dir)) { out.push(arg); continue; }
+        const re = new RegExp('^' + pattern
+            .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+            .replace(/\*/g, '[^/\\\\]*')
+            .replace(/\?/g, '.') + '$', process.platform === 'win32' ? 'i' : '');
+        let names;
+        try { names = fs.readdirSync(dir); } catch { names = []; }
+        const hits = names.filter(n => re.test(n)).sort().map(n => path.join(dir, n));
+        out.push(...(hits.length ? hits : [arg]));
+    }
+    return out;
+}
+
 /**
  * Everything that has to hold for the editor to show a game the way the game
  * shows itself, in one exit code, so a game repository can run it in CI:
@@ -274,7 +299,7 @@ function doInfo(opts) {
  * this parser (a spelling it does not read yet), and both are worth a red X.
  */
 function doCheck(opts) {
-    const files = opts._.slice(1);
+    const files = expandGlobs(opts._.slice(1));
     if (!files.length) { process.stderr.write('Need at least one game file.\n'); return 2; }
     let bad = 0;
     for (const file of files) {
@@ -341,4 +366,4 @@ function checkGame(source) {
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
 
-module.exports = { main, parseArgs, checkGame };
+module.exports = { main, parseArgs, checkGame, expandGlobs };
