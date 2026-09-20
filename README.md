@@ -1,9 +1,14 @@
-# PuzzleScript Next
+# PuzzleScript Next (fortress-rhythm fork)
 
 PuzzleScript Next is your next version of PuzzleScript, 100% upwardly compatible and with all the latest features needed by more advanced developers.
-[The stable release is here](https://puzzlescriptnext.polyomino.com/) and the [dev version is here](https://david-pfx.github.io/PuzzleScriptNext/src/index.html).
 
-The [full merged documentation is here](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation).
+**This is fortress-rhythm's fork**, with its own curated palette set and a map/sprite editor.
+
+* [Editor](https://fortress-rhythm.github.io/PuzzleScriptNext/src/editor.html) — write, run and export games
+* [Map & sprite editor](https://fortress-rhythm.github.io/PuzzleScriptNext/puzzlescript-map-editor/web/index.html) — edit levels and sprites with the mouse
+* [This fork's documentation](doc/README.md) — the palette set, the map/sprite editor, and how they're kept in step
+
+Official upstream project and documentation, unmodified: [stable release](https://puzzlescriptnext.polyomino.com/) · [dev version](https://david-pfx.github.io/PuzzleScriptNext/src/index.html) · [documentation](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation).
 For the first time ever, all the features contributed by original PuzzleScript, PuzzleScriptPlus and Pattern:Script can be found in this one place.
 
 PuzzleScript Next is a combination of the work of many authors:
