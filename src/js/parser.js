@@ -17,6 +17,7 @@ For more information see:
     github.com/increpare/PuzzleScript
     github.com/Auroriax/PuzzleScriptNext
     github.com/david-pfx/PuzzleScriptNext
+    github.com/fortress-rhythm/PuzzleScriptNext  (this fork)
 
 */
 

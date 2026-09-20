@@ -1,7 +1,7 @@
 # puzzlescript-map-editor
 
 Map editing tools for [PuzzleScript](https://www.puzzlescript.net/) and
-[PuzzleScript Next](https://github.com/david-pfx/PuzzleScriptNext), built around
+[PuzzleScript Next](https://github.com/fortress-rhythm/PuzzleScriptNext), built around
 the one operation every text editor gets wrong: **copying a rectangle and
 pasting it as a rectangle.**
 

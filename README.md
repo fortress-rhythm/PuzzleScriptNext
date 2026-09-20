@@ -4,11 +4,13 @@ PuzzleScript Next is your next version of PuzzleScript, 100% upwardly compatible
 
 **This is fortress-rhythm's fork**, with its own curated palette set and a map/sprite editor.
 
+* [**Start here**](https://fortress-rhythm.github.io/PuzzleScriptNext/) — the front page, with every tool and every command on it
 * [Editor](https://fortress-rhythm.github.io/PuzzleScriptNext/src/editor.html) — write, run and export games
 * [Map & sprite editor](https://fortress-rhythm.github.io/PuzzleScriptNext/puzzlescript-map-editor/web/index.html) — edit levels and sprites with the mouse
+* [Setup & running](https://fortress-rhythm.github.io/PuzzleScriptNext/doc/setup.html) — the toolchain, serving the checkout so EXPORT works, and where each command is run from
 * [This fork's documentation](doc/README.md) — the palette set, the map/sprite editor, and how they're kept in step
 
-Official upstream project and documentation, unmodified: [stable release](https://puzzlescriptnext.polyomino.com/) · [dev version](https://david-pfx.github.io/PuzzleScriptNext/src/index.html) · [documentation](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation).
+Official upstream project, unmodified: [stable release](https://puzzlescriptnext.polyomino.com/) · [dev version](https://david-pfx.github.io/PuzzleScriptNext/src/index.html) · [its documentation](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation). This fork carries its own copy of the documentation, with the tween and LATE sections rewritten; the links in the changelog below point at that copy.
 For the first time ever, all the features contributed by original PuzzleScript, PuzzleScriptPlus and Pattern:Script can be found in this one place.
 
 PuzzleScript Next is a combination of the work of many authors:
@@ -21,7 +23,7 @@ PuzzleScript Next is a combination of the work of many authors:
 
 Due to unfriendly behaviour by moderators, PuzzleScript Next can no longer be released or supported on Discord thinky-puzzle-games.
 Feel free to:
-* raise an issue on [GitHub(https://github.com/david-pfx/PuzzleScriptNext/issues)]
+* raise an issue about the engine on [upstream GitHub](https://github.com/david-pfx/PuzzleScriptNext/issues), or about this fork on [its own tracker](https://github.com/fortress-rhythm/PuzzleScriptNext/issues)
 * ask a question on the [PuzzleScript forum(https://groups.google.com/g/puzzlescript)]
 * PM me on Discord (@Davidus of Polyomino)
 * email me directly (david@polyomino.com).
@@ -68,7 +70,8 @@ What needs what:
 |---|---|
 | play, write, edit games; use the map editor | a browser |
 | serve locally | Node 16+ *or* Python 3 |
-| run the checks: `npm test`, `npm run check:games` | Node 16+, no `npm install` — the map editor has no dependencies |
+| run the checks: `npm test`, `npm run check:games`, `npm run check:export` | Node 16+, no `npm install` — the map editor has no dependencies |
+| rebuild the standalone export template after changing the engine: `npm run build:template` | Node 16+, nothing installed |
 | the palette tools in `tools/` | [uv](https://docs.astral.sh/uv/) — stdlib-only scripts, `uv run` needs no setup |
 | build the minified `bin/` and standalone template: `npm run build` | Node and `npm install`; its image tools want native binaries and fail on some machines, and nothing else depends on it |
 
@@ -171,7 +174,7 @@ Previous fixes/updates:
 * The demo program 'Black Box' now ignores the keyboard and has level select (#96).
 It still has an outstanding display bug (#97).
 * Includes a beta release of canvas sprites based on canvas API calls.
-See [Objects](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation/objects.html).
+See [Objects](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/objects.html).
 * A `canvas:` sprite is now drawn to align with the bottom left corner, the same as for regular sprites.
 This will break some existing games. The fix is to move the sprite offset using `translate:`.
 * The `flip:` shorthands "\-" and "\|" are now compatible with Pattern:Script (see Tapaban) (#83).
@@ -207,13 +210,13 @@ Older fixes/updates:
 * Using `rot:` or other transforms with no or bad arguments no longer causes a crash.
 * Ctrl+X and Ctrl+B are no longer used as shortcuts but are passed through to the editor.
 The ctrl+shift+R shortcut for 'replace all' now works correctly in the editor.
-See [Keyboard Shortcuts](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation/keyboard_shortcuts.html).
+See [Keyboard Shortcuts](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/keyboard_shortcuts.html).
 * Keys used by the game but discarded are no longer passed through to the editor.
 * Escape to pause in a message now works correctly.
 * Gosub now works correctly when a return lands on another return.
 * The editor now correctly loads the last saved file on start up.
 * The documentation for directions has been improved.
-See [Directions](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation/directions.html).
+See [Directions](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/directions.html).
 * Checkpoints are no longer lost when the program is interrupted or restarted at the title menu. 
 Note: this behaviour is widely expected, but is not documented.
 * A child object that defines no sprite and/or colour inherits them from its parent (hat tricks).
@@ -239,7 +242,7 @@ For example: `late [ wall no wall:>:quarterTiles ] -> [ wall wall:>:fill ]`
 * The pause screen now works on mobile and tablet devices.
 
 Also some new documentation:
-* [Tags and Mappings](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation/tags_and_mappings.html).
-* [Tips and Tricks](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation/tips_and_tricks.html).
-* [Level Branching](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation/levels.html#branching).
+* [Tags and Mappings](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/tags_and_mappings.html).
+* [Tips and Tricks](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/tips_and_tricks.html).
+* [Level Branching](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/levels.html#branching).
 

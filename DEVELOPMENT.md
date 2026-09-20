@@ -11,7 +11,7 @@ The structure of PuzzleScript is as follows.
 
 * In the `src/` directory you have the 'raw' version of PuzzleScript, which is itself runnable, just not compressed/optimised.
 * When you run the compile step it generates a compressed/optimized version of PuzzleScript into `bin`, which is what people see on 
-[PuzzleScript Next](https://david-pfx.github.io/PuzzleScriptNext/), or wherever you are hosting this. 
+[this fork's site](https://fortress-rhythm.github.io/PuzzleScriptNext/), or wherever you are hosting this. 
 * It also updates the `standalone_inlined.txt` file, which is the template that is used for exported standalone PuzzleScriptNext games.
 This is generated from `./src/standalone.html`.
 
