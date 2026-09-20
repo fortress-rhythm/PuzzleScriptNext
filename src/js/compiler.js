@@ -2709,6 +2709,81 @@ function collapseRules(groups) {
 
 
 
+// Which LATE rules can actually disturb a tween?
+//
+// A tween is recorded as newMovedEntities["p<destination cell>-l<layer>"] when an
+// object is repositioned in the movement phase, and the renderer looks it up by
+// cell and layer again, never by object (repositionEntitiesAtCell and getTweening).
+// So a LATE rule only matters when it changes which object occupies a cell on a
+// layer something can move on: taking the object away loses the slide, and putting
+// one where the pattern did not already require one can hand the slide to the wrong
+// object. Swapping an object for another on the same layer - the usual LATE trick
+// for facings and markers - keeps the key valid, and a layer nothing ever moves on
+// can never hold a tween at all.
+//
+// Returns one entry per offending rule: { lineNumber, layers }.
+function lateRulesRiskyForTweens(state) {
+    const layerCount = state.collisionLayers.length;
+    const tweenableDirs = dirMasks['up'] | dirMasks['down'] | dirMasks['left']
+        | dirMasks['right'] | dirMasks['action'] | dirMasks['moving'] | dirMasks['random'];
+
+    function eachReplacement(groups, fn) {
+        for (const group of groups)
+            for (const rule of group)
+                for (const row of rule.patterns)
+                    for (const cell of row)
+                        if (cell !== ellipsisPattern && cell.replacement)
+                            fn(cell, rule);
+    }
+
+    // A layer can hold a tween if any rule gives one of its objects a direction, or
+    // if the player is on it - the player is moved by input rather than by a rule.
+    const movable = new Array(layerCount).fill(false);
+    for (const name in state.objects) {
+        const object = state.objects[name];
+        if (state.playerMask && state.playerMask.get(object.id))
+            movable[object.layer | 0] = true;
+    }
+    for (const groups of [state.rules, state.lateRules])
+        eachReplacement(groups, cell => {
+            for (var l = 0; l < layerCount; l++)
+                if (cell.replacement.movementsSet.getshiftor(tweenableDirs, MOV_BITS * l))
+                    movable[l] = true;
+        });
+
+    const risky = new Map();
+    eachReplacement(state.lateRules, (cell, rule) => {
+        for (var l = 0; l < layerCount; l++) {
+            if (!movable[l]) continue;
+            const layerMask = state.layerMasks[l];
+            const required = cell.objectsPresent.anyBitsInCommon(layerMask);
+            const placed = cell.replacement.objectsSet.anyBitsInCommon(layerMask)
+                || cell.replacement.randomEntityMask.anyBitsInCommon(layerMask);
+            const removed = cell.replacement.objectsClear.anyBitsInCommon(layerMask);
+            if ((removed && !placed) || (placed && !required)) {
+                if (!risky.has(rule.lineNumber))
+                    risky.set(rule.lineNumber, new Set());
+                risky.get(rule.lineNumber).add(layerDescription(state, l));
+            }
+        }
+    });
+    return [...risky].map(([lineNumber, layers]) => ({ lineNumber, layers: [...layers] }));
+}
+
+// "a", "a and b", "a, b and c" - for naming layers in a message.
+function listPhrase(items) {
+    if (items.length < 3) return items.join(' and ');
+    return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
+}
+
+// A collision layer named by its objects, short enough to put in a message.
+function layerDescription(state, layerIndex) {
+    const names = state.collisionLayers[layerIndex].map(n => n.toUpperCase());
+    if (names.length === 1) return `the ${names[0]} layer`;
+    if (names.length === 2) return `the ${names[0]} layer (shared with ${names[1]})`;
+    return `the ${names[0]} layer (shared with ${names.length - 1} others)`;
+}
+
 function ruleGroupDiscardOverlappingTest(ruleGroup) {
     if (ruleGroup.length === 0)
         return;
@@ -3821,8 +3896,14 @@ function compile(command, text, randomseed) {
 
     if (IDE) {
         if (state.metadata.tween_length !== undefined && state.lateRules.length >= 1) {
-            logWarning("Using tweens in a game that also has LATE rules is currently experimental! If you change objects that moved with LATE then tweens might not play!", undefined, true);
-            logWarning("Note that if you change objects that have moved in LATE rules, their tweens won't play!", undefined, true);
+            const risky = lateRulesRiskyForTweens(state);
+            for (const rule of risky.slice(0, 4)) {
+                logWarning(`This LATE rule adds or removes objects on ${listPhrase(rule.layers)}, which things move on. A tween is tracked by cell and collision layer rather than by object, so an object that slid into one of those cells may jump to its new position instead of tweening there.`, rule.lineNumber, true);
+            }
+            if (risky.length > 4) {
+                const more = risky.length - 4;
+                logWarning(`${more} more LATE rule${more == 1 ? '' : 's'} can disturb a tween the same way. The first four are listed above.`, undefined, true);
+            }
         }
 
         if(state.metadata.level_select_unlocked_ahead !== undefined && state.metadata.level_select_unlocked_rollover !== undefined) {
