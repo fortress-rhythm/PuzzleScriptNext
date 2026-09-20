@@ -139,6 +139,7 @@ function unloadGame() {
 	curLevel = new Level(0, 5, 5, 2, null, null);
 	curLevel.objects = new Int32Array(0);
 	levelEditorOpened = false;
+	levelEditorHeldWinReported = false;
 	generateTitleScreen();
 	canvasResize();
 	//redraw();
@@ -3644,6 +3645,21 @@ function playSeed(seed, ignore) {
 
 }
 
+// A win that the open level editor is holding back is reported once per
+// visit to the level editor (the flag is reset when the editor is opened or
+// closed and when a level loads), so painting a won level does not fill the
+// console, but a player who pressed E by accident and cannot see why the
+// level will not finish is told exactly that.
+var levelEditorHeldWinReported = false;
+
+function reportWinHeldByLevelEditor() {
+	if (solving || levelEditorHeldWinReported) {
+		return;
+	}
+	levelEditorHeldWinReported = true;
+	consolePrint("Win condition satisfied, but the level editor is open, so the level will not complete. Press E (or the level editor button) to close it.", true);
+}
+
 function checkWin(dontDoWin) {
 
   if (levelEditorOpened) {
@@ -3656,6 +3672,9 @@ function checkWin(dontDoWin) {
 		} else {
 			if (verbose_logging && !solving) {
 				consolePrint("Win Condition Satisfied.");
+			}
+			if (levelEditorOpened) {
+				reportWinHeldByLevelEditor();
 			}
 		}
 		if(!dontDoWin){
@@ -3735,6 +3754,9 @@ function checkWin(dontDoWin) {
 		} else {
 			if (verbose_logging && !solving) {
 				consolePrint("Win Condition Satisfied.");
+			}
+			if (levelEditorOpened) {
+				reportWinHeldByLevelEditor();
 			}
 		}
 		if (!dontDoWin){

@@ -198,9 +198,11 @@ function levelEditorClick_Fn() {
 	if (textMode || state.levels.length===0) {
 		compile(["loadLevel",0]);
 		levelEditorOpened=true;
+		levelEditorHeldWinReported=false;
     	canvasResize();
 	} else {
 		levelEditorOpened=!levelEditorOpened;
+		levelEditorHeldWinReported=false;
     	canvasResize();
     }
     lastDownTarget=canvas;	

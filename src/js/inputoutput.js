@@ -1455,6 +1455,7 @@ function checkKey(e,justPressed) {
         				}
         			}
         			levelEditorOpened=!levelEditorOpened;
+        			levelEditorHeldWinReported=false;
         			editorClearSelectionState();
         			if (levelEditorOpened===false){
         				printLevel();
