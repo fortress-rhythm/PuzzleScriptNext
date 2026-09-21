@@ -81,6 +81,12 @@ a {
 	bottom:3em;
   touch-action: none;
 }
+/* min_cell_size (B): the canvas is laid out at native size instead of
+   stretched to fill, and the container scrolls to reach the rest of it. */
+.gameContainer.psn-oversized {
+  overflow: auto;
+  touch-action: pan-x pan-y;
+}
 
   .mobile-menu {
       position: relative;

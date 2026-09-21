@@ -222,9 +222,9 @@ var codeMirrorFn = function() {
         'run_rules_on_level_start', 'runtime_metadata_twiddling', 'runtime_metadata_twiddling_debug', 'scanline', 
         'skip_title_screen', 'smoothscreen_debug', 'status_line', 'throttle_movement', 'verbose_logging'];
     const prelude_param_text = ['title', 'author', 'homepage', 'custom_font', 'text_controls', 'text_message_continue', 'debug_switch', 'export_options' ];
-    const prelude_param_number = ['again_interval', 'animate_interval', 'font_size', 'key_repeat_interval', 
-        'level_select_unlocked_ahead', 'level_select_unlocked_rollover', 'local_radius', 'realtime_interval', 
-        'tween_length', 'tween_snap'];
+    const prelude_param_number = ['again_interval', 'animate_interval', 'font_size', 'key_repeat_interval',
+        'level_select_unlocked_ahead', 'level_select_unlocked_rollover', 'local_radius', 'realtime_interval',
+        'tween_length', 'tween_snap', 'min_cell_size'];
     const prelude_param_single = [
         'background_color', 'flickscreen', 'level_select_solve_symbol', 'keyhint_color', 
         'message_text_align', 'mouse_drag', 'mouse_left', 'mouse_rdrag', 'mouse_right', 'mouse_rup', 'mouse_up',

@@ -420,6 +420,7 @@ var cellheight;
 var xoffset;
 var yoffset;
 let pixelSize;
+let autoScrollOversized = false;  // min_cell_size fallback: canvas bigger than its container, scrolled rather than shrunk
 
 // takes a level argument, not an event
 window.addEventListener('resize', (e) => canvasResize(), false);
@@ -1161,6 +1162,7 @@ let statusLineHeight = 0;
 // recalculate screen layout and then call redraw
 function canvasResize(level) {
     level ||= curLevel;
+    autoScrollOversized = false;
     canvas.width = canvas.parentNode.clientWidth;
     canvas.height = canvas.parentNode.clientHeight;
 
@@ -1189,6 +1191,29 @@ function canvasResize(level) {
         initSmoothCamera();         // need this in case smoothscreen is now enabled
         screenwidth=state.metadata.smoothscreen.screenSize.width;
         screenheight=state.metadata.smoothscreen.screenSize.height;
+    } else if (state.metadata.min_cell_size !== undefined) {
+        // min_cell_size: the level is otherwise shown in full, shrunk to fit the
+        // window, however small that makes each cell. Below the floor, either
+        // (C) crop to a fixed window and reuse the zoomscreen camera to follow
+        // "player" so cell size stays constant, or (B), lacking a player to
+        // follow, show the whole level at the floor size and let the page
+        // scroll to it instead of shrinking it further.
+        const minCell = state.metadata.min_cell_size;
+        const fitsW = canvas.width / screenwidth >= minCell;
+        const fitsH = (canvas.height - statusLineHeight) / screenheight >= minCell;
+        if (!fitsW || !fitsH) {
+            const fitW = Math.max(1, Math.min(screenwidth, Math.floor(canvas.width / minCell)));
+            const fitH = Math.max(1, Math.min(screenheight, Math.floor((canvas.height - statusLineHeight) / minCell)));
+            if (getPlayerPositions().length > 0) {
+                zoomscreen = true;
+                screenwidth = fitW;
+                screenheight = fitH;
+            } else {
+                autoScrollOversized = true;
+                canvas.width = Math.max(canvas.width, screenwidth * minCell);
+                canvas.height = Math.max(canvas.height, screenheight * minCell + statusLineHeight);
+            }
+        }
     }
 
     cellwidth = canvas.width / screenwidth;
@@ -1229,6 +1254,23 @@ function canvasResize(level) {
     cellheight = cellheight|0;
     xoffset = xoffset|0;
     yoffset = yoffset|0;
+
+    // min_cell_size (B): when the level is shown oversized rather than shrunk,
+    // the canvas buffer is now bigger than its container -- lay it out at its
+    // native size, statically, so the container's own scrolling reaches it,
+    // instead of the CSS stretching it back down to fit.
+    if (canvas.parentNode && canvas.parentNode.classList) {
+        canvas.parentNode.classList.toggle('psn-oversized', autoScrollOversized);
+    }
+    if (autoScrollOversized) {
+        canvas.style.position = 'static';
+        canvas.style.width = canvas.width + 'px';
+        canvas.style.height = canvas.height + 'px';
+    } else {
+        canvas.style.position = '';
+        canvas.style.width = '';
+        canvas.style.height = '';
+    }
 
     if (textMode) {
         textcellwidth = cellwidth;
