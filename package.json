@@ -12,6 +12,8 @@
     "check:palettes": "uv run tools/palette_test.py",
     "check:export": "node tools/inline_standalone.js --check",
     "build:template": "node tools/inline_standalone.js",
+    "check:ai-pack": "node tools/build_ai_pack.js --check",
+    "build:ai-pack": "node tools/build_ai_pack.js",
     "build": "node compile.js"
   },
   "dependencies": {

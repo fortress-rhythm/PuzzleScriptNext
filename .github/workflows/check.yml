@@ -47,3 +47,6 @@ jobs:
 
       - name: The standalone export template is current
         run: npm run check:export
+
+      - name: The editor's AI context pack matches doc/ai-context-pack.md
+        run: npm run check:ai-pack

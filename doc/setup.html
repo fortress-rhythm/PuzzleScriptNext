@@ -394,9 +394,10 @@ npm run build                    <span class="c"># = node compile.js</span></cod
   <pre><code>npm test                 <span class="c"># map editor suite: parser, bridges, round trip</span>
 npm run check:games      <span class="c"># every demo game still opens in the map editor</span>
 npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span>
-npm run check:export     <span class="c"># the export template still matches src/js</span></code></pre>
+npm run check:export     <span class="c"># the export template still matches src/js</span>
+npm run check:ai-pack    <span class="c"># COPY FOR AI's pack still matches doc/ai-context-pack.md</span></code></pre>
   <p>
-    These four are exactly what <code>.github/workflows/check.yml</code> runs on every push and pull
+    These five are exactly what <code>.github/workflows/check.yml</code> runs on every push and pull
     request, on Node 22, with no <code>npm install</code> step. Green locally means green in CI.
   </p>
   <p>

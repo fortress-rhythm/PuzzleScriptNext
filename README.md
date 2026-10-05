@@ -46,6 +46,15 @@ Documented separately, in [`doc/`](doc/README.md) — start with that index.
   PuzzleScript Next dialect — `//` comments, tags, `Name glyph; colours`
   headers — as well as classic PuzzleScript. **MAP EDITOR** in the editor's
   toolbar hands the open game across.
+* **COPY FOR AI**, in the editor's toolbar, and the context pack behind it,
+  [`doc/ai-context-pack.md`](doc/ai-context-pack.md). The pack is a primer on
+  PuzzleScript Next and this fork, written for an AI assistant, so a free chat
+  (Gemini, ChatGPT, Claude, Le Chat) stops inventing syntax. The button copies
+  the pack, the game in the editor, any selected lines, the end of the
+  console, and a short question template, ready to paste into any chat.
+  Nothing is sent anywhere. Edit the Markdown, then run
+  `npm run build:ai-pack`, which regenerates `src/js/ai_context_pack.js`. CI
+  checks that the two match.
 * A **front page**, [`index.html`](index.html), linking everything above, so
   a clone or a GitHub Pages deployment is one click from any tool.
 
@@ -70,12 +79,12 @@ What needs what:
 |---|---|
 | play, write, edit games; use the map editor | a browser |
 | serve locally | Node 16+ *or* Python 3 |
-| run the checks: `npm test`, `npm run check:games`, `npm run check:export` | Node 16+, no `npm install` — the map editor has no dependencies |
+| run the checks: `npm test`, `npm run check:games`, `npm run check:export`, `npm run check:ai-pack` | Node 16+, no `npm install` — the map editor has no dependencies |
 | rebuild the standalone export template after changing the engine: `npm run build:template` | Node 16+, nothing installed |
 | the palette tools in `tools/` | [uv](https://docs.astral.sh/uv/) — stdlib-only scripts, `uv run` needs no setup |
 | build the minified `bin/` and standalone template: `npm run build` | Node and `npm install`; its image tools want native binaries and fail on some machines, and nothing else depends on it |
 
-CI runs the first three on every push (`.github/workflows/check.yml`).
+CI runs the checks on every push (`.github/workflows/check.yml`).
 
 ### Publishing on GitHub Pages
 
