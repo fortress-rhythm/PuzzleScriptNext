@@ -54,6 +54,11 @@ if (mapEditorClickLink)
 		} catch (e) { /* storage blocked; the map editor will open empty */ }
 		window.open('../puzzlescript-map-editor/web/index.html', 'psmap');
 	}, false);
+// COPY FOR AI - fork-original, see ai_copy.js
+var copyForAIClickLink = document.getElementById("copyForAIClickLink");
+if (copyForAIClickLink)
+	copyForAIClickLink.addEventListener("click", copyForAIClick, false);
+
 var palettePanelClose = document.getElementById("palettePanelClose");
 if (palettePanelClose)
 	palettePanelClose.addEventListener("click", palettePreviewClick, false);

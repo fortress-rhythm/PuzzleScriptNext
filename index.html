@@ -104,7 +104,8 @@
     <a class="card primary" href="src/editor.html">
       <b>Editor</b>
       <span>Write, run, debug and export games. <b>PALETTES</b> previews any palette on the running
-      game; <b>MAP EDITOR</b> hands the open game across; <b>EXPORT</b> builds a standalone HTML file.</span>
+      game; <b>MAP EDITOR</b> hands the open game across; <b>EXPORT</b> builds a standalone HTML file;
+      <b>COPY FOR AI</b> copies a primer, your game and the console, to paste into any AI chat.</span>
     </a>
     <a class="card primary" href="puzzlescript-map-editor/web/index.html">
       <b>Map &amp; sprite editor</b>
@@ -143,6 +144,11 @@
     <a class="card" href="src/Documentation/documentation.html">
       <b>Engine documentation</b>
       <span>PuzzleScript, PuzzleScript Plus and Pattern:Script features, merged — this fork's copy.</span>
+    </a>
+    <a class="card" href="doc/ai-context-pack.md">
+      <b>Asking an AI for help</b>
+      <span>A primer on PuzzleScript Next for any free AI chat, so it stops inventing syntax. Paste it in
+      before your game and question, or use <b>COPY FOR AI</b> in the editor, which does all three.</span>
     </a>
     <a class="card" href="src/Documentation/rules101.html">
       <b>First steps</b>
@@ -195,6 +201,7 @@
     <tr><td><code>npm run check:games</code></td><td>Every demo game still opens in the map editor</td></tr>
     <tr><td><code>npm run check:palettes</code></td><td>The palette set, its generated files and the vendored map editor copy</td></tr>
     <tr><td><code>npm run check:export</code></td><td>The standalone export template is present and complete</td></tr>
+    <tr><td><code>npm run check:ai-pack</code></td><td>The editor's copy of the AI context pack matches <code>doc/ai-context-pack.md</code>; <code>npm run build:ai-pack</code> rebuilds it</td></tr>
     <tr><td><code>npm run build</code></td><td>Minified <code>bin/</code> site and a rebuilt export template (needs <code>npm install</code>)</td></tr>
     <tr><td><code>psmap export &lt;game&gt;</code></td><td>Level grids out to .xlsx, .csv, .tsv or REXPaint .xp</td></tr>
     <tr><td><code>psmap import &lt;game&gt; &lt;edited&gt;</code></td><td>Edited grids spliced back in, leaving every other line alone</td></tr>
