@@ -2,7 +2,7 @@
 
 Everything in this folder is fork-original — it describes work that is not in
 upstream PuzzleScript. Upstream's own documentation is in
-`src/Documentation/`, and the root `README.md` is the fork's changelog.
+`src/Documentation/`, and upstream's release notes are in the root `CHANGELOG.md`.
 
 [`setup.html`](setup.html) is the setup and running guide — installing the
 toolchain, serving the checkout so the editor's **EXPORT** works, and which

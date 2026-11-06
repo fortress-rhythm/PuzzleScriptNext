@@ -1,3 +1,30 @@
+SCOPE
+
+The MIT license below covers this repository's engine, editor and tools. It does
+not cover the third-party games and other third-party material stored here.
+
+Not covered:
+
+- Example games by other authors: src/demo/, the copies of games in
+  src/tests/resources/, and puzzlescript-map-editor/fixtures/games/.
+- Gallery images and listings: src/Gallery/ and src/games_dat*.js.
+
+These belong to their authors. They came with the upstream repository and their
+license terms have not been confirmed. Upstream's src/demo/README says: "These
+demos aren't necessarily under MIT license." Check with the author before reusing
+one. See "Example games and licensing" in README.md.
+
+Bundled fonts and libraries keep their own licenses. See credits/ and the notices
+in those files. puzzlescript-map-editor/ has its own LICENSE file.
+
+Palettes in palettes/ that come from other artists are credited in each file, and
+this fork does not relicense them.
+
+Changes made in this fork are otherwise offered under the same MIT terms.
+Copyright (c) 2026 fortress-rhythm
+
+--------------------------------------------------------------------------------
+
 MIT License
 
 Copyright (c) 2013 Stephen Lavelle
