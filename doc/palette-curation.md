@@ -180,6 +180,7 @@ create.
 | `tools/palette_verdicts.json` | Your decisions. The curation tool writes nothing else |
 | `tools/candidates-example/` | Three palettes in the three input formats, to run against |
 | `tools/palette_test.py` | The checks. `uv run tools/palette_test.py` |
+| `tools/palette_chart.py` | Charts every palette in `colors.js`, stock and fork, on contrast and colourblind collapses. Independent of `palette_lib.py`, so counts can differ by a few from `palette_analysis.py`: `uv run tools/palette_chart.py -o chart.html` |
 
 `palette_analysis.py` imports its maths from `palette_lib.py` rather than
 carrying its own copy. Two tools that disagreed about what "deuteranopia" meant
