@@ -17,7 +17,7 @@ Report engine issues [upstream](https://github.com/david-pfx/PuzzleScriptNext/is
 
 ## Example games and licensing
 
-The [MIT license](LICENSE) covers the engine, editor and tools. It does not cover the third-party games stored in this repository, or the images and listings made from them:
+The [MIT license](LICENSE) covers the engine, editor and tools. The map editor and this fork's tooling are copyright fortress-rhythm; the engine and editor are copyright Stephen Lavelle and the PuzzleScript, PuzzleScript Plus, Pattern:Script and PuzzleScript Next contributors. The license does not cover the third-party games stored in this repository, or the images and listings made from them:
 
 | Location | What it holds |
 |---|---|
