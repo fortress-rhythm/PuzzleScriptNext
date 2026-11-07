@@ -138,7 +138,7 @@ npm start                    <span class="c">&lt;-- leave this terminal open</sp
       Worse, the real message is hidden: the fetch fails at startup and prints
       <i>&ldquo;Couldn't find standalone template. Is there a connection problem to the internet?&rdquo;</i>,
       and then your first <b>Run</b> calls <code>clearConsole()</code> and wipes it.
-      <span class="src">src/js/buildStandalone.js:14-27 &middot; src/js/toolbar.js:14 &middot; src/js/editor.js:244</span>
+      <span class="src">src/js/buildStandalone.js:14-27 &middot; src/js/toolbar.js:17 &middot; src/js/editor.js:244</span>
     </p>
   </div>
 
@@ -149,7 +149,8 @@ npm start                    <span class="c">&lt;-- leave this terminal open</sp
       <td><b>Node 18+</b><br><span class="fine">serving, the checks, the build</span></td>
       <td><a href="https://nodejs.org">nodejs.org</a> LTS<br>
           <code>winget install OpenJS.NodeJS.LTS</code><br>
-          <code>brew install node</code></td>
+          <code>brew install node</code><br>
+          Linux / WSL: <a href="https://github.com/Schniz/fnm">fnm</a>, then <code>fnm install --lts</code></td>
       <td><code>node --version</code></td>
     </tr>
     <tr>
@@ -188,7 +189,7 @@ npm start                    <span class="c">&lt;-- leave this terminal open</sp
   src/                                 the engine and its editor
     editor.html                        <span class="c">what you actually open</span>
     standalone.html                    the EXPORT template's source
-    standalone_inlined.txt             the EXPORT template itself, ~589 KB, committed
+    standalone_inlined.txt             the EXPORT template itself, ~603 KB, committed
     tests/tests.html                   the engine's browser test suite
   puzzlescript-map-editor/             <span class="c">has its OWN package.json - the trap in step 3</span>
   palettes/   tools/                   the palette set and its tooling
@@ -307,7 +308,7 @@ cd             <span class="c"># Windows cmd, no argument: prints the folder you
   <pre><code>npm start               <span class="c"># node puzzlescript-map-editor/src/serve.js --root . --port 8020</span>
 ./runserver.sh          <span class="c"># macOS / Linux; node if present, else python3</span>
 runserver.bat           <span class="c"># Windows; same fallback</span>
-PORT=8081 npm start     <span class="c"># another port (set PORT=8081 first, on Windows cmd)</span></code></pre>
+PORT=8081 npm start     <span class="c"># another port (cmd: set PORT=8081, PowerShell: $env:PORT=8081, then npm start)</span></code></pre>
   <p>
     The server is <code>puzzlescript-map-editor/src/serve.js</code>: about seventy lines, no
     dependencies, serves the folder given by <code>--root</code> and refuses anything that escapes
@@ -333,7 +334,7 @@ PORT=8081 npm start     <span class="c"># another port (set PORT=8081 first, on 
   <p>Cheapest check first. Any one of these is conclusive.</p>
   <ol>
     <li>Open <a href="http://localhost:8020/src/standalone_inlined.txt">/src/standalone_inlined.txt</a>
-      directly. You should get roughly 589&nbsp;KB of HTML beginning <code>&lt;!doctype html&gt;</code>
+      directly. You should get roughly 603&nbsp;KB of HTML beginning <code>&lt;!doctype html&gt;</code>
       and containing <code>__GAMETITLE__</code> placeholders. A 404 means the file is missing —
       go to step&nbsp;6.</li>
     <li>Open DevTools → Network <i>before</i> reloading the editor, then reload. There should be one
@@ -377,6 +378,11 @@ npm run build                    <span class="c"># = node compile.js</span></cod
     minified <code>./bin/standalone_inlined.txt</code>, alongside the whole optimised
     <code>bin/</code> site.
   </p>
+  <p>
+    Watch <code>git status</code> afterwards: this build rewrites the committed template with CRLF line
+    endings in places, so it shows as modified even when nothing changed, and
+    <code>check:export</code> still passes. Run <code>npm run build:template</code> before committing.
+  </p>
   <div class="box warn">
     <b class="tag">This build is the fragile part of the stack</b>
     <p>
@@ -397,8 +403,14 @@ npm run check:palettes   <span class="c"># = uv run tools/palette_test.py</span>
 npm run check:export     <span class="c"># the export template still matches src/js</span>
 npm run check:ai-pack    <span class="c"># COPY FOR AI's pack still matches doc/ai-context-pack.md</span></code></pre>
   <p>
+    If one of the last two fails, the fix is to regenerate and commit: <code>npm run build:template</code>
+    for the export template, <code>npm run build:ai-pack</code> for the pack.
+  </p>
+  <p>
     These five are exactly what <code>.github/workflows/check.yml</code> runs on every push and pull
-    request, on Node 22, with no <code>npm install</code> step. Green locally means green in CI.
+    request, on Node 22, with no <code>npm install</code> step. Green locally means green in CI. The reverse can fail: with a
+    <code>charmroach</code> checkout beside this repository, <code>npm test</code> also round-trips that game,
+    which CI here does not have.
   </p>
   <p>
     The engine's own tests are browser-based and separate: serve the site and open
