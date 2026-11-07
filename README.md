@@ -1,69 +1,58 @@
 # PuzzleScript Next (fortress-rhythm fork)
 
-PuzzleScript Next is your next version of PuzzleScript, 100% upwardly compatible and with all the latest features needed by more advanced developers.
+PuzzleScript Next is an upward-compatible successor to PuzzleScript for more advanced developers. This fork adds a curated palette set, a map and sprite editor, and an AI context pack.
 
-**This is fortress-rhythm's fork**, with its own curated palette set and a map/sprite editor.
+> **The example games here are not MIT-licensed by this repository.** The repository holds over 200 scripts by other authors, whose license terms are unconfirmed. They are for study, so check with the author before reusing one. See [Example games and licensing](#example-games-and-licensing).
 
-* [**Start here**](https://fortress-rhythm.github.io/PuzzleScriptNext/) — the front page, with every tool and every command on it
-* [Editor](https://fortress-rhythm.github.io/PuzzleScriptNext/src/editor.html) — write, run and export games
-* [Map & sprite editor](https://fortress-rhythm.github.io/PuzzleScriptNext/puzzlescript-map-editor/web/index.html) — edit levels and sprites with the mouse
-* [Setup & running](https://fortress-rhythm.github.io/PuzzleScriptNext/doc/setup.html) — the toolchain, serving the checkout so EXPORT works, and where each command is run from
-* [This fork's documentation](doc/README.md) — the palette set, the map/sprite editor, and how they're kept in step
+* [**Start here**](https://fortress-rhythm.github.io/PuzzleScriptNext/): the front page, with every tool and command
+* [Editor](https://fortress-rhythm.github.io/PuzzleScriptNext/src/editor.html): write, run and export games
+* [Map and sprite editor](https://fortress-rhythm.github.io/PuzzleScriptNext/puzzlescript-map-editor/web/index.html): edit levels and sprites with the mouse
+* [Setup and running](https://fortress-rhythm.github.io/PuzzleScriptNext/doc/setup.html): the toolchain, serving the checkout, and where to run each command
+* [This fork's documentation](doc/README.md): the palette set, the map and sprite editor, and how they stay in step
+* [Upstream changelog](CHANGELOG.md): PuzzleScript Next's release notes
 
-Official upstream project, unmodified: [stable release](https://puzzlescriptnext.polyomino.com/) · [dev version](https://david-pfx.github.io/PuzzleScriptNext/src/index.html) · [its documentation](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation). This fork carries its own copy of the documentation, with the tween and LATE sections rewritten; the links in the changelog below point at that copy.
-For the first time ever, all the features contributed by original PuzzleScript, PuzzleScriptPlus and Pattern:Script can be found in this one place.
+The official upstream project is at [david-pfx/PuzzleScriptNext](https://github.com/david-pfx/PuzzleScriptNext): [stable release](https://puzzlescriptnext.polyomino.com/), [dev version](https://david-pfx.github.io/PuzzleScriptNext/src/index.html), [documentation](https://david-pfx.github.io/PuzzleScriptNext/src/Documentation). This fork carries its own copy of the documentation, with the tween and LATE sections rewritten.
 
-PuzzleScript Next is a combination of the work of many authors:
-* the original fantastic [Puzzlescript by Increpare](https://github.com/increpare/PuzzleScript)
-* the great features added in [Puzzlescript Plus by Auroriax](https://github.com/Auroriax/PuzzleScriptPlus)
-* more great features added in [Pattern:Script](https://clementsparrow.github.io/Pattern-Script)
-* a few contributions from my own [PuzzleFAB](https://github.com/david-pfx/PuzzleFAB)
-* the vector feature created by [hfmanson](https://github.com/hfmanson/PuzzleScriptNext)
-* and ongoing development work inspired by its many users (like you).
+Report engine issues [upstream](https://github.com/david-pfx/PuzzleScriptNext/issues) and problems with this fork's additions on [its tracker](https://github.com/fortress-rhythm/PuzzleScriptNext/issues).
 
-Due to unfriendly behaviour by moderators, PuzzleScript Next can no longer be released or supported on Discord thinky-puzzle-games.
-Feel free to:
-* raise an issue about the engine on [upstream GitHub](https://github.com/david-pfx/PuzzleScriptNext/issues), or about this fork on [its own tracker](https://github.com/fortress-rhythm/PuzzleScriptNext/issues)
-* ask a question on the [PuzzleScript forum(https://groups.google.com/g/puzzlescript)]
-* PM me on Discord (@Davidus of Polyomino)
-* email me directly (david@polyomino.com).
+## Example games and licensing
 
-## This fork's own additions
+The [MIT license](LICENSE) covers the engine, editor and tools. The map editor and this fork's tooling are copyright fortress-rhythm; the engine and editor are copyright Stephen Lavelle and the PuzzleScript, PuzzleScript Plus, Pattern:Script and PuzzleScript Next contributors. The license does not cover the third-party games stored in this repository, or the images and listings made from them:
 
-Documented separately, in [`doc/`](doc/README.md) — start with that index.
+| Location | What it holds |
+|---|---|
+| `src/demo/` | Whole game scripts, used by the editor's examples, `play.html` and `npm run check:games` |
+| `src/tests/resources/` | Copies of games embedded as test data |
+| `src/Gallery/`, `src/games_dat*.js` | Animations and screenshots of games, with titles and authors |
+| `puzzlescript-map-editor/fixtures/games/` | Eight games used as test input: see its [NOTICE](puzzlescript-map-editor/fixtures/games/NOTICE.md) |
 
-* The **palette set**: ten curated colour palettes at `color_palette` indices
-  15–24, a **PALETTES** panel in the editor that previews any palette on the
-  running game, portable prelude blocks for games that must run on stock
-  PuzzleScript, and the tooling to rate and adopt more. The palettes themselves
-  live in [`palettes/`](palettes/), one file each.
-* The **map and sprite editor** in
-  [`puzzlescript-map-editor/`](puzzlescript-map-editor/README.md): a browser
-  grid editor that draws your levels with your own sprites and gives you
-  rectangular copy and paste over them, a **Sprites** workspace for the pixel
-  art in OBJECTS, a palette sampler, and `psmap`, the command-line side with
-  Excel and REXPaint bridges and a `check` you can run in CI. It reads the
-  PuzzleScript Next dialect — `//` comments, tags, `Name glyph; colours`
-  headers — as well as classic PuzzleScript. **MAP EDITOR** in the editor's
-  toolbar hands the open game across.
-* **COPY FOR AI**, in the editor's toolbar, and the context pack behind it,
-  [`doc/ai-context-pack.md`](doc/ai-context-pack.md). The pack is a primer on
-  PuzzleScript Next and this fork, written for an AI assistant, so a free chat
-  (Gemini, ChatGPT, Claude, Le Chat) stops inventing syntax. The button copies
-  the pack, the game in the editor, any selected lines, the end of the
-  console, and a short question template, ready to paste into any chat.
-  Nothing is sent anywhere. Edit the Markdown, then run
-  `npm run build:ai-pack`, which regenerates `src/js/ai_context_pack.js`. CI
-  checks that the two match.
-* A **front page**, [`index.html`](index.html), linking everything above, so
-  a clone or a GitHub Pages deployment is one click from any tool.
+**What upstream says.** [`src/demo/README`](src/demo/README) dates from the original PuzzleScript in 2013:
 
-### Running it
+> These demos aren't necessarily under MIT license. Ones that are linked to from the dropdown in the editor as examples can be assumed to be so, but other ones are just private records of games that I liked a lot and want to make sure aren’t lost in the sands of time.
 
-Clone or download, then open `index.html`. The editor and the map editor work
-straight off disk. The editor's EXPORT and SHARE and the map editor's example
-buttons fetch files, which a `file://` page cannot, so for those serve the
-folder:
+**What that means here.**
+
+* This fork inherited these files from upstream and has not confirmed the terms of any of them with their authors, so it cannot grant any rights to them.
+* Treat even the dropdown games as unconfirmed. The README's assumption was written before most of today's dropdown existed.
+* Some scripts state their own terms, and those can be stricter. For example, `src/demo/mazezam.txt` points to the AGPL, and `src/demo/next/custom_font_demo.txt` embeds a font with its own terms. Read the script's header first.
+* GitHub Pages publishes this whole repository, so these files are also served from the site.
+
+**If you wrote one of these games** and want it removed, [open an issue](https://github.com/fortress-rhythm/PuzzleScriptNext/issues). Removal takes it out of the current files and the site, but it stays in the git history.
+
+Fonts and libraries bundled with the engine keep their own licenses: see [`credits/`](credits/README.md). Palettes from other artists are credited in their files in [`palettes/`](palettes/), and this fork does not relicense them.
+
+## What this fork adds
+
+Details are in [`doc/`](doc/README.md).
+
+* **Palette set:** ten curated palettes at `color_palette` indices 15-24, a **PALETTES** panel that previews any palette on the running game, portable prelude blocks for stock PuzzleScript, and tooling to rate and adopt more. The palettes are in [`palettes/`](palettes/).
+* **Map and sprite editor:** [`puzzlescript-map-editor/`](puzzlescript-map-editor/README.md) is a browser grid editor with rectangular copy and paste, a **Sprites** workspace and a palette sampler. Its command-line side, `psmap`, has Excel and REXPaint bridges and a `check` for CI. **MAP EDITOR** in the editor's toolbar hands the open game across.
+* **COPY FOR AI:** this toolbar button copies a primer ([`doc/ai-context-pack.md`](doc/ai-context-pack.md)), the current game, any selected lines, the end of the console and a question template, ready to paste into a chat. Nothing is sent anywhere. After editing the primer, run `npm run build:ai-pack`.
+* **Front page:** [`index.html`](index.html) links everything above.
+
+## Running it
+
+Clone or download, then open `index.html`. The editor and map editor work straight off disk. The editor's EXPORT and SHARE and the map editor's example buttons need a server:
 
 ```sh
 ./runserver.sh      # macOS / Linux: node if installed, else python3
@@ -71,187 +60,28 @@ runserver.bat       # Windows: the same
 npm start           # from the repository root, if you have node
 ```
 
-and open <http://localhost:8020/>.
+Then open <http://localhost:8020/>.
 
-What needs what:
-
-| to | you need |
+| To | You need |
 |---|---|
-| play, write, edit games; use the map editor | a browser |
-| serve locally | Node 16+ *or* Python 3 |
-| run the checks: `npm test`, `npm run check:games`, `npm run check:export`, `npm run check:ai-pack` | Node 16+, no `npm install` — the map editor has no dependencies |
-| rebuild the standalone export template after changing the engine: `npm run build:template` | Node 16+, nothing installed |
-| the palette tools in `tools/` | [uv](https://docs.astral.sh/uv/) — stdlib-only scripts, `uv run` needs no setup |
-| build the minified `bin/` and standalone template: `npm run build` | Node and `npm install`; its image tools want native binaries and fail on some machines, and nothing else depends on it |
+| Play, write and edit games | A browser |
+| Serve locally | Node 16+ or Python 3 |
+| Run `npm test`, `npm run check:games`, `npm run check:export`, `npm run check:ai-pack`, or rebuild the export template with `npm run build:template` | Node 16+, with no `npm install` |
+| Use the palette tools in `tools/` | [uv](https://docs.astral.sh/uv/) |
+| Build the minified `bin/` with `npm run build` | Node and `npm install`. Its image tools need native binaries and fail on some machines. Nothing else depends on it. |
 
 CI runs the checks on every push (`.github/workflows/check.yml`).
 
-### Publishing on GitHub Pages
+## Publishing on GitHub Pages
 
-Once, in the repository settings: **Settings → Pages → Source: GitHub
-Actions**. From then on every push to `master` publishes the checkout as-is
-(`.github/workflows/pages.yml`), with the front page at
-`https://<you>.github.io/PuzzleScriptNext/` and the editor, map editor, docs
-and gallery under it. `.nojekyll` at the root keeps Pages from running Jekyll
-over the site.
+In the repository settings, set **Settings → Pages → Source** to **GitHub Actions**. Every push to `master` then publishes the checkout as is (`.github/workflows/pages.yml`), with the front page at `https://<you>.github.io/PuzzleScriptNext/`.
 
-## New Features and Fixes
-The latest version is Release v-26c02. 
-This release updates `stable`.
+## Credits
 
-Previous fixes/updates:
-* Level restored on startup triggers a crash #183
-* Fix: ESC+replay does not restore state cleanly #181
-* Fix: Objects misplaced after Restart #180
-* Fix: mouse support broken on dev-release #179
-* Testing framework enable compile error check for non-PS
-* Custom palette #128
-* Set palette at runtime via metadata twiddling #95
-* Updated documentation (`Prelude` and `Runtime Metadata Twiddling`)
-* Updated version of `colour_chart` to show these features.
-* New: Fixed regression on `verbose_logging`.
-* New: Palette changes in `netgame`.
-* Idents targeted by `export_options` must not be quoted in order to survive minification
-* Fix: After level select, scroll, select, the Run link does not reset the game properly #177
-* Fix: Adding smoothscreen to an existing program in the editor triggers a crash on Build #176
-* Documentation for `load_images` #129. New feature previously included for testing but not documented until now.
-* New games imported from PS and added to gallery.
-* Fix Link breaks after exit and continue #164
-* Fix ESC menu not always offered #174
-* Update docs for enable_pause
-* Fix Sprite expansion errors visible in Hebird #170
-* Fix [ OBJ:perpendicular ] TypeError crash #171
-* Fix: quit goes to first level but should be current #165
-* New prelude settings 'enable_pause', 'export_options' (breaking change: see docs)
-* Fix: Fix UX annoyance with the debug hover #168
-* Tweaks for docs: Collision layers, message, tags
-* Fixed Tween behaviour inconsistency #162
-* Closed with updated docs: Dev version tweening is broken for left and up #163
-* Improved startup so initial load gets compile but no clear #139
-* Fixed doc for key_repeat_interval #161
-* Fixed export filename issues #138
-* Compiled all the gallery programs and fixed a few minor bugs
-* Fixed: A loop for late rules AND a subroutine stops the main loop from working #153 (inherited from PS)
-* Fixed: ENIGMASH verbose_logging maxes out CPU #150 (see issue for details) (inherited from PS)
-* Fixed: The "no" rule not expanded when used with a tag which is also a rule prefix #145
-* Fixed twiddle background colour (outside clip zone)
-* Fixed debug log print-out for startloop, endloop, no gap (inherited from PS)
-* Fix issues with error checking of numeric settings
-* Fix smoothscreen multi-undo does not track the player #157
-* Fix smoothscreen and canvas sprites oddity #158
-* Fix background colour not applied to header/footer #159
-* Reset focus after click verbose logging
-* Implement text colours for non custom font #146
-* Fix clip region for smoothscreen #148
-* Fix gosub stacked returns #147
-* Fix save/restore twiddle on checkpoint #73
-* Fix default colours for twiddling (exposed by #146)
-* Pause (Esc) during again sequence does not resume correctly #140
-* Level select Enter on last line scrolls and selects the next line down #142
-* Bug when undoing a restart into an again loop (PS) #141
-* Fixed: Use of zoomscreen breaks status_line (#124).
-* Fixed: TypeError: Cannot read properties of undefined (reading 'vector')  (#133).
-* Fixed: documentation for mouse input.
-* Fix regression when againing used with tweening (#110).
-* Fix overlapping tag expansions bug (Hebird) (#125).
-* Fix oversized sprites not displaying correctly in tween renderer (#130).
-* Merge move tweening (`tween_length`) into main render loop (#68).
-* Support loading images via URL (#129).
-* Fix status to work with `again`, clear on user input (and doc) (#122, *123, #124)
-* Allow comments to start a rule (#126)
-* Added support for non-square sprite grids (#120 #121)
-* Fixed where `again` terminates afx transitions (#110)
-* Fixed `level_select_lock` (#114)
-* Fixed `require_player_movement` error on `goto` (#116)
-* Fixed problems parsing `text:` sprites (#117)
-* Fix `canvas: transform: rot:` regression (#109).
-* Fix GOSUB interactions with late rules (#107).
-* Add verbose logging of GOSUB/return.
-* Add new Show All Objects (checkerboard on toolbar) - for beta testing
-* Fix transform numeric tags and mapping (#105)
-* Fix transform numeric parsing
-* Fix error message and line number for when object already defined
-* Fix verbose logging
-* Fix handling of tags and mappings in sprite building (#102 #103)
-* Fixed parsing of SOUNDS line to detect bad characters in a seed (#101).
-* The 'show layers' button now provides help about using PgUp/PgDn, and shows the level number (#93).
-* Gallery programs have been filtered, keeping only those that work with this release, and have a 'hack' link.
-* Fixed compiler errors for `tween_snap` and sprite colours with no space, like `#111#111`, in gallery programs (#).
-* Editor hint prompting for colours is fixed, and a few of the newer prelude settings have been added (#87).
-* Documentation has been updated for: more than 10 sprite colours, metadata twiddling, tween_length, nokeyboard (#78, #91).
-* Level select keyboard scrolling now works for multiple pages (#94).
-* The demo program 'Black Box' now ignores the keyboard and has level select (#96).
-It still has an outstanding display bug (#97).
-* Includes a beta release of canvas sprites based on canvas API calls.
-See [Objects](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/objects.html).
-* A `canvas:` sprite is now drawn to align with the bottom left corner, the same as for regular sprites.
-This will break some existing games. The fix is to move the sprite offset using `translate:`.
-* The `flip:` shorthands "\-" and "\|" are now compatible with Pattern:Script (see Tapaban) (#83).
-* Problems with the level editor mouse position and behaviour have been corrected (#85).
-* Sample programs `wriggle` and `abracadabra` have been updated.
-* Upper case filename `abracadabra.txt` has been replaced by lower case.
-* Fix sokolink game so player does not disappear.
-* Fix level select screen to start by selecting current level (#80).
-* More fixes to stop compile errors from causing exceptions and crashes.
-* Gallery updated to include `canvas:` games as well as all PS and PS plus (175 total).
-* Level edit reverted to ignore zoomscreen etc (#76).
-* Two canvas games have been added to the editor **Examples** dropdown.
-* A missing target for a sprite `copy:` no longer crashes, but falls back to a default blank icon.
-* Various combinations of errors that could cause a `TypeError` exception will now terminate the compile with 'Too Many Errors' instead.
-* The title screen and level select menus now work correctly with mouse and on mobile.
-* `runtime_metadata_twiddling` with a level of more than 1024 cells no longer triggers an error on undo.
-* Metadata twiddle values are now saved and restored by a checkpoint.
-* The editor no longer crashes when source code changes make the code invalid.
-* The level editor no longer crashes when a new program is loaded.
-* Title screen treats as continue if set checkpoint before winning first level.
-* Highlight of selected level now less intrusive.
-* `skip_title_screen` is now working.
-* Solve symbol default now "X" in code and docs (#89).
-* Fix parsing of non-alpha transform args.
-* Fix menu click on level 1 to not go to title.
-* Fix crash on menu click on non-menu lines.
-* The display of upper case `text:` sprites has been corrected.
-* Deleting and replacing a script in the editor by cut and paste no longer causes a crash.
+PuzzleScript Next combines the work of many authors:
 
-Older fixes/updates:
-* Editing objects that contain tags in the LEGEND and elsewhere no longer causes a crash.
-* The ordering of expanding relative directions (`<>^v`) has been corrected (Pattern:Script compatibility).
-* Using `rot:` or other transforms with no or bad arguments no longer causes a crash.
-* Ctrl+X and Ctrl+B are no longer used as shortcuts but are passed through to the editor.
-The ctrl+shift+R shortcut for 'replace all' now works correctly in the editor.
-See [Keyboard Shortcuts](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/keyboard_shortcuts.html).
-* Keys used by the game but discarded are no longer passed through to the editor.
-* Escape to pause in a message now works correctly.
-* Gosub now works correctly when a return lands on another return.
-* The editor now correctly loads the last saved file on start up.
-* The documentation for directions has been improved.
-See [Directions](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/directions.html).
-* Checkpoints are no longer lost when the program is interrupted or restarted at the title menu. 
-Note: this behaviour is widely expected, but is not documented.
-* A child object that defines no sprite and/or colour inherits them from its parent (hat tricks).
-* The `share` link now targets the correct URL wherever it is hosted.
-* Two text objects with the same content no longer get the same colour.
-
-Recent new features include the following. For detail see the documentation.
-* Level branching based on a LINK command, and a test program showing how it can be used.
-* A new debugging command `log`, which writes a message to the console.
-* The menus now more distinctively identify this as PuzzleScript Next.
-
-Several other bugs have already been fixed.
-* Inline expansion of rules referring to the absence of an object by a relative reference now works correctly.
-For example: `late [ wall no wall:>:quarterTiles ] -> [ wall wall:>:fill ]`
-* No longer crashes on resizing the browser window.
-* Setting sound volume has been fixed to be compatible with Pattern:Script.
-* Undo across a link now works correctly.
-* An object that has a `copy:` referring to an implied TAG object now resolves correctly.
-* A TAG object with a sprite that is redefined uses the second sprite instead of appending it.
-* MESSAGE or other justified text no longer crashes if it contains consecutive newlines: `\n\n`.
-* Some minor issues with menu wording have been corrected.
-* Debug visualisation now works correctly from one level to another.
-* The pause screen now works on mobile and tablet devices.
-
-Also some new documentation:
-* [Tags and Mappings](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/tags_and_mappings.html).
-* [Tips and Tricks](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/tips_and_tricks.html).
-* [Level Branching](https://fortress-rhythm.github.io/PuzzleScriptNext/src/Documentation/levels.html#branching).
-
+* [PuzzleScript](https://github.com/increpare/PuzzleScript) by Increpare
+* [PuzzleScript Plus](https://github.com/Auroriax/PuzzleScriptPlus) by Auroriax
+* [Pattern:Script](https://clementsparrow.github.io/Pattern-Script) by Clement Sparrow
+* [PuzzleFAB](https://github.com/david-pfx/PuzzleFAB) and PuzzleScript Next by [david-pfx](https://github.com/david-pfx)
+* The vector feature by [hfmanson](https://github.com/hfmanson/PuzzleScriptNext)

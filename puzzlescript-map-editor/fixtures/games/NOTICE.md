@@ -8,9 +8,14 @@ They come from the demo collection in
 [PuzzleScriptNext](https://github.com/david-pfx/PuzzleScriptNext), under
 `src/demo/`. That directory's README notes that its contents are *not*
 necessarily MIT-licensed, with the exception of the games linked from the
-editor's "Load Examples" dropdown, which can be assumed to be. **Every game here
-is one of those dropdown examples** — the rest of the collection was deliberately
-left alone.
+editor's "Load Examples" dropdown, which it says "can be assumed" to be. **Every
+game here is one of those dropdown examples**, and the rest of the collection was
+deliberately left alone.
+
+**Their license is still unconfirmed.** That assumption dates from 2013, before
+most of today's dropdown existed, and nobody has checked these terms with the
+authors. They are here as test input only. The MIT license on this project does
+not cover them, so don't reuse them on the strength of it.
 
 Copyright remains with the original authors. Each file keeps its own `title` and
 `author` lines intact.

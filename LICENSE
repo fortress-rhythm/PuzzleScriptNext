@@ -1,6 +1,48 @@
+WHO HOLDS WHAT
+
+This repository is a fork of PuzzleScript Next. Its parts have different
+copyright holders. All of them are offered under the MIT terms below, except
+the material listed under "Not covered".
+
+- The map and sprite editor (puzzlescript-map-editor/) and the tooling this
+  fork provides (tools/, doc/, the front page index.html, runserver.sh and
+  runserver.bat, and .github/workflows/):
+  Copyright (c) 2026 fortress-rhythm.
+  puzzlescript-map-editor/ also carries its own LICENSE file.
+
+- Everything else, meaning the engine, its editor and its documentation, and
+  this fork's changes to them:
+  Copyright (c) 2013 Stephen Lavelle, and the contributors to PuzzleScript,
+  PuzzleScript Plus, Pattern:Script and PuzzleScript Next.
+
+SCOPE
+
+The MIT license below does not cover the third-party games and other
+third-party material stored here.
+
+Not covered:
+
+- Example games by other authors: src/demo/, the copies of games in
+  src/tests/resources/, and puzzlescript-map-editor/fixtures/games/.
+- Gallery images and listings: src/Gallery/ and src/games_dat*.js.
+
+These belong to their authors. They came with the upstream repository and their
+license terms have not been confirmed. Upstream's src/demo/README says: "These
+demos aren't necessarily under MIT license." Check with the author before reusing
+one. See "Example games and licensing" in README.md.
+
+Bundled fonts and libraries keep their own licenses. See credits/ and the notices
+in those files.
+
+Palettes in palettes/ that come from other artists are credited in each file, and
+this fork does not relicense them.
+
+--------------------------------------------------------------------------------
+
 MIT License
 
 Copyright (c) 2013 Stephen Lavelle
+Copyright (c) 2026 fortress-rhythm (the parts listed above)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -340,6 +340,10 @@ fixtures/        synthetic edge cases, plus vendored real games under games/
 
 ## Licence
 
-MIT. Colour palettes are taken from PuzzleScript Next, also MIT. REXPaint is a
+MIT, Copyright (c) 2026 fortress-rhythm. The colour palettes come from
+PuzzleScript Next. Its built-in palettes are MIT, and the ones by other artists
+keep their artists' terms: see `palettes/` in PuzzleScript Next. The test games in
+`fixtures/games/` belong to their authors, and their license is not confirmed:
+see [`fixtures/games/NOTICE.md`](fixtures/games/NOTICE.md). REXPaint is a
 separate program by Grid Sage Games; this project only reads and writes its file
 format.
