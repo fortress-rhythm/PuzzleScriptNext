@@ -32,9 +32,9 @@ worth reading when you have a pile of downloads to sort through.
 What it does, the keys, the spreadsheet and REXPaint bridges, the `psmap`
 command, and which PuzzleScript Next spellings it reads.
 
-**5. [`map-editor-sync.md`](map-editor-sync.md) — the standalone copy of it.**
-Why the editor is developed here and mirrored to a standalone repository, and
-how to keep the two in step. Only relevant if you touch that folder.
+**5. [`map-editor-sync.md`](map-editor-sync.md) — its archived standalone repository.**
+Why there is only one copy of the editor now, what changed when the standalone
+was archived, and how to bring it back. Only relevant if you want it back.
 
 ## If you just want to do the thing
 

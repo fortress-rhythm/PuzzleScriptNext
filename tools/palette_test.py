@@ -530,7 +530,7 @@ def test_vendored_map_editor():
     if "nothing to compare" in r.stdout:
         return
     check(r.returncode == 0,
-          "the vendored map editor matches its standalone repository",
+          "the map editor matches its standalone repository (archived; skips without a checkout)",
           r.stdout.strip().replace("\n", "\n      "))
 
 

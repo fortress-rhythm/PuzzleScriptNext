@@ -6,6 +6,11 @@
 Keep the standalone puzzlescript-map-editor repository in step with the copy
 that lives here.
 
+THE STANDALONE REPOSITORY IS ARCHIVED (November 2026). Nothing needs this
+script while it stays archived: with no sibling checkout, `--check` and the
+step in palette_test.py skip. It is kept for the day the standalone is
+unarchived; until then, edit `puzzlescript-map-editor/` here and nowhere else.
+
     uv run tools/sync_map_editor.py --check     do the two match? (exit 1 if not)
     uv run tools/sync_map_editor.py             this repo's copy -> standalone
     uv run tools/sync_map_editor.py --reverse   standalone -> this repo's copy
@@ -44,7 +49,7 @@ SKIP_DIRS = {".git", "node_modules", "__pycache__", ".pytest_cache"}
 # argued - every entry is a place where the two copies say different things on
 # purpose, and an entry added carelessly is drift with permission.
 ALLOWED_DIFFERENCES = {
-    "LICENSE": "the copyright holder line differs between the two repositories",
+    # Empty since the two LICENSE files were made identical (both fortress-rhythm).
 }
 
 

@@ -15,6 +15,14 @@ const rexbridge = require('../src/rexbridge');
 const zlib = require('zlib');
 
 const FIXTURES = path.join(__dirname, '..', 'fixtures');
+// The engine's demo games. The map editor lives inside PuzzleScriptNext, so
+// these are always there; a test that needs them fails rather than skipping.
+const DEMO = path.join(__dirname, '..', '..', 'src', 'demo');
+const demoFile = (rel) => {
+    const file = path.join(DEMO, rel);
+    assert.ok(fs.existsSync(file), `missing ${path.relative(path.join(__dirname, '..', '..'), file)} - is the map editor inside PuzzleScriptNext?`);
+    return file;
+};
 const SOKOBAN = fs.readFileSync(path.join(FIXTURES, 'sokoban.txt'), 'utf8');
 
 let passed = 0;
@@ -639,12 +647,20 @@ function sweepRoundTrip(files, label) {
         `${broken.length} failures across ${files.length} ${label}`);
 }
 
-test('vendored real games round-trip unchanged', () => {
-    // These ship with the repo, so this runs everywhere including CI.
-    const dir = path.join(FIXTURES, 'games');
-    const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).map(f => path.join(dir, f));
-    assert.ok(files.length >= 8, `expected the vendored corpus, found ${files.length} files`);
-    sweepRoundTrip(files, 'vendored games');
+test('chosen real games round-trip unchanged', () => {
+    // Picked from src/demo for the cases each one covers. They used to be
+    // vendored under fixtures/games so a standalone checkout could run this.
+    const files = [
+        'sokoban_basic.txt',     // the canonical baseline; LF line endings
+        'blank.txt',             // degenerate: a single 1x1 level
+        'microban.txt',          // ten levels in one file; CRLF line endings
+        'whaleworld.txt',        // larger maps; CRLF line endings
+        'next/bridges.txt',      // ragged levels: rows of differing length
+        'next/colour_chart.txt', // 36 glyphs; exercises palette resolution
+        'plus/magiciban_v1.txt', // comments inside the LEVELS section
+        'patt/tapaban.txt',      // non-ASCII glyphs, comments, Pattern:Script dialect
+    ].map(demoFile);
+    sweepRoundTrip(files, 'chosen games');
 });
 
 test('synthetic edge-case fixtures round-trip unchanged', () => {
@@ -656,12 +672,9 @@ test('synthetic edge-case fixtures round-trip unchanged', () => {
 });
 
 test('all upstream demo games round-trip unchanged', () => {
-    // Only present when checked out next to PuzzleScriptNext; the vendored
-    // corpus above is what guarantees coverage on its own.
-    const demoDir = path.join(__dirname, '..', '..', 'src', 'demo');
-    if (!fs.existsSync(demoDir)) return;
-    const files = fs.readdirSync(demoDir).filter(f => f.endsWith('.txt'))
-        .map(f => path.join(demoDir, f));
+    demoFile('');
+    const files = fs.readdirSync(DEMO).filter(f => f.endsWith('.txt'))
+        .map(f => path.join(DEMO, f));
     sweepRoundTrip(files, 'upstream demo games');
 });
 
@@ -1021,11 +1034,11 @@ test('the short and portable palette forms render identically', () => {
     }
 });
 
-test('vendored palettes match PuzzleScriptNext colors.js, when it is beside us', () => {
-    // This file is a copy, so it can drift. Checked only when the engine repo
-    // is checked out as a sibling, the same way the demo-game sweep is.
+test('the map editor\'s palettes match PuzzleScriptNext colors.js', () => {
+    // src/palettes.js is generated from palettes/ alongside colors.js, so the
+    // two can only drift if one is regenerated without the other.
     const colorsJs = path.join(__dirname, '..', '..', 'src', 'js', 'colors.js');
-    if (!fs.existsSync(colorsJs)) return;
+    assert.ok(fs.existsSync(colorsJs), 'missing src/js/colors.js - is the map editor inside PuzzleScriptNext?');
     const text = fs.readFileSync(colorsJs, 'utf8');
     const body = text.slice(text.indexOf('colorPalettes = {'));
     const upstream = {};
@@ -1187,7 +1200,7 @@ test('a copy: on its own line draws the source with its transforms', () => {
 });
 
 test('real games: copy: lines in tapaban resolve to drawn sprites', () => {
-    const game = psgame.parseGame(fs.readFileSync(path.join(FIXTURES, 'games', 'tapaban.txt'), 'utf8'));
+    const game = psgame.parseGame(fs.readFileSync(demoFile('patt/tapaban.txt'), 'utf8'));
     const copies = game.objects.__blocks.filter(b => b.copyFrom);
     assert.ok(copies.length >= 20, `only ${copies.length} copy: objects`);
     const drawn = copies.filter(b => b.sprite);

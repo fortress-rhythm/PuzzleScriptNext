@@ -10,9 +10,9 @@ nothing at all.
 
 This is developed inside
 [fortress-rhythm/PuzzleScriptNext](https://github.com/fortress-rhythm/PuzzleScriptNext)
-as `puzzlescript-map-editor/`, where its test suite can reach the engine's
-demo games and palette table; the standalone repository is a copy of that
-folder. Either one works on its own.
+as `puzzlescript-map-editor/`, where its test suite reads the engine's demo
+games and palette table. That folder is the only copy; the standalone
+repository it was once mirrored to is archived.
 
 ---
 
@@ -338,12 +338,10 @@ npm test
 Covers the parser, all three bridges, the XLSX and `.xp` containers, and the
 round-trip guarantee. The corpus comes in four layers:
 
-- **`fixtures/games/`** — eight real games vendored into the repo, so the sweep
-  runs anywhere, including CI with nothing else checked out. They were chosen to
-  cover ragged levels, CRLF and LF endings, non-ASCII glyphs, comments inside
-  `LEVELS`, a 36-glyph palette and a 1x1 degenerate level. See
-  [`fixtures/games/NOTICE.md`](fixtures/games/NOTICE.md) for provenance and
-  licensing.
+- **Eight games from `../src/demo`**, picked for what they cover: ragged
+  levels, CRLF and LF endings, non-ASCII glyphs, comments inside `LEVELS`, a
+  36-glyph palette and a 1x1 degenerate level. They belong to their authors,
+  and their license is not confirmed - see `LICENSE` at the repository root.
 - **`fixtures/*.txt`** — synthetic files for cases no real game happens to
   contain: a legend built entirely from characters Excel treats as formulas
   (`=` `+` `-` `@` `,` `"` `\`), a `case_sensitive` game where `P` and `p`
@@ -375,15 +373,15 @@ src/rexbridge.js the REXPaint bridge, including the glyph mapping
 src/cli.js       the psmap command, including `check`
 src/serve.js     tiny static server for `npm start`; `--root` serves any folder
 web/             the browser editor (no build step): maps, sprites, palette sampler
-fixtures/        synthetic edge cases, plus vendored real games under games/
+fixtures/        synthetic edge cases
 ```
 
 ## Licence
 
 MIT, Copyright (c) 2026 fortress-rhythm. The colour palettes come from
 PuzzleScript Next. Its built-in palettes are MIT, and the ones by other artists
-keep their artists' terms: see `palettes/` in PuzzleScript Next. The test games in
-`fixtures/games/` belong to their authors, and their license is not confirmed:
-see [`fixtures/games/NOTICE.md`](fixtures/games/NOTICE.md). REXPaint is a
+keep their artists' terms: see `palettes/` in PuzzleScript Next. The real games
+the tests read come from PuzzleScript Next's `src/demo`, belong to their authors,
+and their license is not confirmed. REXPaint is a
 separate program by Grid Sage Games; this project only reads and writes its file
 format.

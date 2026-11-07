@@ -24,7 +24,6 @@ The [MIT license](LICENSE) covers the engine, editor and tools. The map editor a
 | `src/demo/` | Whole game scripts, used by the editor's examples, `play.html` and `npm run check:games` |
 | `src/tests/resources/` | Copies of games embedded as test data |
 | `src/Gallery/`, `src/games_dat*.js` | Animations and screenshots of games, with titles and authors |
-| `puzzlescript-map-editor/fixtures/games/` | Eight games used as test input: see its [NOTICE](puzzlescript-map-editor/fixtures/games/NOTICE.md) |
 
 **What upstream says.** [`src/demo/README`](src/demo/README) dates from the original PuzzleScript in 2013:
 
