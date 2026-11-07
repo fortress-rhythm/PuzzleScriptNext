@@ -168,11 +168,12 @@ npm start                    <span class="c">&lt;-- leave this terminal open</sp
     </tr>
   </table>
   <p>
-    That is the whole stack. <b><code>npm install</code> is not part of normal setup</b> — the map
+    That is the whole stack. <b>Installing packages is not part of normal setup</b> — the map
     editor has no dependencies at all and the Python tools are stdlib-only, so <code>npm start</code>,
     <code>npm test</code> and the palette checks all run on a fresh clone with nothing installed.
-    You need <code>npm install</code> for exactly one thing: <a href="#template">rebuilding the
-    standalone template and the minified <code>bin/</code></a>.
+    You need packages for exactly one thing: <a href="#template">the minified <code>bin/</code>
+    build</a>, and then install them with <code>npm ci</code>, not <code>npm install</code>.
+    <code>npm ci</code> installs exactly what <code>package-lock.json</code> says and never rewrites it.
   </p>
   <p class="fine">
     <code>package.json</code> declares Node&nbsp;16+ and CI runs Node&nbsp;22. Anything current is fine.
@@ -268,7 +269,7 @@ cd             <span class="c"># Windows cmd, no argument: prints the folder you
       <td>Needs <code>uv</code> on the PATH; the script finds its own data either way.</td>
     </tr>
     <tr>
-      <td><code>npm install</code>, <code>npm run build</code></td>
+      <td><code>npm ci</code>, <code>npm run build</code></td>
       <td>anywhere inside the repo</td>
       <td>Inside <code>puzzlescript-map-editor/</code> you would install <i>its</i> (empty)
           dependencies and find no <code>build</code> script.</td>
@@ -278,7 +279,8 @@ cd             <span class="c"># Windows cmd, no argument: prints the folder you
       <td><b>the repository root, and only there</b></td>
       <td>It writes <code>./bin</code> and <code>./src/standalone_inlined.txt</code> relative to the
           current folder. Run elsewhere it either crashes or quietly builds into the wrong place.
-          <code>npm run build</code> is the same thing, re-rooted for you.</td>
+          <code>npm run build</code> runs it re-rooted for you, and then puts the template back
+          byte for byte.</td>
     </tr>
     <tr>
       <td><code>uv run tools/palette_test.py</code></td>
@@ -371,17 +373,22 @@ npm run build:template    <span class="c"># rebuild it: no npm install, no nativ
     to the minified <code>bin/</code> site:
   </p>
   <pre><code>cd /path/to/PuzzleScriptNext     <span class="c"># the root; compile.js resolves ./src and ./bin from here</span>
-npm install                      <span class="c"># once</span>
-npm run build                    <span class="c"># = node compile.js</span></code></pre>
+npm ci                           <span class="c"># once; unlike npm install, it never rewrites package-lock.json</span>
+npm run build                    <span class="c"># compile.js, then build:template</span>
+git status --short               <span class="c"># prints nothing: bin/ is ignored, and nothing tracked changed</span></code></pre>
   <p>
-    That writes <code>./src/standalone_inlined.txt</code> (used by the editor you serve) and the
-    minified <code>./bin/standalone_inlined.txt</code>, alongside the whole optimised
-    <code>bin/</code> site.
+    That writes the whole optimised <code>bin/</code> site, including the minified
+    <code>./bin/standalone_inlined.txt</code>. <code>compile.js</code> also rewrites
+    <code>./src/standalone_inlined.txt</code>, with stray CRLFs, so <code>npm run build</code> runs
+    <code>build:template</code> straight after to put the committed bytes back. The editor in
+    <code>bin/</code> is labelled <code>build N+local</code>; <code>npm run build:release</code> bumps
+    the tracked counter in <code>.build/buildnumber.txt</code> instead, for a release.
   </p>
-  <p>
-    Watch <code>git status</code> afterwards: this build rewrites the committed template with CRLF line
-    endings in places, so it shows as modified even when nothing changed, and
-    <code>check:export</code> still passes. Run <code>npm run build:template</code> before committing.
+  <p class="fine">
+    To keep builds out of your working copy entirely, build in a second worktree:
+    <code>git worktree add ../PuzzleScriptNext-build master</code>, then <code>npm ci</code> and
+    <code>npm run build</code> there. It needs its own <code>npm ci</code> the first time, since
+    worktrees do not share <code>node_modules</code>.
   </p>
   <div class="box warn">
     <b class="tag">This build is the fragile part of the stack</b>

@@ -32,11 +32,19 @@ const glob = require("glob")
 //print all paths to all modules above
 var lines = fs.readFileSync(".build/buildnumber.txt", encoding = 'utf-8');
 var buildnum = parseInt(lines);
-buildnum++;
 // todo?
 //const date = new Date();
 //const buildnum = `${date.getFullYear()-2000}${date.getMonth()}${date.getDay()}`;
-fs.writeFileSync(".build/buildnumber.txt", buildnum.toString(), encoding = 'utf-8');
+// The build number is the release counter, and it is tracked: bump it only for
+// a release (`node compile.js --release`), so an ordinary build leaves the
+// checkout clean. A local build is labelled as following the last release.
+const release = process.argv.includes('--release');
+if (release) {
+    buildnum++;
+    fs.writeFileSync(".build/buildnumber.txt", buildnum.toString(), encoding = 'utf-8');
+} else {
+    buildnum = `${buildnum}+local`;
+}
 
 //#node-qunit-phantomjs  tests/tests.html --timeout 40
 console.log("===========================");
