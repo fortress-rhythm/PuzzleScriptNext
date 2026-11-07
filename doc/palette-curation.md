@@ -82,7 +82,7 @@ your desktop, point at your desktop.
 | `verdict` | `tools/palette_verdicts.json`, always | **yes** — it is the record of your decisions |
 | `fetch` | the `-o` directory; defaults to `./candidates` | no |
 | `palette_analysis.py --write` | `src/js/colors.js`, `src/demo/palette-refs.txt`, the map editor's `src/palettes.js` | **yes** — all three are generated from `palettes/` |
-| `sync_map_editor.py` | the vendored copy under `puzzlescript-map-editor/` | **yes** — see `doc/map-editor-sync.md` |
+| `sync_map_editor.py` | the standalone checkout, or with `--reverse` the copy here; idle while the standalone is archived | **yes** — see `doc/map-editor-sync.md` |
 
 Two of these write into the repository and it is worth being clear about which.
 

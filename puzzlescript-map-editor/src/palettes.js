@@ -1,9 +1,8 @@
 'use strict';
 
-// Colour palettes copied from PuzzleScriptNext src/js/colors.js so that this
-// project stays standalone. Keep in sync if upstream palettes change - the
-// test suite verifies this file against colors.js whenever PuzzleScriptNext is
-// checked out beside this repo, and skips the check when it is not.
+// Colour palettes copied from PuzzleScriptNext src/js/colors.js, so the browser
+// editor needs nothing from the engine. Keep in sync if upstream palettes
+// change - the test suite verifies this file against colors.js.
 //
 // The last ten are fork-only: PuzzleScript Next's palette-set extension adds
 // them at indices 15-24, and stock PuzzleScript has never heard the names.

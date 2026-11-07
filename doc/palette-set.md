@@ -22,7 +22,7 @@ to build, this one says what exists and how to add the next one.
 | `tools/palette_lib.py` | Shared colour maths and the `palettes/` reader, used by both tools | no |
 | `tools/palette_curate.py` | Rating *candidate* palettes — see `doc/palette-curation.md` | no |
 | `tools/palette_test.py` | Checks for both tools, including that every generated file above still matches `palettes/` | no |
-| `tools/sync_map_editor.py` | Keeps the vendored map editor in step with its own repository — see `doc/map-editor-sync.md` | no |
+| `tools/sync_map_editor.py` | Kept for the archived standalone map editor repository; idle while it stays archived — see `doc/map-editor-sync.md` | no |
 
 The three generated files are rewritten by one command:
 
@@ -144,11 +144,10 @@ reasoning.
    ```
    That includes `puzzlescript-map-editor/src/palettes.js` and its alias table.
    The map editor needs the entry or it draws the game in arnecolors and says
-   the palette is unknown; its own test suite catches that, but only when the
-   two repositories are checked out together. `--write` also updates the
-   standalone `puzzlescript-map-editor` checkout when it sits beside this one,
-   because that copy is the canonical one — `doc/map-editor-sync.md` explains
-   why the copy exists and what catches you when it drifts.
+   the palette is unknown, and its test suite checks the file against
+   `colors.js`. `--write` regenerates it with the rest, and only the copy in
+   this repository: the standalone repository is archived, see
+   `doc/map-editor-sync.md`.
 5. Add a credit in `prelude.html` and in `paletteCredits` in `palettes_ui.js`.
    These are the only two hand-edits left: everything else, the alias index
    included, comes from the palette file. The panel itself needs no change.

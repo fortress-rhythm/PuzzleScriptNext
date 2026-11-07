@@ -22,8 +22,8 @@ third-party material stored here.
 
 Not covered:
 
-- Example games by other authors: src/demo/, the copies of games in
-  src/tests/resources/, and puzzlescript-map-editor/fixtures/games/.
+- Example games by other authors: src/demo/, and the copies of games in
+  src/tests/resources/.
 - Gallery images and listings: src/Gallery/ and src/games_dat*.js.
 
 These belong to their authors. They came with the upstream repository and their

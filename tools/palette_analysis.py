@@ -298,8 +298,8 @@ def emit_block(name):
 
 # ------------------------------------------------------------- the map editor
 #
-# puzzlescript-map-editor carries its own copy of the palette table so it can
-# run standalone. It used to be copied across by hand, which is a step that
+# puzzlescript-map-editor carries its own copy of the palette table, so the
+# browser editor needs nothing from the engine. It used to be copied across by hand, which is a step that
 # gets skipped: the map editor then draws a game in arnecolors and says the
 # palette is unknown, and only its own test suite notices, and only when both
 # repositories happen to be checked out together.
@@ -407,8 +407,10 @@ def write_generated(root=None, dry_run=False):
     refs = os.path.join(root, "src", "demo", "palette-refs.txt")
     put(refs, emit_refs().rstrip("\n") + "\n")
 
-    for me in (os.path.join(root, "..", "puzzlescript-map-editor", "src", "palettes.js"),
-               os.path.join(root, "puzzlescript-map-editor", "src", "palettes.js")):
+    # Only the copy inside this repository. A sibling checkout of the archived
+    # standalone repository used to be written too, and a stale one could abort
+    # the run halfway, after colors.js had already been rewritten.
+    for me in (os.path.join(root, "puzzlescript-map-editor", "src", "palettes.js"),):
         me = os.path.normpath(me)
         if not os.path.exists(me):
             continue
