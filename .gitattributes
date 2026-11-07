@@ -1,0 +1,35 @@
+# Line endings. Two jobs, and a deliberate non-job:
+#
+# 1. The fork's own files are LF and stay LF on every OS, so a Windows editor
+#    or core.autocrlf=true cannot turn a checkout into hundreds of
+#    "modified" files that differ only in line endings.
+# 2. Test data is byte-exact on purpose (some of it is CRLF so the round-trip
+#    suite covers CRLF), so git must never convert it.
+#
+# Upstream's files (the rest of src/) are left alone: some are committed CRLF,
+# and normalising them would be a huge diff that conflicts with every upstream
+# merge.
+
+# scripts: the shell needs LF, cmd is happiest with CRLF
+*.sh                              text eol=lf
+*.bat                             text eol=crlf
+
+# fork-owned: always LF (text=auto still leaves any binary file alone)
+/.gitattributes                   text eol=lf
+/.github/**                       text=auto eol=lf
+/doc/**                           text=auto eol=lf
+/palettes/**                      text=auto eol=lf
+/tools/**                         text=auto eol=lf
+/credits/**                       text=auto eol=lf
+/puzzlescript-map-editor/**       text=auto eol=lf
+/index.html                       text eol=lf
+/README.md                        text eol=lf
+/LICENSE                          text eol=lf
+/package.json                     text eol=lf
+/package-lock.json                text eol=lf
+/compile.js                       text eol=lf
+
+# test data: never converted, whatever its endings
+/puzzlescript-map-editor/fixtures/** -text
+/src/demo/**                      -text
+/src/tests/**                     -text
