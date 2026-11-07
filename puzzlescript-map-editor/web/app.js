@@ -23,6 +23,7 @@
 
 const psgame = PSMap.psgame;
 const palettes = PSMap.palettes;
+const tf = PSMap.transform;
 const render = PSMapRender;
 
 // --------------------------------------------------------------------- state
@@ -49,6 +50,7 @@ const state = {
     currentSprite: 0,
     spriteGlyphs: {},
     spriteGlyphOrder: [],
+    colorsFrom: null,    // a block whose colours the sprite is previewed in, or null
 
     // Colours. `resolved` is what the game asked for; `paletteOverride` is the
     // sampler's choice, or null for the game's own.
@@ -64,7 +66,11 @@ const state = {
     drag: null,          // in-progress mouse operation
     clipboard: null,     // { w, h, rows: [string] }
     pasteAt: null,       // { x, y } while a paste ghost is following the cursor
+    floating: null,      // { clipboard } while a turned selection waits to be placed
     hover: null,
+    hoverFine: null,     // the cursor in cells, with the fraction, for a mirror line
+    axisHint: false,     // Shift held: show where Shift+H / Shift+V would mirror
+    sourceDirty: false,  // the source itself was rewritten (a new copy: object)
 
     undo: [],
     redo: [],
@@ -221,9 +227,12 @@ function loadSource(text, fileName) {
 
     state.currentLevel = 0;
     state.currentSprite = 0;
+    state.colorsFrom = null;
     state.selection = null;
     state.clipboard = null;
     state.pasteAt = null;
+    state.floating = null;
+    state.sourceDirty = false;
     state.undo.length = 0;
     state.redo.length = 0;
 
@@ -307,7 +316,7 @@ function buildSpriteGlyphs(sprite) {
     if (!sprite) return glyphs;
     const palette = state.resolved ? state.resolved.palette : {};
     glyphs['.'] = { char: '.', label: 'transparent', objects: [], renders: [], transparent: true, color: null };
-    sprite.block.colors.forEach((token, i) => {
+    previewColors(sprite).forEach((token, i) => {
         const ch = i.toString(36);
         const color = psgame.resolveColor(token, palette, true);
         glyphs[ch] = {
@@ -323,6 +332,40 @@ function buildSpriteGlyphs(sprite) {
 }
 
 function spriteGlyphLookup(ch) { return state.spriteGlyphs[ch]; }
+
+/** The colour list a sprite is drawn in: its own, or the one being previewed. */
+function previewColors(sprite) {
+    return (state.colorsFrom || sprite.block).colors;
+}
+
+/** A `copy:` object: drawn from another sprite, with no pixels of its own. */
+function isDerived(sprite) {
+    return !!(sprite && sprite.block && sprite.block.copyFrom);
+}
+
+/**
+ * Refuse an edit to something that cannot be edited here, and say why. A
+ * `copy:` object's drawing belongs to its source, so painting it would mean
+ * nothing on save.
+ */
+function guardEditable() {
+    const item = currentLevel();
+    if (inSprites() && isDerived(item)) {
+        setStatus(`"${item.name}" is drawn by copy: ${item.block.copyFrom} - edit ${item.block.copyFrom} instead`, true);
+        return false;
+    }
+    return true;
+}
+
+/** Redraw every copy: object from its source, after a source changed. */
+function refreshDerived() {
+    psgame.resolveCopies(state.game.objects);
+    for (const s of state.sprites) {
+        if (!isDerived(s)) continue;
+        const sp = s.block.sprite;
+        s.rows = sp ? sp.pixels.map(row => row.map(i => (i === null ? '.' : i.toString(36))).join('')) : [];
+    }
+}
 
 function refreshSpriteGlyphs() {
     state.spriteGlyphs = buildSpriteGlyphs(currentLevel());
@@ -350,6 +393,7 @@ function syncSpriteToGame(sprite) {
             if (obj.block === block) obj.sprite = matrix;
         }
     }
+    refreshDerived();
     rebuildGlyphs();
 }
 
@@ -386,6 +430,7 @@ function setMode(mode, silent) {
         return;
     }
     const changed = state.mode !== mode;
+    if (state.floating) cancelFloating();
     state.mode = mode;
     state.selection = null;
     state.pasteAt = null;
@@ -405,7 +450,8 @@ function setMode(mode, silent) {
         : 'Copy a rectangle in one level, switch to another, paste. The clipboard follows you.';
     el('copylevel').textContent = inSprites() ? 'Copy sprite as text' : 'Copy level as text';
 
-    if (inSprites()) refreshSpriteGlyphs();
+    el('spriteTools').classList.toggle('hidden', !inSprites());
+    if (inSprites()) { refreshSpriteGlyphs(); buildSpriteTools(); }
     else if (!(state.ink in state.glyphs)) state.ink = state.glyphOrder[0] || '.';
 
     if (!silent) {
@@ -593,7 +639,9 @@ function buildSpriteList(host) {
         text.innerHTML = '<span class="lv-name"></span><span class="lv-meta"></span>';
         text.querySelector('.lv-name').textContent = block.name
             + (block.aliases.length ? '  ' + block.aliases.join(' ') : '');
-        text.querySelector('.lv-meta').textContent = size
+        text.querySelector('.lv-meta').textContent = isDerived(sprite)
+            ? `copy: ${block.copyFrom}${block.transforms.length ? ' ' + tf.formatTransforms(block.transforms) : ''}`
+            : size
             ? `${size.w}×${size.h}  ${block.colors.length} colour${block.colors.length === 1 ? '' : 's'}`
             : (block.colors.some(c => c.toLowerCase() !== 'transparent') ? 'solid - click to draw one' : 'invisible');
         button.appendChild(text);
@@ -663,13 +711,16 @@ function selectLevel(i) {
     const list = currentList();
     if (i < 0 || i >= list.length) return;
     const same = i === currentIndex();
+    if (state.floating) cancelFloating();
     setCurrentIndex(i);
     state.selection = null;
     state.pasteAt = null;
     if (inSprites()) {
-        if (!list[i].rows.length) addMatrixToSprite(list[i]);
+        if (!list[i].rows.length && !isDerived(list[i])) addMatrixToSprite(list[i]);
         refreshSpriteGlyphs();
         buildPalette();
+        buildSpriteTools();
+        if (isDerived(list[i])) describeDerived(list[i]);
     } else if (same) {
         return;
     }
@@ -716,9 +767,10 @@ function refreshChrome() {
     const level = currentLevel();
     if (!level) return;
     const size = levelSize(level);
-    el('levelTitle').textContent = inSprites()
-        ? `${level.name}  ·  ${level.block.colors.join(' ')}`
-        : level.name;
+    el('levelTitle').textContent = !inSprites() ? level.name
+        : isDerived(level)
+        ? `${level.name}  ·  copy: ${level.block.copyFrom} ${tf.formatTransforms(level.block.transforms)}  ·  read-only`
+        : `${level.name}  ·  ${previewColors(level).join(' ')}`;
     const expected = state.game ? state.game.spriteSize : 5;
     const off = inSprites() && (size.w !== expected || size.h !== expected);
     el('sizeBadge').textContent = `${size.w} × ${size.h}` + (off ? `  (sprite_size is ${expected})` : '');
@@ -800,6 +852,22 @@ function drawOverlay(cell, w, h) {
         outline({ x0: state.hover.x, y0: state.hover.y, x1: state.hover.x, y1: state.hover.y },
             cell, 'rgba(255,255,255,0.55)', null);
     }
+
+    // With Shift held, the two lines Shift+H and Shift+V would mirror across,
+    // snapped to a cell's centre or edge, whichever the cursor is nearer.
+    if (state.axisHint && state.hoverFine) {
+        const ax = Math.round(state.hoverFine.x * 2) / 2 * cell;
+        const ay = Math.round(state.hoverFine.y * 2) / 2 * cell;
+        ctx.save();
+        ctx.strokeStyle = '#ffb454';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([6, 4]);
+        ctx.beginPath();
+        ctx.moveTo(ax, 0); ctx.lineTo(ax, h * cell);
+        ctx.moveTo(0, ay); ctx.lineTo(w * cell, ay);
+        ctx.stroke();
+        ctx.restore();
+    }
 }
 
 function outline(sel, cell, color, dash) {
@@ -850,10 +918,11 @@ canvas.addEventListener('mousedown', (event) => {
 
     // Pasting takes precedence over every tool: click to commit.
     if (state.pasteAt && state.clipboard) {
-        commitPaste(state.pasteAt.x, state.pasteAt.y);
+        if (guardEditable()) commitPaste(state.pasteAt.x, state.pasteAt.y);
         return;
     }
     if (!inBounds(level, point.x, point.y)) return;
+    if (['brush', 'rect', 'line', 'fill'].includes(state.tool) && !guardEditable()) return;
 
     // Right-click always paints the background, whatever the tool.
     const erase = event.button === 2;
@@ -892,6 +961,10 @@ canvas.addEventListener('mousemove', (event) => {
     if (!level) return;
     const point = cellFromEvent(event);
     state.hover = inBounds(level, point.x, point.y) ? point : null;
+    const rect = canvas.getBoundingClientRect();
+    state.hoverFine = state.hover
+        ? { x: (event.clientX - rect.left) / state.cell, y: (event.clientY - rect.top) / state.cell }
+        : null;
 
     if (state.hover) {
         const ch = getCell(level, point.x, point.y);
@@ -955,7 +1028,7 @@ window.addEventListener('mouseup', () => {
 });
 
 canvas.addEventListener('contextmenu', e => e.preventDefault());
-canvas.addEventListener('mouseleave', () => { state.hover = null; el('cursor').textContent = ''; draw(); });
+canvas.addEventListener('mouseleave', () => { state.hover = null; state.hoverFine = null; el('cursor').textContent = ''; draw(); });
 
 function drawLine(level, x0, y0, x1, y1, ch) {
     // Bresenham, so diagonal walls come out as clean single-tile runs.
@@ -993,6 +1066,7 @@ function copySelection(cut) {
     const level = currentLevel();
     const sel = state.selection;
     if (!sel) { setStatus('Select a rectangle first', true); return; }
+    if (cut && !guardEditable()) return;
 
     const rows = [];
     for (let y = sel.y0; y <= sel.y1; y++) {
@@ -1053,6 +1127,11 @@ function commitPaste(ox, oy) {
 
     state.pasteAt = null;
     state.selection = { x0: ox, y0: oy, x1: ox + clip.w - 1, y1: oy + clip.h - 1 };
+    if (state.floating) {
+        // A turned selection has landed: give back whatever was on the clipboard.
+        state.clipboard = state.floating.clipboard;
+        state.floating = null;
+    }
     setStatus(clipped
         ? `pasted ${placed} tiles, ${clipped} fell outside the level`
         : `pasted ${clip.w}×${clip.h}`, clipped > 0);
@@ -1062,7 +1141,7 @@ function commitPaste(ox, oy) {
 function clearSelection() {
     const level = currentLevel();
     const sel = state.selection;
-    if (!sel) return;
+    if (!sel || !guardEditable()) return;
     pushUndo('clear');
     for (let y = sel.y0; y <= sel.y1; y++) {
         for (let x = sel.x0; x <= sel.x1; x++) setCell(level, x, y, eraseChar());
@@ -1071,10 +1150,280 @@ function clearSelection() {
     fullRefresh();
 }
 
+// --------------------------------------------------------------- transforms
+
+const XF_LABELS = {
+    flipH: 'mirror left-right', flipV: 'mirror top-bottom',
+    rotCW: 'turn clockwise', rotCCW: 'turn anticlockwise',
+    transpose: 'mirror across \\', antiTranspose: 'mirror across /',
+};
+
+/** The cells of a selection as rows; anything past a ragged row's end reads as erase. */
+function regionRows(level, sel) {
+    const rows = [];
+    for (let y = sel.y0; y <= sel.y1; y++) {
+        let row = '';
+        for (let x = sel.x0; x <= sel.x1; x++) {
+            const ch = getCell(level, x, y);
+            row += ch === undefined ? eraseChar() : ch;
+        }
+        rows.push(row);
+    }
+    return rows;
+}
+
+function writeRegion(level, sel, rows) {
+    for (let y = 0; y < rows.length; y++) {
+        for (let x = 0; x < rows[y].length; x++) setCell(level, sel.x0 + x, sel.y0 + y, rows[y][x]);
+    }
+}
+
+/**
+ * Apply a grid transform to whatever is in hand, in this order:
+ *   - the paste ghost, while one is showing - so a stamp can be turned before
+ *     it is placed, and nothing is written until it is;
+ *   - the selection, in place. A quarter turn or a diagonal mirror of a
+ *     non-square selection cannot fit back where it was, so it is lifted out
+ *     and left floating as a paste: click to place, Escape to put it back;
+ *   - otherwise the whole grid. A ragged level is padded first, since a
+ *     mirror of rows of different lengths has no single answer.
+ */
+function transformGrid(label, fn) {
+    const level = currentLevel();
+    if (!level || !guardEditable()) return;
+
+    if (state.pasteAt && state.clipboard) {
+        const rows = fn(state.clipboard.rows);
+        state.clipboard = { w: rows.length ? rows[0].length : 0, h: rows.length, rows };
+        setStatus(`${label}: the paste`);
+        draw();
+        return;
+    }
+
+    const sel = state.selection;
+    if (!sel) {
+        const ragged = new Set(level.rows.map(r => r.length)).size > 1;
+        pushUndo(label);
+        level.rows = fn(tf.pad(level.rows, eraseChar()));
+        afterEdit();
+        state.selection = null;
+        fullRefresh();
+        setStatus(label + (ragged ? `: the ragged rows were padded with "${eraseChar()}" first` : ''), ragged);
+        return;
+    }
+
+    const region = regionRows(level, sel);
+    const out = fn(region);
+    if (out.length !== region.length || (out[0] || '').length !== region[0].length) {
+        pushUndo(label);
+        writeRegion(level, sel, region.map(r => eraseChar().repeat(r.length)));
+        afterEdit();
+        state.floating = { clipboard: state.clipboard };
+        state.clipboard = { w: out[0].length, h: out.length, rows: out };
+        state.pasteAt = { x: sel.x0, y: sel.y0 };
+        state.selection = null;
+        fullRefresh();
+        setStatus(`${label}: the shape changed, so it is floating - click to place it, Escape puts it back`);
+        return;
+    }
+    pushUndo(label);
+    writeRegion(level, sel, out);
+    afterEdit();
+    fullRefresh();
+    setStatus(`${label}: the selection`);
+}
+
+function applyOp(op) {
+    transformGrid(XF_LABELS[op], tf.OPERATIONS[op]);
+}
+
+/** Shift on a torus: what leaves one edge comes back at the other. */
+function wrapShift(dx, dy) {
+    const arrow = dx < 0 ? '←' : dx > 0 ? '→' : dy < 0 ? '↑' : '↓';
+    transformGrid(`wrap ${arrow}`, rows => tf.shift(rows, dx, dy));
+}
+
+/**
+ * Mirror across the line under the cursor rather than the centre. The line
+ * snaps to a cell's centre or its edge, whichever is nearer (hold Shift to
+ * see it), and the mirror image wraps round where it would fall off.
+ */
+function flipAcrossCursor(direction) {
+    const f = state.hoverFine;
+    if (!f) {
+        setStatus('Point at where the mirror line should go, then press Shift+H or Shift+V', true);
+        return;
+    }
+    const origin = state.pasteAt ? state.pasteAt
+        : state.selection ? { x: state.selection.x0, y: state.selection.y0 }
+        : { x: 0, y: 0 };
+    const vertical = direction === 'vertical';
+    const axis2 = Math.round((vertical ? f.x : f.y) * 2) - 2 * (vertical ? origin.x : origin.y);
+    const where = (axis2 % 2 ? `the middle of ${vertical ? 'column' : 'row'} ` : `the edge before ${vertical ? 'column' : 'row'} `)
+        + Math.ceil(axis2 / 2);
+    transformGrid(`${vertical ? 'mirror left-right' : 'mirror top-bottom'} across ${where}`,
+        rows => tf.flipAcross(rows, direction, axis2));
+}
+
+/** Put a lifted selection back as it was, and the clipboard with it. */
+function cancelFloating() {
+    const floating = state.floating;
+    state.floating = null;
+    state.pasteAt = null;
+    state.clipboard = floating.clipboard;
+    undo();
+}
+
+// ------------------------------------------------------- sprite: colours, copy:
+
+/**
+ * The "Colours of" picker: draw the sprite you are on with another object's
+ * colour list. That is what `copy:` is for - one drawing, several colourings -
+ * so this shows what a copy would look like before it exists. The file is not
+ * touched, and painting still writes colour indices, which mean the same thing
+ * in either list.
+ */
+function buildSpriteTools() {
+    const select = el('colorsFrom');
+    const sprite = currentLevel();
+    if (!sprite || !sprite.block) return;
+    select.innerHTML = '';
+    const own = document.createElement('option');
+    own.value = '';
+    own.textContent = 'its own';
+    select.appendChild(own);
+    state.game.blocks.forEach((block, i) => {
+        if (block === sprite.block || !block.colors.length) return;
+        const option = document.createElement('option');
+        option.value = String(i);
+        option.textContent = `${block.name}: ${block.colors.join(' ')}`;
+        select.appendChild(option);
+    });
+    const index = state.colorsFrom ? state.game.blocks.indexOf(state.colorsFrom) : -1;
+    select.value = index >= 0 && state.colorsFrom !== sprite.block ? String(index) : '';
+    describeColors();
+}
+
+/** Say what the preview means, and which pixels the borrowed list cannot colour. */
+function describeColors() {
+    const sprite = currentLevel();
+    const note = el('colorsNote');
+    if (!state.colorsFrom || !sprite || state.colorsFrom === sprite.block) {
+        note.textContent = 'Preview this drawing in another object\'s colours, as a copy: object would draw it.';
+        return;
+    }
+    const n = state.colorsFrom.colors.length;
+    let missing = 0;
+    for (const row of sprite.rows) for (const ch of row) if (ch !== '.' && parseInt(ch, 36) >= n) missing++;
+    note.textContent = `Showing ${sprite.name} in ${state.colorsFrom.name}'s colours. Nothing in the file has changed.`
+        + (missing ? ` ${missing} pixel(s) use a colour index ${state.colorsFrom.name} does not have.` : '');
+}
+
+function setColorsFrom(value) {
+    state.colorsFrom = value === '' ? null : state.game.blocks[Number(value)];
+    el('colorsFrom').value = value;
+    refreshSpriteGlyphs();
+    buildPalette();
+    describeColors();
+    refreshChrome();
+    draw();
+}
+
+/** Tell someone opening a copy: object where its drawing actually lives. */
+function describeDerived(sprite) {
+    const d = sprite.block.derived || {};
+    const parts = [`"${sprite.name}" is copy: ${sprite.block.copyFrom}`];
+    if (!d.found) parts.push(d.cycle ? 'which copies back to itself' : 'which this file does not define');
+    else if (!sprite.rows.length) parts.push('whose source has no drawing of its own');
+    if (d.ignored && d.ignored.length) parts.push(`not previewed: ${d.ignored.map(i => i.token).join(' ')}`);
+    setStatus(parts.join(' - ') + '. Read-only here: edit the source.', !d.found || (d.ignored && d.ignored.length));
+}
+
+function uniqueObjectName(base) {
+    const taken = name => !!state.game.objects[name.toLowerCase()];
+    if (!taken(base)) return base;
+    for (let n = 2; ; n++) if (!taken(base + n)) return base + n;
+}
+
+function openCopyForm() {
+    const sprite = currentLevel();
+    if (!inSprites() || !sprite) return;
+    el('copyName').value = uniqueObjectName(sprite.name.replace(/[^\p{L}\p{N}_$:]/gu, '') + 'Copy');
+    el('copyColors').value = previewColors(sprite).join(' ');
+    el('copyTransform').value = '';
+    el('copyForm').classList.remove('hidden');
+    el('copyName').focus();
+    el('copyName').select();
+}
+
+/** The collision-layer line that names `name`, so a new object can join it. */
+function findLayerLine(names) {
+    const section = state.game.sections.find(s => s.name === 'collisionlayers');
+    if (!section) return null;
+    // A layer may name the object, or a tag class or property that includes
+    // it (`GridLines:directions`), so expand each name the way the legend does.
+    const wanted = new Set(names.map(n => n.toLowerCase()));
+    const covers = tok => wanted.has(tok.toLowerCase())
+        || psgame.resolveNames(state.game, tok).some(n => wanted.has(n.toLowerCase()));
+    for (let i = section.start; i < section.end; i++) {
+        const code = state.game.stripped[i].code;
+        if (code.trim().split(/[\s,]+/).filter(Boolean).some(covers)) {
+            const raw = state.game.lines[i];
+            const end = raw.indexOf(code.trim()) + code.trim().length;
+            return { line: i, text: raw.slice(0, end) + ', %NAME%' + raw.slice(end) };
+        }
+    }
+    return null;
+}
+
+/**
+ * Add a `copy:` object after the one being shown: a name, its own colours,
+ * and a transform line `copy:Source flip:right`. It joins its source's
+ * collision layer, because the engine refuses an object in none.
+ *
+ * The source is rewritten and reloaded rather than patched in place, since a
+ * new object shifts every line below it. Pending edits are written in first,
+ * so nothing is lost - but undo starts again from here.
+ */
+function addCopyObject(name, transformText, colorsText) {
+    const sprite = currentLevel();
+    const block = sprite.block;
+    name = name.trim();
+    if (!/^[\p{L}\p{N}_$]+(:[\p{L}\p{N}_$]+)*$/u.test(name)) {
+        setStatus('An object name is letters, digits, _ and $, with : between tag parts', true);
+        return false;
+    }
+    if (state.game.objects[name.toLowerCase()]) {
+        setStatus(`There is already an object called "${name}"`, true);
+        return false;
+    }
+    const colors = colorsText.trim().split(/\s+/).filter(Boolean);
+    if (!colors.length) { setStatus('A copy: object needs at least one colour', true); return false; }
+
+    const edits = collectEdits();
+    const line = ['copy:' + block.name, transformText].filter(Boolean).join(' ');
+    edits.push({ startLine: block.lastLine + 1, lineCount: 0, rows: ['', name, colors.join(' '), line] });
+    const layer = findLayerLine(block.names || [block.name]);
+    if (layer) edits.push({ startLine: layer.line, lineCount: 1, rows: [layer.text.replace('%NAME%', name)] });
+
+    const text = psgame.applyGridEdits(state.game, edits);
+    const keep = { palette: state.paletteOverride, fileName: state.fileName };
+    if (!loadSource(text, keep.fileName)) return false;
+    state.sourceDirty = true;
+    if (keep.palette) applyPalette(keep.palette);
+    setMode('sprites');
+    const index = state.sprites.findIndex(s => s.name === name);
+    if (index >= 0) selectLevel(index);
+    setStatus(`Added ${name} (${line})` + (layer ? ` to ${block.name}'s collision layer` : ' - add it to a collision layer yourself')
+        + '. Give it a legend glyph to use it in a map. Undo history starts again here.', !layer);
+    return true;
+}
+
 // ------------------------------------------------------------------ resize
 
 function resize(action) {
     const level = currentLevel();
+    if (!guardEditable()) return;
     const { w, h } = levelSize(level);
     const bg = eraseChar();
 
@@ -1115,14 +1464,14 @@ function resize(action) {
  * than regenerating the file. Sprite edits go the same way: an object's matrix
  * rows are a line range in OBJECTS.
  */
-function buildOutput() {
+function collectEdits() {
     const edits = state.levels
         .filter(l => l.edited)
         .map(l => (l.isNew
             ? { insertAfterLine: l.insertAfterLine, rows: l.rows }
             : { gridIndex: l.gridIndex, rows: l.rows }));
     for (const s of state.sprites) {
-        if (!s.edited || !s.rows.length) continue;
+        if (!s.edited || !s.rows.length || isDerived(s)) continue;
         const b = s.block;
         if (b.spriteLines && b.spriteLines.length && !s.isNew) {
             edits.push({ startLine: b.spriteLines[0], lineCount: b.spriteLines.length, rows: s.rows, indent: b.indent || '' });
@@ -1130,7 +1479,11 @@ function buildOutput() {
             edits.push({ startLine: b.spriteInsertAfterLine + 1, lineCount: 0, rows: s.rows });
         }
     }
-    return psgame.applyGridEdits(state.game, edits);
+    return edits;
+}
+
+function buildOutput() {
+    return psgame.applyGridEdits(state.game, collectEdits());
 }
 
 /**
@@ -1196,7 +1549,8 @@ function save() {
 
     const changedLevels = state.levels.filter(l => l.edited).length;
     const changedSprites = state.sprites.filter(s => s.edited).length;
-    setStatus(`saved ${state.fileName} (${changedLevels} level(s), ${changedSprites} sprite(s) changed)`);
+    setStatus(`saved ${state.fileName} (${changedLevels} level(s), ${changedSprites} sprite(s) changed`
+        + `${state.sourceDirty ? ', new objects added' : ''})`);
 }
 
 // ---------------------------------------------------------------- keyboard
@@ -1235,6 +1589,7 @@ window.addEventListener('keydown', (event) => {
                 canvas.focus();
                 return;
             }
+            if (state.floating) { cancelFloating(); setStatus('put back'); return; }
             state.pasteAt = null;
             state.selection = null;
             el('selInfo').textContent = '';
@@ -1258,6 +1613,21 @@ window.addEventListener('keydown', (event) => {
             return;
     }
 
+    // Transforms. Shift+arrows wrap; Shift+H / Shift+V mirror across the line
+    // under the cursor; Shift+D is the other diagonal.
+    if (event.shiftKey && event.key.startsWith('Arrow')) {
+        const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[event.key];
+        wrapShift(d[0], d[1]);
+        event.preventDefault();
+        return;
+    }
+    const lower = event.key.toLowerCase();
+    if (event.shiftKey && lower === 'h') { flipAcrossCursor('vertical'); return; }
+    if (event.shiftKey && lower === 'v') { flipAcrossCursor('horizontal'); return; }
+    if (event.shiftKey && lower === 'd') { applyOp('antiTranspose'); return; }
+    const ops = { h: 'flipH', v: 'flipV', q: 'rotCCW', e: 'rotCW', d: 'transpose' };
+    if (!event.shiftKey && ops[lower]) { applyOp(ops[lower]); return; }
+
     const tools = { m: 'select', b: 'brush', r: 'rect', l: 'line', g: 'fill', i: 'pick' };
     const tool = tools[event.key.toLowerCase()];
     if (tool) { state.tool = tool; refreshChrome(); return; }
@@ -1270,6 +1640,15 @@ window.addEventListener('keydown', (event) => {
     }
 });
 
+// Holding Shift shows the mirror lines Shift+H and Shift+V would use.
+window.addEventListener('keydown', (event) => {
+    if (event.key === 'Shift' && !state.axisHint && state.game) { state.axisHint = true; draw(); }
+});
+window.addEventListener('keyup', (event) => {
+    if (event.key === 'Shift' && state.axisHint) { state.axisHint = false; draw(); }
+});
+window.addEventListener('blur', () => { if (state.axisHint) { state.axisHint = false; draw(); } });
+
 // ------------------------------------------------------------------- wiring
 
 for (const button of document.querySelectorAll('.tool')) {
@@ -1281,6 +1660,23 @@ for (const button of document.querySelectorAll('.mode')) {
 for (const button of document.querySelectorAll('[data-resize]')) {
     button.addEventListener('click', () => resize(button.dataset.resize));
 }
+for (const button of document.querySelectorAll('[data-xf]')) {
+    button.addEventListener('click', () => { applyOp(button.dataset.xf); canvas.focus(); });
+}
+for (const button of document.querySelectorAll('[data-wrap]')) {
+    const [dx, dy] = button.dataset.wrap.split(',').map(Number);
+    button.addEventListener('click', () => { wrapShift(dx, dy); canvas.focus(); });
+}
+el('colorsFrom').addEventListener('change', (e) => setColorsFrom(e.target.value));
+el('newCopy').addEventListener('click', openCopyForm);
+el('copyCancel').addEventListener('click', () => { el('copyForm').classList.add('hidden'); canvas.focus(); });
+el('copyForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (addCopyObject(el('copyName').value, el('copyTransform').value, el('copyColors').value)) {
+        el('copyForm').classList.add('hidden');
+        canvas.focus();
+    }
+});
 
 el('undo').addEventListener('click', undo);
 el('redo').addEventListener('click', redo);
@@ -1380,7 +1776,7 @@ el('demoNext').addEventListener('click', () => loadExample('nextsyntax.txt'));
 })();
 
 window.addEventListener('beforeunload', (event) => {
-    if (state.levels.some(l => l.edited) || state.sprites.some(s => s.edited)) {
+    if (state.sourceDirty || state.levels.some(l => l.edited) || state.sprites.some(s => s.edited)) {
         event.preventDefault();
         event.returnValue = '';
     }
@@ -1389,6 +1785,7 @@ window.addEventListener('beforeunload', (event) => {
 // Exposed for the test page.
 window.PSMapEditor = { state, loadSource, buildOutput, currentLevelText, copyCurrentLevel,
     addMapToSection, copySelection, beginPaste, commitPaste, resize, undo, redo, fitZoom,
-    setMode, selectLevel, applyPalette, setInk };
+    setMode, selectLevel, applyPalette, setInk, applyOp, wrapShift, transformGrid, flipAcrossCursor,
+    setColorsFrom, addCopyObject, cancelFloating };
 
 })();

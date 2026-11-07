@@ -28,6 +28,16 @@
     <button class="tool" data-tool="pick"   title="Eyedropper (I)">◎<span>pick</span></button>
   </div>
 
+  <!-- Transforms act on the selection, else the whole grid, else the paste ghost while one is showing. -->
+  <div class="tools transforms" role="toolbar" aria-label="Transform">
+    <button class="tool xf" data-xf="flipH" title="Mirror left-right (H). Shift+H: across the line under the cursor, wrapping">⇆</button>
+    <button class="tool xf" data-xf="flipV" title="Mirror top-bottom (V). Shift+V: across the line under the cursor, wrapping">⇅</button>
+    <button class="tool xf" data-xf="rotCCW" title="Turn a quarter anticlockwise (Q)">⟲</button>
+    <button class="tool xf" data-xf="rotCW" title="Turn a quarter clockwise (E)">⟳</button>
+    <button class="tool xf" data-xf="transpose" title="Mirror across the \ diagonal (D)">⤡</button>
+    <button class="tool xf" data-xf="antiTranspose" title="Mirror across the / diagonal (Shift+D)">⤢</button>
+  </div>
+
   <div class="spacer"></div>
 
   <div class="actions">
@@ -50,6 +60,35 @@
     <h2 id="tilesTitle">Tiles</h2>
     <div id="palette" class="palette"></div>
     <div class="hint" id="paletteHint"></div>
+
+    <div id="spriteTools" class="sprite-tools hidden">
+      <h2 class="with-control">
+        <span>Colours of</span>
+        <select id="colorsFrom" title="Draw this sprite with another object's colour list - the file is not changed"></select>
+      </h2>
+      <div class="hint" id="colorsNote"></div>
+      <div class="palette-actions">
+        <button id="newCopy" title="Add an object drawn from this sprite with copy:, with its own colours and optionally a mirror or turn">New copy: object&hellip;</button>
+      </div>
+      <form id="copyForm" class="copy-form hidden">
+        <label>Name <input id="copyName" autocomplete="off" spellcheck="false"></label>
+        <label>Transform
+          <select id="copyTransform">
+            <option value="">none - same drawing</option>
+            <option value="flip:right">mirrored left-right (flip:right)</option>
+            <option value="flip:down">mirrored top-bottom (flip:down)</option>
+            <option value="rot:up:right">turned clockwise (rot:up:right)</option>
+            <option value="rot:up:down">turned half (rot:up:down)</option>
+            <option value="rot:up:left">turned anticlockwise (rot:up:left)</option>
+          </select>
+        </label>
+        <label>Colours <input id="copyColors" autocomplete="off" spellcheck="false"></label>
+        <div class="palette-actions">
+          <button type="submit" class="primary">Add</button>
+          <button type="button" id="copyCancel">Cancel</button>
+        </div>
+      </form>
+    </div>
 
     <h2 class="with-control">
       <span>Palette</span>
@@ -80,6 +119,11 @@
         <button data-resize="col-add-left" title="Add column at left">+←</button>
         <button data-resize="col-add-right" title="Add column at right">+→</button>
         <button data-resize="col-remove-right" title="Remove right column">−→</button>
+        <span>wrap</span>
+        <button data-wrap="-1,0" title="Shift everything left one cell; the left edge wraps round to the right (Shift+←)">⇠</button>
+        <button data-wrap="0,-1" title="Shift everything up one cell, wrapping (Shift+↑)">⇡</button>
+        <button data-wrap="0,1" title="Shift everything down one cell, wrapping (Shift+↓)">⇣</button>
+        <button data-wrap="1,0" title="Shift everything right one cell, wrapping (Shift+→)">⇢</button>
       </div>
     </div>
 
@@ -141,6 +185,7 @@
 </section>
 
 <script src="../src/palettes.js"></script>
+<script src="../src/transform.js"></script>
 <script src="../src/psgame.js"></script>
 <script src="render.js"></script>
 <script src="app.js"></script>

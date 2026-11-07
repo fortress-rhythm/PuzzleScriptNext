@@ -97,6 +97,42 @@ turns red if a sprite is not `sprite_size` square, since the engine will
 refuse it. **Download .txt** splices only the changed rows back, the same
 way it does for levels.
 
+### Turning, mirroring and wrapping
+
+Both workspaces have the same transforms. They act on the selection if there
+is one, otherwise on the whole grid, and while a paste ghost is showing they
+turn the ghost instead, so a stamp can be turned before it is placed.
+
+| Key | Button | Does |
+|---|---|---|
+| `H` / `V` | ⇆ ⇅ | mirror left-right / top-bottom |
+| `Shift+H` / `Shift+V` | | mirror across the line under the cursor instead of the centre, wrapping round where the image would fall off. Hold `Shift` to see the line; it snaps to a cell's centre or its edge |
+| `Q` / `E` | ⟲ ⟳ | a quarter turn anticlockwise / clockwise |
+| `D` / `Shift+D` | ⤡ ⤢ | mirror across the `\` / `/` diagonal |
+| `Shift+arrows` | wrap ⇠ ⇡ ⇣ ⇢ | shift one cell on a torus: what leaves one edge comes back at the other |
+
+A quarter turn or a diagonal mirror of a selection that is not square cannot
+fit back where it was, so it lifts out as a floating paste: click to place it,
+`Escape` to put it back. Turning a whole level that is ragged pads its short
+rows first, and says so.
+
+### Copies and colourings
+
+An object written `copy: Arrow flip:right` is drawn from `Arrow`'s matrix with
+its own colours, its transforms applied the way the engine applies them. In
+the Sprites list it shows its source and transforms, and it is read-only:
+its pixels belong to the source, so edit that, and every copy follows.
+Transforms that only make sense per expansion of a tagged object
+(`rot:down:>`) are not previewed, and the status bar says which.
+
+**Colours of** draws the sprite you are on with another object's colour list,
+without touching the file - what a copy would look like before it exists. It
+counts the pixels whose colour index the other list does not have.
+**New copy: object** then makes one: a name, a mirror or turn, and the
+colours, written after the current object as a `copy:` line and added to its
+source's collision layer (the engine refuses an object in none). The game is
+reloaded from the rewritten source, so undo starts again from there.
+
 ### The palette sampler
 
 The **Palette** dropdown in the left panel redraws the whole game — tiles,
@@ -188,9 +224,11 @@ Dark:Shade                                  a tag class from the TAGS section
 
 A `TAGS` section is read, `Roach:directions` in the legend or the layers
 expands to every roach, and a comment between a `section` heading and its map
-is a comment. Sprites defined by `copy:` borrow the source matrix; other
-transforms (`rot:`, `flip:`) draw the base sprite unturned, which is enough to
-tell which object is which.
+is a comment. Sprites defined by `copy:` - on the header or, as most games
+write it, on a line of its own under the colours - draw the source's matrix
+with their `flip:`, `rot:` and `shift:` applied. An object with its own matrix
+and a `rot:` still draws that matrix unturned, which is enough to tell which
+object is which.
 
 ---
 
@@ -326,6 +364,8 @@ src/psgame.js    parses OBJECTS, LEGEND, COLLISIONLAYERS and LEVELS,
                  keeping source line ranges so edits can be spliced back
 src/palettes.js  colour palettes copied from PuzzleScript Next, and the
                  resolver that turns a color_palette line into real colours
+src/transform.js rotate, mirror and wrap for a grid, and the engine's own
+                 flip:/rot:/shift: for drawing copy: objects
 src/xlsx.js      dependency-free XLSX reader/writer (inline strings, fills)
 src/csv.js       RFC 4180 CSV/TSV
 src/sheet.js     the spreadsheet bridge

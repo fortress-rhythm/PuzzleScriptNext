@@ -49,6 +49,12 @@ const PRELUDE_TEXT_PARAMS = ['title', 'author', 'homepage', 'custom_font', 'text
 // header line ends the run of names and glyphs.
 const RE_OBJECT_MODIFIER = /^(canvas|copy|flip|rot|scale|shift|text|translate):/i;
 
+// The transforms live in their own module so the web editor can use them on a
+// selection too. A plain <script> in the browser, require() under node.
+const transform = (typeof module !== 'undefined' && module.exports)
+    ? require('./transform')
+    : globalThis.PSMap.transform;
+
 // Tags every game has without declaring them, from parser.js's initial state.
 const BUILTIN_TAGS = {
     directions: ['up', 'right', 'down', 'left'],
@@ -291,6 +297,7 @@ function parseObjectHeader(text, commentStyle) {
         aliases,
         inlineColors,
         copyFrom: copy ? copy[1] : null,
+        modifiers,
         hasTransforms: i < tokens.length,
     };
 }
@@ -347,14 +354,27 @@ function parseObjects(lines, stripped, section, tags, commentStyle) {
             const spriteRows = block.slice(spriteStart)
                 .filter(r => !RE_OBJECT_MODIFIER.test(r.code.trim()));
             const sprite = parseSpriteMatrix(spriteRows.map(r => r.code));
+            // The transforms, in the order the engine applies them: the header's
+            // first, then each transform line. Most games write `copy:` on a
+            // line of its own under the colours, not on the header. On the header
+            // `|` and `-` are glyphs, so only a transform line reads them as mirrors.
+            const fromHeader = transform.parseTransformTokens(header.modifiers, { allowBars: false });
+            const fromLines = block.slice(spriteStart)
+                .filter(r => RE_OBJECT_MODIFIER.test(r.code.trim()))
+                .map(r => transform.parseTransformTokens(r.code));
+            const parsed = [fromHeader, ...fromLines];
+            const copyFrom = parsed.map(x => x.copyFrom).filter(Boolean).pop() || null;
             const entry = {
                 name: header.name,
                 aliases: header.aliases,
                 colors,
                 sprite,
                 names: [header.name, ...header.aliases],
-                copyFrom: header.copyFrom,
+                copyFrom,
+                transforms: [].concat(...parsed.map(x => x.transforms)),
+                transformsIgnored: [].concat(...parsed.map(x => x.ignored)),
                 headerLine: block[0].line,
+                lastLine: block[block.length - 1].line,
                 // Where the sprite rows live, so an edited sprite can be spliced
                 // back exactly as a level can. An object with no matrix records
                 // the line a new one would follow.
@@ -441,12 +461,68 @@ function parseObjects(lines, stripped, section, tags, commentStyle) {
 
     // `copy:` - an object drawn with another's sprite. Resolved after the whole
     // section is read because the source may be declared later.
-    for (const obj of blocks) {
-        if (!obj.copyFrom || obj.sprite) continue;
-        const source = objects[obj.copyFrom.toLowerCase()]
-            || objects[(expandTaggedName(obj.copyFrom, tags)[0] || '').toLowerCase()];
-        if (source && source.sprite) obj.sprite = source.sprite;
-    }
+    Object.defineProperty(objects, '__tags', { value: tags, enumerable: false });
+    resolveCopies(objects);
+    return objects;
+}
+
+/**
+ * Draw every `copy:` object: its source's matrix, with its own transforms
+ * applied the way the engine applies them, and its own colours. The result is
+ * a fresh matrix, never the source's, so editing one cannot reach the other.
+ *
+ * Call again after a source sprite is edited. Each block gets `derived`
+ * ({ from, found, ignored, cycle }) so an editor can show it read-only: a
+ * copy has no pixels of its own to edit. As in the engine, `copy:` wins over a
+ * matrix the object also has.
+ */
+function resolveCopies(objects) {
+    const blocks = objects.__blocks || [];
+    const tags = objects.__tags || {};
+    const done = new Set();
+    const visiting = new Set();
+    const toRows = sprite => sprite.pixels.map(r => r.map(i => (i === null ? '.' : i.toString(36))).join(''));
+    // A block declared under exactly that name first: `GridLines:directions`
+    // copying `GridLines:down` means the block written as GridLines:down, not
+    // the expansion of itself that has since taken that key. Then the object
+    // map, then the first expansion of a tagged name that exists, since one
+    // block's sprite stands for all its expansions here.
+    const lookup = (name, self) => {
+        const lower = name.toLowerCase();
+        const named = blocks.find(b => b !== self && b.name.toLowerCase() === lower);
+        if (named) return named;
+        const direct = objects[lower];
+        if (direct && (direct.block || direct) !== self) return direct;
+        for (const n of expandTaggedName(name, tags)) {
+            const o = objects[n.toLowerCase()];
+            if (o && (o.block || o) !== self) return o;
+        }
+        return null;
+    };
+
+    const resolve = (entry) => {
+        if (!entry.copyFrom || done.has(entry)) return;
+        if (visiting.has(entry)) { entry.derived = { from: entry.copyFrom, found: false, cycle: true, ignored: [] }; return; }
+        visiting.add(entry);
+        const found = lookup(entry.copyFrom, entry);
+        const source = found && (found.block || found);
+        if (source && source !== entry) resolve(source);
+        let sprite = null;
+        if (source && source !== entry && source.sprite) {
+            sprite = parseSpriteMatrix(transform.applyEngineTransforms(toRows(source.sprite), entry.transforms));
+        }
+        entry.sprite = sprite;
+        entry.derived = {
+            from: entry.copyFrom,
+            found: !!(source && source !== entry),
+            ignored: entry.transformsIgnored || [],
+            cycle: false,
+        };
+        for (const obj of objects.__order || []) if (obj.block === entry) obj.sprite = sprite;
+        visiting.delete(entry);
+        done.add(entry);
+    };
+    for (const entry of blocks) resolve(entry);
     return objects;
 }
 
@@ -1122,6 +1198,7 @@ const PSGAME_API = {
     splitLines,
     findSections,
     parseSpriteMatrix,
+    resolveCopies,
     parseCollisionLayers,
     buildLayerIndex,
     labelForCommands,

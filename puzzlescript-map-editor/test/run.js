@@ -737,7 +737,9 @@ test('one-line objects need no blank line between them', () => {
 
 test('copy: takes the source object\'s sprite', () => {
     const game = psgame.parseGame(NEXT);
-    assert.strictEqual(game.objects.shadow.sprite, game.objects.wall.sprite);
+    assert.deepStrictEqual(game.objects.shadow.sprite, game.objects.wall.sprite);
+    // A fresh matrix, so editing the source's pixels cannot reach the copy's.
+    assert.notStrictEqual(game.objects.shadow.sprite, game.objects.wall.sprite);
     assert.deepStrictEqual(game.objects.shadow.colors, ['Black']);
 });
 
@@ -1046,6 +1048,153 @@ test('vendored palettes match PuzzleScriptNext colors.js, when it is beside us',
                 `${name}.${slot} drifted from colors.js`);
         }
     }
+});
+
+// ---------------------------------------------------------------------------
+// Transforms: rotate, mirror, wrap, and the engine's own copy: transforms
+// ---------------------------------------------------------------------------
+
+const tf = require('../src/transform');
+
+// Asymmetric on purpose, and not square, so a wrong axis cannot pass by luck.
+const L3x2 = ['abc', 'def'];
+
+test('mirrors and turns do what their names say', () => {
+    assert.deepStrictEqual(tf.flipH(L3x2), ['cba', 'fed']);
+    assert.deepStrictEqual(tf.flipV(L3x2), ['def', 'abc']);
+    assert.deepStrictEqual(tf.transpose(L3x2), ['ad', 'be', 'cf']);
+    assert.deepStrictEqual(tf.antiTranspose(L3x2), ['fc', 'eb', 'da']);
+    assert.deepStrictEqual(tf.rotCW(L3x2), ['da', 'eb', 'fc']);
+    assert.deepStrictEqual(tf.rotCCW(L3x2), ['cf', 'be', 'ad']);
+    assert.deepStrictEqual(tf.rot180(L3x2), ['fed', 'cba']);
+});
+
+test('four quarter turns, and two of any mirror, are the identity', () => {
+    const g = ['ab.', 'c.d', '.ef', 'ghi'];
+    assert.deepStrictEqual(tf.rotCW(tf.rotCW(tf.rotCW(tf.rotCW(g)))), g);
+    assert.deepStrictEqual(tf.rotCCW(tf.rotCW(g)), g);
+    for (const op of ['flipH', 'flipV', 'transpose', 'antiTranspose']) {
+        assert.deepStrictEqual(tf.OPERATIONS[op](tf.OPERATIONS[op](g)), g, op);
+    }
+});
+
+test('shift wraps on a torus, in both directions, by any amount', () => {
+    assert.deepStrictEqual(tf.shift(L3x2, 1, 0), ['cab', 'fde']);
+    assert.deepStrictEqual(tf.shift(L3x2, -1, 0), ['bca', 'efd']);
+    assert.deepStrictEqual(tf.shift(L3x2, 0, 1), ['def', 'abc']);
+    assert.deepStrictEqual(tf.shift(L3x2, 7, -5), tf.shift(L3x2, 1, 1));
+    assert.deepStrictEqual(tf.shift(L3x2, 3, 2), L3x2);
+});
+
+test('flipping across an off-centre line wraps what falls off the edge', () => {
+    // On the centre line it is the plain mirror.
+    assert.deepStrictEqual(tf.flipAcross(['abcd'], 'vertical', 3), tf.flipH(['abcd']));
+    assert.deepStrictEqual(tf.flipAcross(['ab', 'cd', 'ef'], 'horizontal', 2), tf.flipV(['ab', 'cd', 'ef']));
+    // Through the middle of cell 0: cell 0 stays, 1 and 3 swap, 2 maps to -2 = 2.
+    assert.deepStrictEqual(tf.flipAcross(['abcd'], 'vertical', 0), ['adcb']);
+    // On the edge between cells 0 and 1: 0 and 1 swap, 2 and 3 swap through the wrap.
+    assert.deepStrictEqual(tf.flipAcross(['abcd'], 'vertical', 1), ['badc']);
+    // Every axis is still a mirror: doing it twice changes nothing.
+    for (let a = -3; a < 10; a++) {
+        assert.deepStrictEqual(tf.flipAcross(tf.flipAcross(['abcde'], 'vertical', a), 'vertical', a), ['abcde'], `axis ${a}`);
+    }
+});
+
+test('ragged rows are padded before a transform', () => {
+    assert.deepStrictEqual(tf.pad(['ab', 'abcd', ''], '.'), ['ab..', 'abcd', '....']);
+    assert.ok(tf.swapsShape('rotCW', L3x2));
+    assert.ok(!tf.swapsShape('rotCW', ['ab', 'cd']));
+    assert.ok(!tf.swapsShape('flipH', L3x2));
+});
+
+test('transform tokens: copy:, flip:, rot:, shift:, and the mirror bars', () => {
+    const r = tf.parseTransformTokens('copy: GridLines:down:right | rot:down:right shift:left:2 translate:up:1');
+    assert.strictEqual(r.copyFrom, 'GridLines:down:right');
+    assert.deepStrictEqual(r.transforms, [['flip', 'right'], ['rot', 'down', 'right'], ['shift', 'left', 2]]);
+    assert.deepStrictEqual(r.ignored.map(i => i.token), ['translate:up:1']);
+    // A bar glued to the name is a mirror after it, as parser.js reads it.
+    const glued = tf.parseTransformTokens('copy:Crate:ID:JQ-');
+    assert.strictEqual(glued.copyFrom, 'Crate:ID:JQ');
+    assert.deepStrictEqual(glued.transforms, [['flip', 'down']]);
+    // Relative directions mean something per expansion only: reported, not guessed.
+    assert.deepStrictEqual(tf.parseTransformTokens('rot:down:>').ignored.map(i => i.token), ['rot:down:>']);
+    // On a header line the bars are glyphs.
+    assert.deepStrictEqual(tf.parseTransformTokens('| -', { allowBars: false }).transforms, []);
+});
+
+test('copy: transforms match PuzzleScript Next\'s compiler, quirks included', () => {
+    // Verbatim from src/js/compiler.js applySpriteTransforms (the spritematrix
+    // part), so a change to either side shows up here.
+    const engine = (matrix, transforms) => {
+        const obj = { spritematrix: matrix.map(r => r.split('')) };
+        const cwdIndexOf = d => ['up', 'right', 'down', 'left'].indexOf(d);
+        const tranfunc = {
+            'flip': (obj, dir) => [
+                (m => m.reverse()),
+                (m => m.map(row => row.reverse())),
+            ][dir % 2](obj.spritematrix),
+            'shift': (obj, dir, amt) => obj.spritematrix = [
+                (m => [...m.slice(amt), ...m.slice(0, amt)]),
+                (m => m.map(r => [...r.slice(-amt), ...r.slice(0, -amt)])),
+                (m => [...m.slice(-amt), ...m.slice(0, -amt)]),
+                (m => m.map(r => [...r.slice(amt), ...r.slice(0, amt)])),
+            ][dir](obj.spritematrix),
+            'rot': (obj, dir1, dir2) => obj.spritematrix = [
+                m => m,
+                m => Array.from(m[0], (ch, col) => m.map(row => row[col]).reverse()),
+                m => Array.from(m, l => l.reverse()).reverse(),
+                m => Array.from(m[0], (ch, col) => m.map(row => row[col])).reverse(),
+            ][(4 + dir2 - dir1) % 4](obj.spritematrix),
+        };
+        for (const t of transforms) {
+            tranfunc[t[0]](obj, cwdIndexOf(t[1]), ['rot', 'flip'].includes(t[0]) ? cwdIndexOf(t[2]) : +t[2]);
+        }
+        return obj.spritematrix.map(r => r.join(''));
+    };
+    const dirs = ['up', 'right', 'down', 'left'];
+    const grids = [['01.', '.22', '3..', '.45'], ['0123', '4567'], ['01.2.']];
+    const cases = [];
+    for (const d of dirs) cases.push([['flip', d]]);
+    for (const a of dirs) for (const b of dirs) cases.push([['rot', a, b]]);
+    for (const d of dirs) for (const n of [0, 1, 2, 3, 9, -1]) cases.push([['shift', d, n]]);
+    cases.push([['flip', 'right'], ['rot', 'up', 'right'], ['shift', 'down', 1]]);
+    for (const g of grids) for (const c of cases) {
+        assert.deepStrictEqual(tf.applyEngineTransforms(g, c), engine(g, c), `${JSON.stringify(c)} on ${g.join('/')}`);
+    }
+});
+
+test('a copy: on its own line draws the source with its transforms', () => {
+    const src = [
+        'title t', '', '========', 'OBJECTS', '========', '',
+        'Background', 'black', '', 'Arrow', 'white', '0....', '00...', '0.0..', '0..0.', '0...0', '',
+        'ArrowL', 'red', 'copy: Arrow |', '', 'ArrowR', 'blue', 'copy:Arrow rot:up:right', '',
+        'Loop', 'green', 'copy: Loop', '',
+        '=======', 'LEGEND', '=======', '', '. = Background', '',
+        '======', 'LEVELS', '======', '', '.', '',
+    ].join('\n');
+    const game = psgame.parseGame(src);
+    const rows = o => o.sprite.pixels.map(r => r.map(i => (i === null ? '.' : String(i))).join(''));
+    assert.deepStrictEqual(rows(game.objects.arrowl), ['....0', '...00', '..0.0', '.0..0', '0...0']);
+    assert.deepStrictEqual(rows(game.objects.arrowr), tf.rotCW(rows(game.objects.arrow)));
+    assert.deepStrictEqual(game.objects.arrowl.colors, ['red']);
+    assert.strictEqual(game.objects.arrowl.derived.from, 'Arrow');
+    // Copying itself is an error in the engine; here it is simply not drawn.
+    assert.strictEqual(game.objects.loop.sprite, null);
+    // Editing the source and resolving again reaches every copy.
+    game.objects.arrow.sprite.pixels[0][4] = 0;
+    psgame.resolveCopies(game.objects);
+    assert.strictEqual(game.objects.arrowl.sprite.pixels[0][0], 0);
+});
+
+test('real games: copy: lines in tapaban resolve to drawn sprites', () => {
+    const game = psgame.parseGame(fs.readFileSync(path.join(FIXTURES, 'games', 'tapaban.txt'), 'utf8'));
+    const copies = game.objects.__blocks.filter(b => b.copyFrom);
+    assert.ok(copies.length >= 20, `only ${copies.length} copy: objects`);
+    const drawn = copies.filter(b => b.sprite);
+    assert.ok(drawn.length >= copies.length - 3, `${copies.length - drawn.length} copies have no sprite`);
+    const left = game.objects['gridlines:down:left'];
+    const right = game.objects['gridlines:down:right'];
+    assert.deepStrictEqual(left.sprite.pixels, right.sprite.pixels.map(r => r.slice().reverse()));
 });
 
 // ---------------------------------------------------------------------------
