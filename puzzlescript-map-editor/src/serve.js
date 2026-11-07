@@ -15,12 +15,14 @@ const fs = require('fs');
 const path = require('path');
 
 function argValue(flag) {
-    const i = process.argv.indexOf(flag);
+    const i = process.argv.lastIndexOf(flag);   // last wins: `npm start -- --port N`
     return i >= 0 ? process.argv[i + 1] : null;
 }
 
 const ROOT = path.resolve(argValue('--root') || process.env.PSMAP_ROOT || path.join(__dirname, '..'));
-const PORT = Number(argValue('--port') || process.env.PORT) || 8080;
+// PORT outranks --port because the root package's `npm start` bakes in --port 8020,
+// and `PORT=8081 npm start` has to be able to override that.
+const PORT = Number(process.env.PORT || argValue('--port')) || 8080;
 const FRONT = fs.existsSync(path.join(ROOT, 'index.html')) ? '/index.html' : '/web/index.html';
 
 const TYPES = {
