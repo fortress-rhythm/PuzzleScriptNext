@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"name": "push a crate right", "map": ["######", "#P*..#", "######"], "keys": "R", "expect": ["######", "#.P*.#", "######"]},
+    {"name": "push a crate up", "map": ["###", "#.#", "#*#", "#P#", "###"], "keys": "U", "expect": ["###", "#*#", "#P#", "#.#", "###"]},
+    {"name": "a crate against a wall does not move", "map": ["#####", "#.P*#", "#####"], "keys": "R", "expect": ["#####", "#.P*#", "#####"]},
+    {"name": "you cannot push two crates at once", "map": ["######", "#P**.#", "######"], "keys": "R", "expect": ["######", "#P**.#", "######"]},
+    {"name": "push the crate onto the target to win", "map": ["#####", "#P*O#", "#####"], "keys": "R", "expect": "win"}
+  ]
+}

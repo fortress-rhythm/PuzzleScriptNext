@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {"name": "pick up a key", "map": ["#####", "#Pk.#", "#####"], "keys": "R", "expect": ["#####", "#.Q.#", "#####"]},
+    {"name": "the key goes where you go", "map": ["######", "#Pk..#", "######"], "keys": "RR", "expect": ["######", "#..Q.#", "######"]},
+    {"name": "the key stays with you when you bump a wall", "map": ["####", "#.Q#", "####"], "keys": "R", "expect": ["####", "#.Q#", "####"]},
+    {"name": "a door blocks you without a key", "map": ["#####", "#PD.#", "#####"], "keys": "R", "expect": ["#####", "#PD.#", "#####"]},
+    {"name": "a key opens a door and is used up", "map": ["######", "#PkD.#", "######"], "keys": "RR", "expect": ["######", "#..P.#", "######"]},
+    {"name": "one key opens one door", "map": ["#######", "#PkD.D#", "#######"], "keys": "RRRR", "expect": ["#######", "#...PD#", "#######"]},
+    {"name": "you carry only one key", "map": ["#####", "#Qk.#", "#####"], "keys": "RR", "expect": ["#####", "#.kQ#", "#####"]}
+  ]
+}

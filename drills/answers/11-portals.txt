@@ -1,0 +1,86 @@
+title Drill 11: Portals
+author drills
+
+(
+  CONCEPT  Debugging rule order. Every rule runs to completion before the
+           next one starts, so two rules can quietly cancel each other out.
+           Add  verbose_logging  under author to see each rule that fires.
+
+  TASK     Stepping onto portal A should send you to portal B, and stepping
+           onto B should send you to A. With the rules below, B works but A
+           seems to do nothing, and standing on B and bumping a wall sends
+           you to A. Work out why from the trace, then fix the rules.
+           After a teleport the player stays put until they move again.
+
+  HINT     The teleport should happen because the player moved onto the
+           portal, not because the player is on it. Either use the player's
+           movement, or mark "just arrived" with an object of your own.
+
+  CHECK    node drills/check.js 11
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+PortalA
+Purple
+
+PortalB
+Blue
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+A = PortalA
+B = PortalB
+Y = Player and PortalA
+Z = Player and PortalB
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+PortalA, PortalB
+Player, Wall
+
+======
+RULES
+======
+
+[ > Player | PortalA ] [ PortalB ] -> [ | PortalA ] [ PortalB Player ]
+[ > Player | PortalB ] [ PortalA ] -> [ | PortalB ] [ PortalA Player ]
+
+==============
+WINCONDITIONS
+==============
+
+
+
+=======
+LEVELS
+=======
+
+########
+#P.A...#
+#......#
+#...B..#
+########

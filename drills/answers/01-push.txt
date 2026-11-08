@@ -1,0 +1,82 @@
+title Drill 01: Push
+author drills
+
+(
+  CONCEPT  A rule is a pattern and a replacement:  [ match ] -> [ result ]
+           Cells next to each other are separated by  |
+           >  means "moving the way the rule points". A rule with no
+           direction word is tried facing all four ways.
+
+  TASK     Make the player push crates. Walking into a crate moves it one
+           cell the same way. A crate against a wall, or against another
+           crate, stays put, and so does the player.
+
+  HINT     One rule. Say what happens to the crate: the engine already stops
+           anything that moves into something solid on its layer.
+
+  CHECK    node drills/check.js 01
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Crate
+Orange
+
+Target
+Yellow
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+O = Target
+@ = Crate and Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate
+
+======
+RULES
+======
+
+[ > Player | Crate ] -> [ > Player | > Crate ]
+
+==============
+WINCONDITIONS
+==============
+
+All Target on Crate
+
+=======
+LEVELS
+=======
+
+#######
+#.....#
+#.P*.O#
+#.....#
+#######

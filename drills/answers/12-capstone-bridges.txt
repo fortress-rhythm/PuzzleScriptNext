@@ -1,0 +1,100 @@
+title Drill 12: Bridges
+author drills
+
+(
+  CONCEPT  Everything so far, from a blank RULES and WINCONDITIONS.
+
+  TASK     - The player pushes crates, one at a time (no chains).
+           - Water W blocks the player.
+           - A crate pushed into water sinks and turns the water into a
+             bridge _ on the same turn. The crate is gone.
+           - The player can walk on bridges, and a crate pushed onto a
+             bridge just sits there.
+           - Walking over a coin $ collects it.
+           - You win by standing on the exit X once every coin is collected.
+
+  HINT     Write one rule at a time and run the check after each; the case
+           names tell you which part each one tests.
+
+  CHECK    node drills/check.js 12
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Crate
+Orange
+
+
+Water
+Blue
+
+Bridge
+DarkBrown
+
+Coin
+Yellow
+
+Exit
+Green
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+W = Water
+_ = Bridge
+$ = Coin
+X = Exit
+% = Crate and Bridge
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Water, Bridge, Coin, Exit
+Player, Wall, Crate
+
+======
+RULES
+======
+
+[ > Player | Crate ] -> [ > Player | > Crate ]
+[ > Player | Water ] -> [ Player | Water ]
+late [ Crate Water ] -> [ Bridge ]
+late [ Player Coin ] -> [ Player ]
+
+==============
+WINCONDITIONS
+==============
+
+No Coin
+All Player on Exit
+
+=======
+LEVELS
+=======
+
+#########
+#P*.W..X#
+#.$.W...#
+#########

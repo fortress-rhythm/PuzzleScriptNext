@@ -1,0 +1,8 @@
+{
+  "cases": [
+    {"name": "step onto A to reach B", "map": ["########", "#PA..B.#", "########"], "keys": "R", "expect": ["########", "#.A..Z.#", "########"]},
+    {"name": "step onto B to reach A", "map": ["########", "#.A..BP#", "########"], "keys": "L", "expect": ["########", "#.Y..B.#", "########"]},
+    {"name": "arrive at B, bump the wall: stay on B", "map": ["######", "#PA.B#", "######"], "keys": "RR", "expect": ["######", "#.A.Z#", "######"]},
+    {"name": "walk off the far portal normally", "map": ["########", "#PA..B.#", "########"], "keys": "RR", "expect": ["########", "#.A..BP#", "########"]}
+  ]
+}

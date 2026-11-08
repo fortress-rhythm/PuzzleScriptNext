@@ -1,0 +1,10 @@
+{
+  "cases": [
+    {"name": "pull a crate left", "map": ["######", "#.P*.#", "######"], "keys": "L", "expect": ["######", "#P*..#", "######"]},
+    {"name": "pull a crate down", "map": ["###", "#*#", "#P#", "#.#", "###"], "keys": "D", "expect": ["###", "#.#", "#*#", "#P#", "###"]},
+    {"name": "walking into a crate does not push it", "map": ["#####", "#P*.#", "#####"], "keys": "R", "expect": ["#####", "#P*.#", "#####"]},
+    {"name": "a player against the wall cannot pull", "map": ["####", "#P*#", "####"], "keys": "L", "expect": ["####", "#P*#", "####"]},
+    {"name": "walking away sideways leaves the crate", "map": ["####", "#*P#", "#..#", "####"], "keys": "D", "expect": ["####", "#*.#", "#.P#", "####"]},
+    {"name": "pull the crate onto the target to win", "map": ["######", "#.Q*#", "######"], "keys": "L", "expect": "win"}
+  ]
+}

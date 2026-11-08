@@ -1,0 +1,82 @@
+title Drill 02: Pull
+author drills
+
+(
+  CONCEPT  <  is the opposite of  >  : "moving against the way the rule
+           points". Which cell is "in front" depends on how you lay the
+           pattern out, and the movement arrows are relative to that.
+
+  TASK     Crates here can only be pulled, never pushed. When the player
+           steps away from a crate it is touching, the crate follows one
+           cell. Walking into a crate does nothing.
+
+  HINT     One rule. Draw it on paper first: player, crate, and which way
+           each of them moves.
+
+  CHECK    node drills/check.js 02
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Crate
+Orange
+
+Target
+Yellow
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+O = Target
+@ = Crate and Target
+Q = Player and Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate
+
+======
+RULES
+======
+
+( write your rule here )
+
+==============
+WINCONDITIONS
+==============
+
+All Target on Crate
+
+=======
+LEVELS
+=======
+
+#######
+#.....#
+#.O*P.#
+#.....#
+#######

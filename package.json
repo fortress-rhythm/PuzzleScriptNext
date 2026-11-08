@@ -13,6 +13,7 @@
     "check:export": "node tools/inline_standalone.js --check",
     "build:template": "node tools/inline_standalone.js",
     "check:ai-pack": "node tools/build_ai_pack.js --check",
+    "check:drills": "node drills/check.js --self-test",
     "build:ai-pack": "node tools/build_ai_pack.js",
     "build": "node compile.js"
   },

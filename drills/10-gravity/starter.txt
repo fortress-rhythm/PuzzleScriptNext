@@ -1,0 +1,85 @@
+title Drill 10: Falling boulders
+author drills
+
+(
+  CONCEPT  again  at the end of a rule asks for another turn straight after
+           this one, with no key pressed: each extra turn is one frame of
+           animation. Extra turns keep coming while some rule with again
+           matches and changes something.
+           stationary X  matches an X that is not moving this turn.
+
+  TASK     A boulder with nothing under it falls until it lands on a wall,
+           another boulder, or the player. The player can push boulders
+           sideways (that rule is written for you).
+
+  HINT     Step 1: a late rule that moves a boulder down into an empty cell.
+           That passes the check, but the boulder drops all the way in one
+           frame, because a rule repeats until it stops matching.
+           Step 2: make it fall one cell per frame, by giving it a movement
+           and asking for again. Now a boulder you push off a ledge hangs
+           in the air until your next key press. Work out why (it was
+           moving when your rule looked at it) and give it the extra frame
+           it needs.
+
+  CHECK    node drills/check.js 10
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Boulder
+Gray
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Boulder
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Player, Wall, Boulder
+
+======
+RULES
+======
+
+horizontal [ > Player | Boulder ] -> [ > Player | > Boulder ]
+
+( write your rule here )
+
+==============
+WINCONDITIONS
+==============
+
+
+
+=======
+LEVELS
+=======
+
+#######
+#P*...#
+###.#.#
+###...#
+#######

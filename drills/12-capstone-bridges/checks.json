@@ -1,0 +1,13 @@
+{
+  "cases": [
+    {"name": "push a crate", "map": ["######", "#P*..#", "######"], "keys": "R", "expect": ["######", "#.P*.#", "######"]},
+    {"name": "no chains", "map": ["######", "#P**.#", "######"], "keys": "R", "expect": ["######", "#P**.#", "######"]},
+    {"name": "water blocks the player", "map": ["#####", "#PW.#", "#####"], "keys": "R", "expect": ["#####", "#PW.#", "#####"]},
+    {"name": "a crate in water makes a bridge", "map": ["######", "#P*W.#", "######"], "keys": "R", "expect": ["######", "#.P_.#", "######"]},
+    {"name": "walk across the bridge", "map": ["######", "#P*W.#", "######"], "keys": "RRR", "expect": ["######", "#.._P#", "######"]},
+    {"name": "a crate on a bridge stays a crate", "map": ["######", "#P*_.#", "######"], "keys": "R", "expect": ["######", "#.P%.#", "######"]},
+    {"name": "collect a coin", "map": ["#####", "#P$.#", "#####"], "keys": "R", "expect": ["#####", "#.P.#", "#####"]},
+    {"name": "the exit with a coin left: not won", "map": ["######", "#$.PX#", "######"], "keys": "R", "expect": "no win"},
+    {"name": "the full level", "map": ["#########", "#P*.W..X#", "#.$.W...#", "#########"], "keys": "RRDLURRRRR", "expect": "win"}
+  ]
+}

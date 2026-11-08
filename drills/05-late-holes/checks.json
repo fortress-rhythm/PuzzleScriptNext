@@ -1,0 +1,8 @@
+{
+  "cases": [
+    {"name": "a crate fills a hole on the same turn", "map": ["######", "#P*H.#", "######"], "keys": "R", "expect": ["######", "#.P..#", "######"]},
+    {"name": "the player cannot enter a hole", "map": ["#####", "#PH.#", "#####"], "keys": "R", "expect": ["#####", "#PH.#", "#####"]},
+    {"name": "walk over a filled hole", "map": ["######", "#P*H.#", "######"], "keys": "RRR", "expect": ["######", "#...P#", "######"]},
+    {"name": "one crate fills one hole", "map": ["#######", "#P*HH.#", "#######"], "keys": "RRR", "expect": ["#######", "#..PH.#", "#######"]}
+  ]
+}

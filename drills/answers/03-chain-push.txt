@@ -1,0 +1,90 @@
+title Drill 03: Chain push
+author drills
+
+(
+  CONCEPT  A property in the LEGEND names a group of objects:
+               Pushable = Crate or Barrel
+           A rule that mentions Pushable matches either one, and the same
+           Pushable on the right-hand side means "whichever one it was".
+           Rules repeat until they stop matching, so one rule can ripple
+           down a whole row.
+
+  TASK     The player pushes crates and barrels. Anything being pushed also
+           pushes the crate or barrel in front of it, so a whole row moves.
+           If the front of the row is against a wall, nothing moves.
+
+  HINT     Add the Pushable property to the LEGEND, then two rules: one for
+           the player pushing, one for a pushed thing pushing.
+
+  CHECK    node drills/check.js 03
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Crate
+Orange
+
+Target
+Yellow
+
+Barrel
+Blue
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+B = Barrel
+O = Target
+@ = Crate and Target
+Pushable = Crate or Barrel
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate, Barrel
+
+======
+RULES
+======
+
+[ > Player | Pushable ] -> [ > Player | > Pushable ]
+[ > Pushable | Pushable ] -> [ > Pushable | > Pushable ]
+
+==============
+WINCONDITIONS
+==============
+
+All Target on Crate
+
+=======
+LEVELS
+=======
+
+#########
+#.......#
+#.P*B*.O#
+#.......#
+#########
