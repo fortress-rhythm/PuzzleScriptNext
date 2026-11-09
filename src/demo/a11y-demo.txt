@@ -1,0 +1,94 @@
+title Spoken Play Demo
+author fortress-rhythm
+homepage github.com/fortress-rhythm/PuzzleScriptNext
+screen_reader
+again_interval 0.05
+
+========
+OBJECTS
+========
+
+Background
+black
+
+Target
+darkblue
+
+Wall (@say stone wall)
+grey
+
+Player
+blue
+
+Crate (@say wooden crate) (@landmark)
+orange
+
+Relay (@quiet)
+red
+
+(Spark is transparent, so it is silent without a tag)
+
+Spark
+transparent
+
+Fire (@say flame)
+red
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+O = Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate
+Relay
+Spark
+Fire
+
+======
+RULES
+======
+
+(X lights a flame that spreads right one square per again step: one announcement when it stops)
+
+[ > Player | Crate ] -> [ > Player | > Crate ]
+[ action Player no Fire ] -> [ Player Fire Spark ] again
+right [ Fire no Spark no Relay | no Fire no Wall no Crate ] -> [ Fire Relay | Fire Spark ] again
+late [ Spark ] -> [ ]
+
+==============
+WINCONDITIONS
+==============
+
+All Crate on Target
+
+=======
+LEVELS
+=======
+
+#######
+#.....#
+#.P*.O#
+#.....#
+#######
+
+message Well done.
+
+####
+#PO#
+#*.#
+####
