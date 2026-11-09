@@ -451,6 +451,7 @@ function setMode(mode, silent) {
     el('copylevel').textContent = inSprites() ? 'Copy sprite as text' : 'Copy level as text';
 
     el('spriteTools').classList.toggle('hidden', !inSprites());
+    refreshListActions();
     if (inSprites()) { refreshSpriteGlyphs(); buildSpriteTools(); }
     else if (!(state.ink in state.glyphs)) state.ink = state.glyphOrder[0] || '.';
 
@@ -1406,17 +1407,191 @@ function addCopyObject(name, transformText, colorsText) {
     const layer = findLayerLine(block.names || [block.name]);
     if (layer) edits.push({ startLine: layer.line, lineCount: 1, rows: [layer.text.replace('%NAME%', name)] });
 
-    const text = psgame.applyGridEdits(state.game, edits);
-    const keep = { palette: state.paletteOverride, fileName: state.fileName };
-    if (!loadSource(text, keep.fileName)) return false;
-    state.sourceDirty = true;
-    if (keep.palette) applyPalette(keep.palette);
-    setMode('sprites');
+    if (!rewriteSource(psgame.applyGridEdits(state.game, edits), 'sprites')) return false;
     const index = state.sprites.findIndex(s => s.name === name);
     if (index >= 0) selectLevel(index);
     setStatus(`Added ${name} (${line})` + (layer ? ` to ${block.name}'s collision layer` : ' - add it to a collision layer yourself')
         + '. Give it a legend glyph to use it in a map. Undo history starts again here.', !layer);
     return true;
+}
+
+// ------------------------------------------------- adding and removing things
+//
+// New and deleted levels and objects shift every line below them, so each one
+// writes pending edits into the text, makes its change there, and reloads -
+// as New copy: does. Nothing reaches disk until Download. Undo starts again.
+
+/** Reload from rewritten text, keeping the file name and the sampled palette. */
+function rewriteSource(text, mode) {
+    const keep = { palette: state.paletteOverride, fileName: state.fileName };
+    if (!loadSource(text, keep.fileName)) return false;
+    state.sourceDirty = true;
+    if (keep.palette) applyPalette(keep.palette);
+    setMode(mode);
+    return true;
+}
+
+/** The game as it would be saved, with every pending edit written in. */
+function savedGame() {
+    return psgame.parseGame(buildOutput());
+}
+
+/** The current level's position in the file, which is its grid index once saved. */
+function currentGridInFile() {
+    return state.outline.filter(r => r.kind === 'level').findIndex(r => r.index === state.currentLevel);
+}
+
+/** Show what stops a delete, one line each, where it can be copied. */
+function listReferences(references, label) {
+    const where = references.map(r => `${r.section.toUpperCase()} line ${r.line + 1}: ${r.text}`).join('\n');
+    showText(where, label + ' (line numbers as the file would be saved):');
+}
+
+function newLevel(duplicate) {
+    const level = currentLevel();
+    if (inSprites() || !level) return false;
+    const { w, h } = levelSize(level);
+    const rows = duplicate ? level.rows.slice()
+        : Array.from({ length: Math.max(1, h) }, () => state.background.repeat(Math.max(1, w)));
+    const at = currentGridInFile();
+    const game = savedGame();
+    // A new level renumbers the unnamed `Level N` after it.
+    const usage = psgame.levelUsage(game, { insertAfter: at });
+    if (usage.references.length) {
+        listReferences(usage.references, `A level here would send ${usage.references.length} link(s) to a different level.`
+            + ' Give the levels they point at a LEVEL heading first');
+        setStatus('Not added: it would renumber a link target - see the list', true);
+        return false;
+    }
+    let text;
+    try { text = psgame.insertLevel(game, at, rows); } catch (e) { setStatus(e.message, true); return false; }
+    if (!rewriteSource(text, 'levels')) return false;
+    selectLevel(at + 1);
+    setStatus(`${duplicate ? 'Duplicated' : 'Added'} a ${w}×${h} level after ${level.name}. Undo history starts again here.`);
+    return true;
+}
+
+function deleteCurrentLevel(skipConfirm) {
+    const level = currentLevel();
+    if (inSprites() || !level) return false;
+    if (state.levels.length <= 1) { setStatus('A game needs at least one level', true); return false; }
+    if (!skipConfirm && !window.confirm(`Delete ${level.name}? Messages and headings around it stay.`)) return false;
+    const at = currentGridInFile();
+    const game = savedGame();
+    const usage = psgame.levelUsage(game, { delete: at });
+    if (usage.references.length) {
+        listReferences(usage.references, `Deleting ${level.name} would send ${usage.references.length} link(s) somewhere else.`
+            + ' Give the levels they point at a LEVEL heading first');
+        setStatus('Not deleted: it would break a link or goto - see the list', true);
+        return false;
+    }
+    let text;
+    try { text = psgame.deleteLevel(game, at); } catch (e) { setStatus(e.message, true); return false; }
+    if (!rewriteSource(text, 'levels')) return false;
+    selectLevel(Math.min(at, state.levels.length - 1));
+    setStatus(`Deleted ${level.name}. Undo history starts again here - reopen the file to get it back.`);
+    return true;
+}
+
+/** The collision layer the current sprite sits on, as an index into collisionLayerLines. */
+function currentSpriteLayer(game, layers) {
+    const sprite = currentLevel();
+    if (!sprite || !sprite.block) return -1;
+    const names = new Set(sprite.block.names.map(n => n.toLowerCase()));
+    return layers.findIndex(l => l.names.some(tok =>
+        names.has(tok.toLowerCase()) || psgame.resolveNames(game, tok).some(n => names.has(n.toLowerCase()))));
+}
+
+function openObjectForm() {
+    if (!inSprites()) return;
+    const game = state.game;
+    const sprite = currentLevel();
+    el('objName').value = uniqueObjectName('NewObject');
+    el('objColors').value = sprite && sprite.block.colors.length ? sprite.block.colors.join(' ') : 'black';
+    const layers = psgame.collisionLayerLines(game);
+    const select = el('objLayer');
+    select.innerHTML = '';
+    layers.forEach((layer, i) => {
+        const option = document.createElement('option');
+        option.value = String(i);
+        option.textContent = layer.text.length > 40 ? layer.text.slice(0, 39) + '…' : layer.text;
+        select.appendChild(option);
+    });
+    const fresh = document.createElement('option');
+    fresh.value = 'new';
+    fresh.textContent = 'a new layer, on top';
+    select.appendChild(fresh);
+    const mine = currentSpriteLayer(game, layers);
+    select.value = mine >= 0 ? String(mine) : 'new';
+    el('objGlyph').value = psgame.freeGlyphs(game, 1)[0] || '';
+    el('objectForm').classList.remove('hidden');
+    el('objName').focus();
+    el('objName').select();
+}
+
+/**
+ * Add an object after the current one: a name, colours, a sprite_size matrix
+ * filled with its first colour, a collision layer and, optionally, a glyph.
+ */
+function addNewObject(name, colorsText, layer, glyph) {
+    name = name.trim();
+    glyph = glyph.trim();
+    const colors = colorsText.trim().split(/\s+/).filter(Boolean);
+    const game = savedGame();
+    const n = Math.max(1, game.spriteSize || 5);
+    const after = game.blocks[state.currentSprite] || null;
+    let text;
+    try {
+        text = psgame.addObject(game, {
+            name, colors, after, glyph,
+            rows: Array.from({ length: n }, () => '0'.repeat(n)),
+            layer: layer === 'new' ? 'new' : Number(layer),
+        });
+    } catch (e) { setStatus(e.message, true); return false; }
+    if (!rewriteSource(text, 'sprites')) return false;
+    const index = state.sprites.findIndex(s => s.name === name);
+    if (index >= 0) selectLevel(index);
+    setStatus(`Added ${name}` + (glyph ? `, drawn in maps as ${glyph}` : ' with no glyph - add one to the legend to use it in a map')
+        + '. Undo history starts again here.');
+    return true;
+}
+
+function deleteCurrentObject(skipConfirm) {
+    const sprite = currentLevel();
+    if (!inSprites() || !sprite) return false;
+    const game = savedGame();
+    const block = game.blocks[state.currentSprite];
+    const usage = psgame.objectUsage(game, block);
+    if (usage.references.length) {
+        listReferences(usage.references, `${block.name} is used in ${usage.references.length} place(s). Remove these first`);
+        setStatus(`Not deleted: ${block.name} is still used - see the list`, true);
+        return false;
+    }
+    const extra = [];
+    if (usage.glyphs.length) extra.push(`its glyph${usage.glyphs.length > 1 ? 's' : ''} ${usage.glyphs.join(' ')}`);
+    if (usage.layerEdits.length) extra.push('its collision layer entry');
+    if (!skipConfirm && !window.confirm(`Delete ${block.name}${extra.length ? ' with ' + extra.join(' and ') : ''}?`)) return false;
+    let text;
+    try { text = psgame.deleteObject(game, block); } catch (e) { setStatus(e.message, true); return false; }
+    const at = state.currentSprite;
+    if (!rewriteSource(text, 'sprites')) return false;
+    selectLevel(Math.min(at, state.sprites.length - 1));
+    setStatus(`Deleted ${block.name}${extra.length ? ' and ' + extra.join(' and ') : ''}. Undo history starts again here.`);
+    return true;
+}
+
+/** The buttons over the list say what they act on. */
+function refreshListActions() {
+    const sprites = inSprites();
+    el('listNew').textContent = sprites ? 'New…' : 'New';
+    el('listNew').title = sprites
+        ? 'Add an object after this one, with its own colours, collision layer and glyph'
+        : 'Add an empty level the same size, after this one';
+    el('listDuplicate').classList.toggle('hidden', sprites);
+    el('listDelete').title = sprites
+        ? 'Delete this object, if nothing but its own glyph and layer entry uses it'
+        : 'Delete this level. Messages and headings around it stay.';
+    if (!sprites) el('objectForm').classList.add('hidden');
 }
 
 // ------------------------------------------------------------------ resize
@@ -1678,6 +1853,18 @@ el('copyForm').addEventListener('submit', (e) => {
     }
 });
 
+el('listNew').addEventListener('click', () => (inSprites() ? openObjectForm() : newLevel(false)));
+el('listDuplicate').addEventListener('click', () => newLevel(true));
+el('listDelete').addEventListener('click', () => (inSprites() ? deleteCurrentObject() : deleteCurrentLevel()));
+el('objCancel').addEventListener('click', () => { el('objectForm').classList.add('hidden'); canvas.focus(); });
+el('objectForm').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (addNewObject(el('objName').value, el('objColors').value, el('objLayer').value, el('objGlyph').value)) {
+        el('objectForm').classList.add('hidden');
+        canvas.focus();
+    }
+});
+
 el('undo').addEventListener('click', undo);
 el('redo').addEventListener('click', redo);
 el('save').addEventListener('click', save);
@@ -1786,6 +1973,7 @@ window.addEventListener('beforeunload', (event) => {
 window.PSMapEditor = { state, loadSource, buildOutput, currentLevelText, copyCurrentLevel,
     addMapToSection, copySelection, beginPaste, commitPaste, resize, undo, redo, fitZoom,
     setMode, selectLevel, applyPalette, setInk, applyOp, wrapShift, transformGrid, flipAcrossCursor,
-    setColorsFrom, addCopyObject, cancelFloating };
+    setColorsFrom, addCopyObject, cancelFloating, newLevel, deleteCurrentLevel, addNewObject,
+    deleteCurrentObject, openObjectForm };
 
 })();

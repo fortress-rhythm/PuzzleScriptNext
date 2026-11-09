@@ -620,7 +620,7 @@ function parseCollisionLayers(lines, stripped, section) {
         const code = stripped[i].code.trim();
         if (!code || RE_EQUALS_ROW.test(code)) continue;
         if (/^--/.test(code)) continue;
-        const names = code.replace(/->/g, ',').split(',').map(t => t.trim()).filter(Boolean);
+        const names = code.replace(/->/g, ' ').split(/[\s,]+/).filter(Boolean);
         if (names.length) layers.push(names);
     }
     return layers;
@@ -696,7 +696,7 @@ function buildLayerIndex(collisionLayers, game) {
  * Grid blocks record the source line index of every row, which is what makes
  * lossless splice-back possible.
  */
-function parseLevels(lines, stripped, section) {
+function parseLevels(lines, stripped, section, commentStyle) {
     const blocks = [];
     if (!section) return blocks;
 
@@ -720,7 +720,9 @@ function parseLevels(lines, stripped, section) {
             blocks.push({ kind: 'blank', line: i, raw });
             continue;
         }
-        if (RE_EQUALS_ROW.test(trimmed)) {
+        // In a `//` file the engine rejects a `(` line as the wrong kind of
+        // comment and skips it, so it is no part of a grid.
+        if (RE_EQUALS_ROW.test(trimmed) || (commentStyle === '//' && trimmed.startsWith('('))) {
             closeGrid();
             blocks.push({ kind: 'decoration', line: i, raw });
             continue;
@@ -845,7 +847,7 @@ function parseGame(source) {
     const objects = parseObjects(lines, stripped, byName.objects, tags, commentStyle);
     const legend = parseLegend(lines, stripped, byName.legend);
     const collisionLayers = parseCollisionLayers(lines, stripped, byName.collisionlayers);
-    const levelBlocks = parseLevels(lines, stripped, byName.levels);
+    const levelBlocks = parseLevels(lines, stripped, byName.levels, commentStyle);
 
     // The legend keyed case-insensitively as well, for games that write `wall`
     // in one place and `Wall` in another. Exact matches are tried first.
@@ -1171,6 +1173,411 @@ function applyGridEdits(game, edits) {
     return joinLines(lines, endings);
 }
 
+// ------------------------------------------------- adding and removing things
+//
+// Each of these returns the whole new source text, built with the same line
+// splice as applyGridEdits so everything they do not touch comes through
+// byte for byte. The caller reparses it: a new level or object shifts every
+// line below it, so patching the parse in place is not worth the risk.
+
+const isBlankLine = (game, i) => i >= 0 && i < game.lines.length && game.lines[i].trim() === '';
+// The empty "line" after a file's final newline is not a blank line to remove.
+const isInnerBlank = (game, i) => i < game.lines.length - 1 && isBlankLine(game, i);
+const sectionOf = (game, name) => game.sectionByName[name] || null;
+
+/** The last line in a section that holds anything, or the header if none. */
+function lastContentLine(game, section) {
+    for (let i = section.end - 1; i >= section.start; i--) {
+        if (game.stripped[i].code.trim()) return i;
+    }
+    return section.start - 1;
+}
+
+/**
+ * Add a level grid. `afterGrid` is the index of the grid it follows, or null
+ * to put it at the end of LEVELS. A blank line separates it from the grid
+ * before, and the messages and headings around that grid stay where they are.
+ */
+function insertLevel(game, afterGrid, rows) {
+    const section = sectionOf(game, 'levels');
+    if (!section) throw new Error('This file has no LEVELS section');
+    let at;
+    let indent = '';
+    if (afterGrid !== null && afterGrid !== undefined && game.grids[afterGrid]) {
+        const grid = game.grids[afterGrid];
+        at = grid.lines[grid.lines.length - 1] + 1;
+        indent = grid.indent || '';
+    } else {
+        at = lastContentLine(game, section) + 1;
+    }
+    return applyGridEdits(game, [{ startLine: at, lineCount: 0, rows: ['', ...rows.map(r => indent + r)] }]);
+}
+
+/**
+ * Remove a level grid and one blank line beside it. Commands around it -
+ * messages, LEVEL and SECTION headings - are kept; a heading left with no map
+ * becomes an empty section, which the editor shows as "+ add map".
+ */
+/**
+ * Where each PuzzleScript Next `link Obj Target` and `goto Target` in LEVELS
+ * lands, worked out as compiler.js does: a SECTION name first, then a level
+ * title, which is its LEVEL heading or, failing one, `Level N` by position.
+ * Returns [{ line, text, target, grid }] with grid -1 for no match.
+ */
+function linkTargets(game) {
+    const grids = [];
+    const links = [];
+    let section = null;
+    let title = null;
+    for (const b of game.levelBlocks) {
+        if (b.kind === 'grid') {
+            grids.push({ section, title: title || `Level ${grids.length + 1}` });
+            title = null;
+        } else if (b.kind === 'command') {
+            if (b.verb === 'section') section = b.text;
+            else if (b.verb === 'level') title = b.text;
+            else if (b.verb === 'link') links.push({ line: b.line, text: b.raw.trim(), target: b.text.replace(/^\S+\s+/, '') });
+            else if (b.verb === 'goto') links.push({ line: b.line, text: b.raw.trim(), target: b.text });
+        }
+    }
+    const norm = t => (t || '').trim().replace(/\s+/g, ' ').toLowerCase();
+    for (const link of links) {
+        const t = norm(link.target);
+        link.grid = grids.findIndex(g => norm(g.section) === t);
+        if (link.grid < 0) link.grid = grids.findIndex(g => norm(g.title) === t);
+    }
+    return links;
+}
+
+/**
+ * The links a change would break. Deleting a level removes a target, and
+ * deleting or inserting one renumbers every unnamed `Level N` after it, so a
+ * link can break without naming the level touched. `change` is
+ * { delete: gridIndex } or { insertAfter: gridIndex }.
+ */
+function levelUsage(game, change) {
+    const before = linkTargets(game);
+    if (!before.length) return { references: [] };
+    let text;
+    let map;   // grid index before -> after, or -1 if gone
+    if ('delete' in change) {
+        text = deleteLevelLines(game, change.delete);
+        map = i => (i === change.delete ? -1 : i < change.delete ? i : i - 1);
+    } else {
+        text = insertLevel(game, change.insertAfter, ['.']);
+        map = i => (i <= change.insertAfter ? i : i + 1);
+    }
+    const after = linkTargets(parseGame(text));
+    const references = [];
+    before.forEach((link, k) => {
+        if (link.grid < 0) return;              // already broken; not ours
+        const now = after[k] ? after[k].grid : -1;
+        const expected = map(link.grid);
+        if (expected < 0 || now !== expected) references.push({ section: 'levels', line: link.line, text: link.text });
+    });
+    return { references };
+}
+
+function deleteLevel(game, gridIndex) {
+    const usage = levelUsage(game, { delete: gridIndex });
+    if (usage.references.length) {
+        const err = new Error('Deleting this level would break a link');
+        err.references = usage.references;
+        throw err;
+    }
+    return deleteLevelLines(game, gridIndex);
+}
+
+function deleteLevelLines(game, gridIndex) {
+    const grid = game.grids[gridIndex];
+    if (!grid) throw new Error(`No such grid index ${gridIndex}`);
+    const section = sectionOf(game, 'levels');
+    let start = grid.lines[0];
+    let count = grid.lines.length;
+    if (isBlankLine(game, start - 1) && start - 1 >= section.start) { start--; count++; }
+    else if (isInnerBlank(game, start + count) && start + count < section.end) count++;
+    return applyGridEdits(game, [{ startLine: start, lineCount: count, rows: [] }]);
+}
+
+/** Each COLLISIONLAYERS line that names objects: { line, names, text }. */
+function collisionLayerLines(game) {
+    const section = sectionOf(game, 'collisionlayers');
+    const out = [];
+    if (!section) return out;
+    for (let i = section.start; i < section.end; i++) {
+        const code = game.stripped[i].code.trim();
+        if (!code || RE_EQUALS_ROW.test(code) || /^--/.test(code)) continue;
+        const names = code.replace(/->/g, ' ').split(/[\s,]+/).filter(Boolean);
+        if (names.length) out.push({ line: i, names, text: code });
+    }
+    return out;
+}
+
+/** Append `name` to a collision layer line, after its last name and before any comment. */
+function appendToLine(game, line, name) {
+    const raw = game.lines[line];
+    const code = game.stripped[line].code.trim();
+    const end = raw.indexOf(code) + code.length;
+    const sep = !code.includes(',') && /\s/.test(code) ? ' ' : ', ';
+    return raw.slice(0, end) + sep + name + raw.slice(end);
+}
+
+/** Is `ch` already a glyph: a legend key, or an object name or alias? */
+function glyphTaken(game, ch) {
+    if (game.legend[ch] || game.objects[ch.toLowerCase()]) return true;
+    if (!game.caseSensitive && game.legendByLower[ch.toLowerCase()]) return true;
+    return false;
+}
+
+// `v`, `^`, `<` and `>` are direction keywords the engine refuses as names,
+// and `(` `)` would open a comment.
+const GLYPH_KEYWORDS = new Set(['v', '^', '<', '>', '(', ')']);
+const GLYPH_CANDIDATES = 'abcdefghijklmnopqrstuwxyz0123456789ABCDEFGHIJKLMNOPQRSTUWXYZ*@#%&+-~?!$:;\'"/\\_`{}[]';
+
+/** Characters a new legend entry could use, best first. */
+function freeGlyphs(game, limit) {
+    const out = [];
+    // A character a level already holds is out too, even if the legend has
+    // forgotten it: giving it a meaning would change that level.
+    const seen = new Set();
+    for (const grid of game.grids) for (const row of grid.rows) for (const ch of row) seen.add(game.caseSensitive ? ch : ch.toLowerCase());
+    for (const ch of GLYPH_CANDIDATES) {
+        const key = game.caseSensitive ? ch : ch.toLowerCase();
+        if (seen.has(key) || glyphTaken(game, ch)) continue;
+        seen.add(key);
+        out.push(ch);
+        if (limit && out.length >= limit) break;
+    }
+    return out;
+}
+
+const RE_NAME = /^[\p{L}\p{N}_$]+(:[\p{L}\p{N}_$]+)*$/u;
+
+/** Why `name` cannot be a new object, or null if it can. */
+function objectNameProblem(game, name) {
+    if (!RE_NAME.test(name)) return 'An object name is letters, digits, _ and $, with : between tag parts';
+    const key = name.toLowerCase();
+    if (game.objects[key] || game.properties[key]) return `There is already an object called "${name}"`;
+    if (game.legendByLower[key]) return `"${name}" is already a legend name`;
+    return null;
+}
+
+/**
+ * Add an object: { name, colors: [..], rows: [..], after: block or null,
+ * layer: index into collisionLayerLines | 'new' | null, glyph: char or '' }.
+ * The engine refuses an object that is in no collision layer, so `layer`
+ * should be given; a glyph is what lets a level use it.
+ */
+function addObject(game, spec) {
+    const problem = objectNameProblem(game, spec.name);
+    if (problem) throw new Error(problem);
+    if (!spec.colors || !spec.colors.length) throw new Error('An object needs at least one colour');
+    const objects = sectionOf(game, 'objects');
+    if (!objects) throw new Error('This file has no OBJECTS section');
+
+    const edits = [];
+    // Straight after the chosen object if a blank line or the section's end
+    // follows it; otherwise lines that only look like part of it could end up
+    // attached to the new one, so go to the end of OBJECTS instead.
+    const end = lastContentLine(game, objects) + 1;
+    const after = spec.after;
+    const next = after ? after.lastLine + 1 : end;
+    const at = after && (next >= objects.end || isBlankLine(game, next)) ? next : end;
+    edits.push({ startLine: at, lineCount: 0, rows: ['', spec.name, spec.colors.join(' '), ...(spec.rows || [])] });
+
+    if (spec.layer === 'new') {
+        const section = sectionOf(game, 'collisionlayers');
+        if (!section) throw new Error('This file has no COLLISIONLAYERS section');
+        edits.push({ startLine: lastContentLine(game, section) + 1, lineCount: 0, rows: [spec.name] });
+    } else if (spec.layer !== null && spec.layer !== undefined) {
+        const layer = collisionLayerLines(game)[spec.layer];
+        if (!layer) throw new Error(`No collision layer ${spec.layer}`);
+        edits.push({ startLine: layer.line, lineCount: 1, rows: [appendToLine(game, layer.line, spec.name)] });
+    }
+
+    if (spec.glyph) {
+        const glyph = spec.glyph;
+        if (Array.from(glyph).length !== 1 || /[\s=]/.test(glyph)) throw new Error('A glyph is one character, not a space or =');
+        if (GLYPH_KEYWORDS.has(glyph.toLowerCase())) throw new Error(`"${glyph}" means something else to the engine - pick another glyph`);
+        if (glyphTaken(game, glyph)) throw new Error(`"${glyph}" is already a glyph`);
+        const legend = sectionOf(game, 'legend');
+        if (!legend) throw new Error('This file has no LEGEND section');
+        edits.push({ startLine: lastContentLine(game, legend) + 1, lineCount: 0, rows: [`${glyph} = ${spec.name}`] });
+    }
+    return applyGridEdits(game, edits);
+}
+
+const RULE_DIRECTIONS = new Set(['>', '<', '^', 'v']);
+const REFERENCE_SECTIONS = ['legend', 'sounds', 'collisionlayers', 'rules', 'winconditions', 'mappings'];
+
+/**
+ * What deleting an OBJECTS block would involve.
+ *
+ * Two kinds of mention are bookkeeping that goes with the object: a legend
+ * line that is just a glyph for it (`P = Player`), and its own name in a
+ * collision layer. Those are `removable`. Anything else - a rule, a win
+ * condition, a sound, a legend property or `and` tile, a copy: of it, a level
+ * using one of its glyphs - is a `reference`, and deleting while any remain
+ * would break the game, so the editor refuses and lists them instead.
+ */
+function objectUsage(game, block) {
+    const concrete = new Set(block.names.map(n => n.toLowerCase()));
+    for (const o of game.objects.__order || []) {
+        if (o === block || o.block === block) concrete.add(o.name.toLowerCase());
+    }
+    const legendLines = new Set();
+    const glyphs = new Set();
+    // Aliases are glyphs, and so is any one-character name: an object called
+    // `1` is drawn in a level as 1.
+    for (const n of block.names) if (Array.from(n).length === 1 || block.aliases.includes(n)) glyphs.add(n);
+    for (const entry of Object.values(game.legend)) {
+        if (entry.objects.length === 1 && concrete.has(entry.objects[0].toLowerCase())) {
+            legendLines.add(entry.line);
+            glyphs.add(entry.key);
+        }
+    }
+    const glyphKeys = new Set([...glyphs].map(g => g.toLowerCase()));
+
+    // A rule may name a tagged object with a relative direction or a rule-only
+    // tag, `GridLines:>`, which resolves to nothing here. Err on the side of
+    // keeping the object: a tagged name this parser cannot resolve counts as
+    // a use when its first part matches one of the object's.
+    const heads = new Set([...concrete].filter(n => n.includes(':')).map(n => n.split(':')[0]));
+    const memo = new Map();
+    const hits = (tok) => {
+        const key = tok.toLowerCase();
+        if (concrete.has(key) || glyphKeys.has(key)) return true;
+        if (!memo.has(key)) {
+            const resolved = resolveNames(game, tok);
+            memo.set(key, resolved.some(n => concrete.has(n.toLowerCase()))
+                || (key.includes(':') && heads.has(key.split(':')[0]) && !resolved.length));
+        }
+        return memo.get(key);
+    };
+
+    const references = [];
+    const layerEdits = [];
+    // Comments and SVG can read as objects to this parser. A block whose name
+    // is not a name is not one the editor can find the edges of.
+    const unclear = (why) => references.push({ section: 'objects', line: block.headerLine, text: `${block.name}: ${why} - edit it in the text` });
+    const codeAt = i => (i >= 0 && i < game.lines.length ? game.stripped[i].code.trim() : '');
+    const objects = sectionOf(game, 'objects');
+    const blockAt = i => game.blocks.find(b => b.headerLine <= i && i <= b.lastLine);
+    const hasColors = b => b.colors.length > 0 && looksLikeColorLine(b.colors.join(' '));
+    if (!RE_NAME.test(block.name)) unclear('this does not read as an object');
+    else if (!hasColors(block)) unclear('the editor cannot find its colours');
+    else {
+        // An object with no blank line before or after it is fine in the `;`
+        // one-line form, but if either neighbour is unclear, so are the edges.
+        for (const i of [block.headerLine - 1, block.lastLine + 1]) {
+            const neighbour = i >= objects.start && i < objects.end && codeAt(i) ? blockAt(i) : null;
+            if (neighbour && !hasColors(neighbour)) { unclear('the editor cannot tell where it ends'); break; }
+        }
+    }
+    for (let i = block.headerLine; i <= block.lastLine; i++) {
+        if (codeAt(i).startsWith('{')) { unclear('canvas objects are not handled here'); break; }
+    }
+    // Canvas objects pull others in by name: {"ps-include":"ArrowIncl"}.
+    for (let i = objects.start; i < objects.end; i++) {
+        if (i >= block.headerLine && i <= block.lastLine) continue;
+        const m = codeAt(i).match(/"ps-include"\s*:\s*"([^"]+)"/);
+        if (m && concrete.has(m[1].toLowerCase())) references.push({ section: 'objects', line: i, text: codeAt(i) });
+    }
+    // Prelude settings can name objects: PuzzleScript Plus's `mouse_left Click`.
+    const preludeEnd = game.sections.length ? game.sections[0].headerLine : 0;
+    for (let i = 0; i < preludeEnd; i++) {
+        const code = game.stripped[i].code.trim();
+        if (!code || RE_PRELUDE_TEXT.test(code)) continue;
+        if (code.split(/\s+/).slice(1).some(t => concrete.has(t.toLowerCase()))) references.push({ section: 'prelude', line: i, text: code });
+    }
+    for (const name of REFERENCE_SECTIONS) {
+        const section = sectionOf(game, name);
+        if (!section) continue;
+        for (let i = section.start; i < section.end; i++) {
+            if (legendLines.has(i)) continue;
+            const code = game.stripped[i].code.trim();
+            if (!code) continue;
+            if (name === 'collisionlayers' && !/^--/.test(code)) {
+                // The object's own name goes with it; anything that only
+                // resolves to it (a property, a tag class) is a reference.
+                const tokens = code.replace(/->/g, ' ').split(/[\s,]+/).filter(Boolean);
+                const own = tokens.filter(t => concrete.has(t.toLowerCase()));
+                const other = tokens.filter(t => !concrete.has(t.toLowerCase()));
+                // `Int Color AX -> temp:Int:Color:AX` only means something whole.
+                if (other.some(hits) || (own.length && code.includes('->'))) references.push({ section: name, line: i, text: code });
+                else if (own.length) layerEdits.push({ line: i, keep: other });
+                continue;
+            }
+            // In rules `>` `<` `^` `v` are directions, never glyphs, and the
+            // text after `message` or `status` is prose.
+            const words = name === 'rules'
+                ? code.replace(/\([^)]*\)/g, ' ').replace(/\b(message|status)\b.*$/i, '') : code;
+            const tokens = words.replace(/->/g, ' ').split(/[\s,|\[\]=]+/).filter(Boolean)
+                .filter(t => name !== 'rules' || !RULE_DIRECTIONS.has(t.toLowerCase()));
+            if (tokens.some(hits)) references.push({ section: name, line: i, text: code });
+        }
+    }
+    for (const other of game.blocks) {
+        if (other === block || !other.copyFrom) continue;
+        if (hits(other.copyFrom)) references.push({ section: 'objects', line: other.headerLine, text: `${other.name}: copy:${other.copyFrom}` });
+    }
+    // The engine itself needs a Background and a Player.
+    for (const required of ['background', 'player']) {
+        if (concrete.has(required) && !game.properties[required]) {
+            references.push({ section: 'engine', line: block.headerLine, text: `every game needs a ${required === 'player' ? 'Player' : 'Background'}` });
+        }
+    }
+    const fold = c => (game.caseSensitive ? c : c.toLowerCase());
+    const levelGlyphs = new Set([...glyphs].filter(g => Array.from(g).length === 1).map(fold));
+    game.grids.forEach((grid, g) => {
+        const used = new Set();
+        for (const row of grid.rows) for (const ch of row) if (levelGlyphs.has(fold(ch))) used.add(ch);
+        if (used.size) references.push({ section: 'levels', line: grid.lines[0], text: `level ${g + 1} uses ${[...used].join(' ')}` });
+    });
+    return { references, legendLines: [...legendLines].sort((a, b) => a - b), layerEdits, glyphs: [...glyphs] };
+}
+
+/**
+ * Delete an OBJECTS block, its glyph-only legend lines and its collision layer
+ * entries. Throws, listing what uses it, if anything else refers to it.
+ */
+function deleteObject(game, block) {
+    const usage = objectUsage(game, block);
+    if (usage.references.length) {
+        const err = new Error(`${block.name} is still used`);
+        err.references = usage.references;
+        throw err;
+    }
+    const edits = [];
+    // Take one blank line with it, but never one that would join the objects
+    // either side: the `;` form writes objects with no blank between them.
+    const section = sectionOf(game, 'objects');
+    let start = block.headerLine;
+    let count = block.lastLine - block.headerLine + 1;
+    if (isInnerBlank(game, start + count)) count++;
+    else if (isBlankLine(game, start - 1) && start + count >= section.end) { start--; count++; }
+    edits.push({ startLine: start, lineCount: count, rows: [] });
+    for (const line of usage.legendLines) edits.push({ startLine: line, lineCount: 1, rows: [] });
+    for (const e of usage.layerEdits) {
+        if (!e.keep.length) { edits.push({ startLine: e.line, lineCount: 1, rows: [] }); continue; }
+        const raw = game.lines[e.line];
+        const code = game.stripped[e.line].code.trim();
+        const at = raw.indexOf(code);
+        const sep = code.includes(',') ? ', ' : ' ';
+        edits.push({ startLine: e.line, lineCount: 1, rows: [raw.slice(0, at) + e.keep.join(sep) + raw.slice(at + code.length)] });
+    }
+    const text = applyGridEdits(game, edits);
+    // Some layouts (SVG sprites, for one) this parser only half understands.
+    // If the result does not read back as the same objects less this one,
+    // refuse rather than hand back a damaged file.
+    const after = parseGame(text).blocks.map(b => b.name);
+    const expected = game.blocks.filter(b => b !== block).map(b => b.name);
+    if (after.join('\n') !== expected.join('\n')) {
+        throw new Error(`${block.name} is laid out in a way the editor cannot safely remove - delete it in the text`);
+    }
+    return text;
+}
+
 // Named distinctly rather than a generic `API`: in the browser these files
 // load as plain <script>s and share one global scope.
 const PSGAME_API = {
@@ -1204,6 +1611,16 @@ const PSGAME_API = {
     labelForCommands,
     orphanLabels,
     emptySections,
+    insertLevel,
+    deleteLevel,
+    levelUsage,
+    linkTargets,
+    collisionLayerLines,
+    freeGlyphs,
+    objectNameProblem,
+    addObject,
+    objectUsage,
+    deleteObject,
 };
 
 // Usable both as a CommonJS module (the psmap CLI) and as a plain <script> in
