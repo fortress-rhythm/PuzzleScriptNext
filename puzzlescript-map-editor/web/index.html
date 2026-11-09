@@ -12,6 +12,7 @@
 <div id="dropzone" class="dropzone hidden"><div>Drop a PuzzleScript file</div></div>
 
 <header class="topbar">
+  <span data-site-menu></span>
   <div class="brand">PuzzleScript <b>Map Editor</b></div>
 
   <nav class="modes" role="tablist" aria-label="Workspace">
@@ -149,6 +150,21 @@
 
   <aside class="panel levels-panel">
     <h2 id="listTitle">Levels</h2>
+    <div class="list-actions">
+      <button id="listNew">New</button>
+      <button id="listDuplicate" title="Add a copy of this level, after it">Duplicate</button>
+      <button id="listDelete">Delete</button>
+    </div>
+    <form id="objectForm" class="copy-form hidden">
+      <label>Name <input id="objName" autocomplete="off" spellcheck="false"></label>
+      <label>Colours <input id="objColors" autocomplete="off" spellcheck="false"></label>
+      <label>Collision layer <select id="objLayer" title="The engine refuses an object that is on no layer"></select></label>
+      <label>Glyph in maps <input id="objGlyph" maxlength="2" autocomplete="off" spellcheck="false" title="One character for the legend; leave empty for none"></label>
+      <div class="palette-actions">
+        <button type="submit" class="primary">Add</button>
+        <button type="button" id="objCancel">Cancel</button>
+      </div>
+    </form>
     <div id="levels" class="levels"></div>
     <div class="hint" id="listHint">
       Copy a rectangle in one level, switch to another, paste. The clipboard
@@ -189,5 +205,6 @@
 <script src="../src/psgame.js"></script>
 <script src="render.js"></script>
 <script src="app.js"></script>
+<script src="../../site-menu.js" data-mode="dropdown"></script>
 </body>
 </html>

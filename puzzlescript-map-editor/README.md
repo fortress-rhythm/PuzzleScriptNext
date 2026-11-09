@@ -133,6 +133,34 @@ colours, written after the current object as a `copy:` line and added to its
 source's collision layer (the engine refuses an object in none). The game is
 reloaded from the rewritten source, so undo starts again from there.
 
+### Adding and removing levels and objects
+
+The buttons over the list on the right act on what is selected in it.
+
+| Workspace | Button | Does |
+|---|---|---|
+| Maps | **New** | an empty level, the same size, straight after this one |
+| Maps | **Duplicate** | a copy of this level, straight after it |
+| Maps | **Delete** | removes this level's grid and one blank line beside it. The `MESSAGE`, `LEVEL` and `SECTION` lines around it stay; a heading left with no map shows as **+ add map** |
+| Sprites | **New…** | an object after this one: a name, colours, a collision layer (this object's, by default) and a free glyph for the legend. Its matrix starts as `sprite_size` filled with colour `0` |
+| Sprites | **Delete** | removes the object, its glyph-only legend lines (`P = Player`) and its own name in a collision layer |
+
+**Delete refuses rather than break the game.** An object that a rule, a
+win condition, a sound, a legend property or `and` tile, a `copy:`, a canvas
+`ps-include`, a prelude setting or a level still uses is not deleted. The
+places are listed instead, with line numbers as the file would be saved. So
+is `Background`, `Player`, and any object whose edges this parser cannot be
+sure of (canvas JSON, SVG, or a neighbour it misreads) - edit those in the
+text. A level is refused when a PuzzleScript Next `link` or `goto` would land
+somewhere else afterwards: an unnamed level is `Level N` by position, so
+adding or deleting one renumbers the rest. Give the target a `LEVEL` heading
+and it stays put.
+
+Each of these rewrites the source and reloads it, as **New copy:** does, so
+undo starts again from there. Nothing reaches the disk until **Download .txt**.
+Every demo game was checked in the real engine: no addition, and no deletion
+the editor allows, adds a compile error.
+
 ### The palette sampler
 
 The **Palette** dropdown in the left panel redraws the whole game — tiles,
@@ -309,8 +337,9 @@ is why a two-tile edit produces a two-line diff.
 Specifically:
 
 - **Level commands are read-only.** `MESSAGE`, `SECTION`, `LEVEL`, `GOTO`,
-  `LINK`, `TITLE` and `INPUT` are shown for reference but never written back.
-  Edit those in the text file.
+  `LINK`, `TITLE` and `INPUT` are shown for reference but never written back,
+  and adding or deleting a level leaves them where they are. Edit those in the
+  text file.
 - **Levels may be resized** without disturbing their neighbours.
 - **Line endings are preserved**, CRLF included.
 - **Ragged levels stay ragged.** A spreadsheet and a REXPaint canvas are both
@@ -348,8 +377,10 @@ round-trip guarantee. The corpus comes in four layers:
   are different tiles, and `nextsyntax.txt`, a small game in the PuzzleScript
   Next dialect that exercises every spelling listed above and compiles under
   the real engine.
-- **`../src/demo`** — inside PuzzleScriptNext, the full 94-game sweep runs
-  too. It self-skips otherwise.
+- **`../src/demo`** — the full sweep: every top-level demo through the
+  round trip, and every demo, subfolders included, through adding and
+  deleting levels and unused objects. These fail rather than skip if
+  `../src/demo` is missing.
 - **`../../charmroach/charmroach.txt`** — a real Next-dialect game, when its
   repository is checked out beside the engine. Self-skips otherwise.
 

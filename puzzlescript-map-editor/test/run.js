@@ -28,6 +28,16 @@ const SOKOBAN = fs.readFileSync(path.join(FIXTURES, 'sokoban.txt'), 'utf8');
 let passed = 0;
 const failures = [];
 
+/** Every .txt under src/demo, recursively. */
+function walkDemo(dir = DEMO, out = []) {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walkDemo(full, out);
+        else if (entry.name.endsWith('.txt')) out.push(full);
+    }
+    return out;
+}
+
 function test(name, fn) {
     try { fn(); passed++; }
     catch (e) { failures.push({ name, error: e }); }
@@ -1208,6 +1218,93 @@ test('real games: copy: lines in tapaban resolve to drawn sprites', () => {
     const left = game.objects['gridlines:down:left'];
     const right = game.objects['gridlines:down:right'];
     assert.deepStrictEqual(left.sprite.pixels, right.sprite.pixels.map(r => r.slice().reverse()));
+});
+
+// ------------------------------------------------- adding and removing things
+
+test('a new level goes after the current one, and deleting it restores the file', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'sokoban.txt'), 'utf8');
+    const game = psgame.parseGame(source);
+    const added = psgame.parseGame(psgame.insertLevel(game, 0, ['###', '#.#', '###']));
+    assert.strictEqual(added.grids.length, game.grids.length + 1);
+    assert.deepStrictEqual(added.grids[1].rows, ['###', '#.#', '###']);
+    assert.deepStrictEqual(added.grids[2].rows, game.grids[1].rows);
+    assert.strictEqual(psgame.deleteLevel(added, 1), source);
+});
+
+test('every demo level survives being added after and deleted again', () => {
+    let checked = 0;
+    for (const file of walkDemo()) {
+        const source = fs.readFileSync(file, 'utf8');
+        const game = psgame.parseGame(source);
+        // A file that ends in a grid with no final newline gains one; nothing else changes.
+        const trim = t => t.replace(/\r?\n$/, '');
+        for (let i = 0; i < game.grids.length; i++) {
+            const added = psgame.parseGame(psgame.insertLevel(game, i, ['ab', 'cd']));
+            assert.deepStrictEqual(added.grids[i + 1].rows, ['ab', 'cd'], `${file} grid ${i}`);
+            // Games that link to `Level N` refuse a change that renumbers it.
+            if (psgame.levelUsage(added, { delete: i + 1 }).references.length) continue;
+            assert.strictEqual(trim(psgame.deleteLevel(added, i + 1)), trim(source), `${file} grid ${i}`);
+            checked++;
+        }
+    }
+    assert.ok(checked > 1000, `only ${checked} levels checked`);
+});
+
+test('a new object gets its layer and glyph, and deleting it restores the file', () => {
+    const source = fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'sokoban.txt'), 'utf8');
+    const game = psgame.parseGame(source);
+    const glyph = psgame.freeGlyphs(game, 1)[0];
+    assert.ok(glyph && !game.legend[glyph]);
+    const text = psgame.addObject(game, { name: 'Gem', colors: ['yellow'], rows: ['00000', '00000', '00000', '00000', '00000'], layer: 1, glyph });
+    const added = psgame.parseGame(text);
+    assert.deepStrictEqual(added.objects.gem.colors, ['yellow']);
+    assert.strictEqual(added.layerIndex.get('gem'), 1);
+    assert.deepStrictEqual(added.legend[glyph].objects, ['Gem']);
+    assert.throws(() => psgame.addObject(game, { name: 'crate', colors: ['red'], layer: 'new' }), /already/);
+    assert.throws(() => psgame.addObject(game, { name: 'Gem', colors: ['red'], layer: 'new', glyph: 'P' }), /already a glyph/);
+    assert.strictEqual(psgame.deleteObject(added, added.objects.gem), source);
+});
+
+test('a level change that would move a link target is refused', () => {
+    const game = psgame.parseGame(fs.readFileSync(demoFile('next/yasban_link.txt'), 'utf8'));
+    assert.ok(psgame.linkTargets(game).every(l => l.grid >= 0));
+    // `link ... Level 9` names the ninth grid by position: deleting or adding
+    // before it renumbers it, and deleting it removes the target. Adding a
+    // level after the last one moves nothing.
+    const last = game.grids.length - 1;
+    assert.ok(psgame.levelUsage(game, { delete: 0 }).references.length > 0);
+    assert.ok(psgame.levelUsage(game, { insertAfter: 0 }).references.length > 0);
+    assert.ok(psgame.levelUsage(game, { delete: last }).references.length > 0);
+    assert.throws(() => psgame.deleteLevel(game, 0), /break a link/);
+    assert.strictEqual(psgame.levelUsage(game, { insertAfter: last }).references.length, 0);
+});
+
+test('an object in use is not deleted, and every use is listed', () => {
+    const game = psgame.parseGame(fs.readFileSync(path.join(__dirname, '..', 'fixtures', 'sokoban.txt'), 'utf8'));
+    const usage = psgame.objectUsage(game, game.objects.crate);
+    const sections = usage.references.map(r => r.section);
+    for (const s of ['legend', 'rules', 'winconditions', 'levels']) assert.ok(sections.includes(s), s);
+    // Its own glyph line and layer entry are bookkeeping, not uses.
+    assert.ok(!usage.references.some(r => /^\*\s*=\s*Crate$/.test(r.text)));
+    assert.throws(() => psgame.deleteObject(game, game.objects.crate), /still used/);
+    assert.ok(psgame.objectUsage(game, game.objects.background).references.some(r => r.section === 'engine'));
+});
+
+test('demo objects that nothing uses delete cleanly', () => {
+    let deleted = 0;
+    for (const file of walkDemo()) {
+        const game = psgame.parseGame(fs.readFileSync(file, 'utf8'));
+        for (const block of game.blocks) {
+            if (psgame.objectUsage(game, block).references.length) continue;
+            let text;
+            try { text = psgame.deleteObject(game, block); } catch (e) { continue; }  // refused, file untouched
+            const after = psgame.parseGame(text);
+            assert.deepStrictEqual(after.blocks.map(b => b.name), game.blocks.filter(b => b !== block).map(b => b.name), `${file} ${block.name}`);
+            deleted++;
+        }
+    }
+    assert.ok(deleted > 80, `only ${deleted} deleted`);
 });
 
 // ---------------------------------------------------------------------------

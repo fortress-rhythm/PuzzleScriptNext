@@ -15,7 +15,8 @@
     "check:ai-pack": "node tools/build_ai_pack.js --check",
     "check:drills": "node drills/check.js --self-test",
     "build:ai-pack": "node tools/build_ai_pack.js",
-    "build": "node compile.js"
+    "build": "node compile.js && node tools/inline_standalone.js",
+    "build:release": "node compile.js --release && node tools/inline_standalone.js"
   },
   "dependencies": {
     "compress-images": "^2.0.5",
