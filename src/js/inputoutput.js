@@ -795,9 +795,11 @@ function mouseInput(id, coordIndex) {
 			cell.ibitset(id);
 			curLevel.setCell(coordIndex, cell);
 			var inputdir = 5;
+			if (typeof A11y !== 'undefined') A11y.beginTurn(inputdir);
 			if (processInput(inputdir,false,false,bak)) {
 				redraw();
 			}
+			if (typeof A11y !== 'undefined') A11y.maybeEndTurn();
 		} catch(e) {
 			console.log(e);
 			consolePrint(e,true);
@@ -805,9 +807,11 @@ function mouseInput(id, coordIndex) {
 	} else {
 		// don't drop an object, feed in a movement instead
 		const inputdir = (id == -1) ? 6 : 7;  // todo: mclick
+		if (typeof A11y !== 'undefined') A11y.beginTurn(inputdir);
 		if (processInput(inputdir, false, false, bak, coordIndex)) {
 			redraw();
 		}
+		if (typeof A11y !== 'undefined') A11y.maybeEndTurn();
 	}
 }
 
@@ -1332,6 +1336,9 @@ function checkKey(e,justPressed) {
 	}
 	if (e.keyCode >= 0x70 && e.keyCode <= 0x83) // function keys
 		return;
+	// optional screen-reader layer (a11y.js): V toggles it; H, G, N, I/J/K/L, O, B, Tab when on
+	if (typeof A11y !== 'undefined' && A11y.handleKey(e.keyCode, justPressed))
+		return prevent(e);
 	
     var inputdir=-1;
     switch(e.keyCode) {
@@ -1390,6 +1397,7 @@ function checkKey(e,justPressed) {
                 pushInput("undo");
                 DoUndo(false,true);
                 canvasResize(); // calls redraw
+                if (typeof A11y !== 'undefined') A11y.afterUndo();
             	return prevent(e);
             }
             break;
@@ -1637,9 +1645,11 @@ function checkKey(e,justPressed) {
 
             } else {
                 pushInput(inputdir);
+                if (typeof A11y !== 'undefined') A11y.beginTurn(inputdir);
                 if (processInput(inputdir)) {
                     redraw();
                 }
+                if (typeof A11y !== 'undefined') A11y.maybeEndTurn();
 	        }
 	       	return prevent(e);
     	}
@@ -1677,6 +1687,10 @@ function update() {
                 autotick=0;
             }
         }
+    }
+    if (typeof A11y !== 'undefined') {
+        A11y.maybeEndTurn();   // speaks once an again-chain has settled
+        A11y.pollScreen();     // title, menu and message screens
     }
     if (quittingMessageScreen) {
 		//console.log(`UP TS=${prevTimestamp} Timer = ${timer} qms=${quittingMessageScreen}`);

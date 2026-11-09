@@ -3863,6 +3863,8 @@ function compile(command, text, randomseed) {
 
     console.log(`End compile: ${state && !state.invalid && errorCount == 0 ? "ok" : "FAILED, error count = " + errorCount}`);
 
+    if (typeof A11y !== 'undefined') A11y.onCompiled(state, text);
+
     if (state.levels && state.levels.length === 0) {
         logError('No levels found. Add some levels!', undefined, true);
     }

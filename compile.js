@@ -168,6 +168,7 @@ ncp("./src", "./bin/", function (err) {
                 "./src/js/colors.js",
                 "./src/js/graphics.js",
                 "./src/js/inputoutput.js",
+                "./src/js/a11y.js",
                 "./src/js/mobile.js",
                 "./src/js/buildStandalone.js",
                 "./src/js/engine.js",
@@ -215,6 +216,7 @@ ncp("./src", "./bin/", function (err) {
                 "./src/js/parser.js",
                 "./src/js/compiler.js",
                 "./src/js/inputoutput.js",
+                "./src/js/a11y.js",
                 "./src/js/mobile.js"];
 
             corpus = {};

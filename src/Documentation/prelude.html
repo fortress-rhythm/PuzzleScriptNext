@@ -455,6 +455,13 @@ late [ Temp ] -> [ ]</code></pre>
       <dt>scanline</dt>
       <dd>Applies a scanline visual effect - only draws every other line. Weird.</dd>
 
+      <dt>screen_reader</dt>
+      <dd>Turns on spoken play for blind and low-vision players: after each turn, what moved, appeared or changed is announced
+        to the player's screen reader, and H, G, N, I/J/K/L and O describe the level. Players can also turn it on with V,
+        or with <code>?sr=1</code> on the page address. Objects can be given spoken names with comments such as
+        <code>Crate (@say wooden crate)</code>. This fork only; other engines ignore it.
+        See <a href="https://github.com/fortress-rhythm/PuzzleScriptNext/blob/master/doc/accessibility.md">doc/accessibility.md</a>.</dd>
+
       <dt>sitelock_origin_whitelist <img src="../images/psplus.png" title="PuzzleScript Plus" height="16"></dt>
       <dd>Causes your game to only be able to run on websites with the listed origins, separated by whitespaces. 
         An origin is for example <b>https://polyomino.com</b>.</dd>
