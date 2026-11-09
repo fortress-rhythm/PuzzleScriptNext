@@ -67,7 +67,7 @@ Then open <http://localhost:8020/>.
 | Serve locally | Node 16+ or Python 3 |
 | Run `npm test`, `npm run check:games`, `npm run check:export`, `npm run check:ai-pack`, or rebuild the export template with `npm run build:template` | Node 16+, with no `npm install` |
 | Use the palette tools in `tools/` | [uv](https://docs.astral.sh/uv/) |
-| Build the minified `bin/` with `npm run build` | Node and `npm install`. Its image tools need native binaries and fail on some machines. Nothing else depends on it. |
+| Build the minified `bin/` with `npm run build` | Node and `npm ci` (not `npm install`, which rewrites the lock file). Its image tools need native binaries and fail on some machines. Nothing else depends on it. |
 
 CI runs the checks on every push (`.github/workflows/check.yml`).
 
