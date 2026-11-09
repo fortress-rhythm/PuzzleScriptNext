@@ -36,6 +36,10 @@ command, and which PuzzleScript Next spellings it reads.
 Why there is only one copy of the editor now, what changed when the standalone
 was archived, and how to bring it back. Only relevant if you want it back.
 
+## What has actually been tested
+
+[`feature-status.md`](feature-status.md) tracks every feature on three lines: built, checked by CI, and tested by a person. A feature only counts once a person has tested it. It also holds the order of work for the accessibility branch.
+
 ## If you just want to do the thing
 
 | you want to | do this |
