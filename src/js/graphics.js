@@ -443,6 +443,9 @@ function redraw() {
     if (textMode)
         redrawTextMode();
     else redrawCellGrid(curLevel);
+    // optional screen-reader layer (a11y.js): "Press V to toggle voice mode", drawn so it is never read aloud
+    if (typeof A11y !== 'undefined' && !levelEditorOpened)
+        A11y.drawHint(ctx, canvas, yoffset);
 }
 
 // option to draw custom font text in cells could be a prelude setting if desired

@@ -47,7 +47,8 @@ with today's date and a few words.
 | Setup page (`doc/setup.html`) | master | none | — | untested |
 | Export template kept current | master | `check:export` (in CI) | — | untested |
 | Rule-writing drills (`drills/`) | `claude/lucid-faraday-5nb6wm` | `check:drills` (in CI) checks the answers pass and the starters fail | — | branch |
-| Screen-reader layer (`a11y.js`) | `a11y-screen-reader` | `test:a11y`: 16 unit tests of the diff and text logic; **not in CI** | — | branch |
+| Voice mode / screen-reader layer (`a11y.js`), with the on-screen V hint | `claude/lucid-faraday-5nb6wm` (merged in from `a11y-screen-reader`) | `test:a11y` (in CI): 17 unit tests, plus 19 engine-connection tests that play the demo through the real engine, in both comment styles | — | branch |
+| Tab never trapped in the game (engine change, all games) | `claude/lucid-faraday-5nb6wm` | `test:a11y` engine tests (in CI) | — | branch |
 
 ## What "tested" means for each
 
@@ -71,60 +72,11 @@ that would show whether the feature does its job.
   without already knowing the steps.
 - **Drills:** do drills 01–04 for real. Note where the hint or the checker's
   output didn't help.
-- **Screen reader:** see the accessibility order of work below, step 1.
+- **Voice mode:** the three steps under *Testing* in [`accessibility.md`](accessibility.md).
+- **Tab:** in any game, click the game, then press Tab. Focus should move to the next control on the page, and clicking the game should bring keys back.
 
 ## Accessibility: order of work
 
-What's on the `a11y-screen-reader` branch today:
-
-- One commit, based on current master.
-- Its 16 unit tests, the map editor suite and the export check all pass.
-- The demo game opens in `psmap`.
-
-Its "Not done yet" list in `doc/accessibility.md` holds four items. Here they
-are in order, together with things noticed while reviewing it:
-
-1. **Test what's there before adding anything.** Open `src/demo/a11y-demo.txt`
-   with `?sr=show` and play both levels, reading the printed text. Then do the
-   same with NVDA running and the monitor off. Best of all, ask one blind or
-   low-vision player to try it. Those results should reorder everything after
-   this step.
-2. **Small fixes found in review:**
-   - Add `npm run test:a11y` to `.github/workflows/check.yml`. It isn't
-     there yet, so nothing stops the unit tests from breaking.
-   - **Tab is a keyboard trap while speech is on.** `handleKey` takes Tab for
-     bookmarks and always returns true, so focus can never leave the game.
-     That is a WCAG 2.1.2 problem, and it hits exactly the players this
-     feature is for. Move bookmark cycling to another key, or let Tab leave
-     when there are no bookmarks, and say how to leave in the spoken label.
-   - V switches speech on site-wide and remembers it in `localStorage`. A
-     sighted author who presses V by accident in the editor gets speech in
-     every game until they press V again. Decide whether the editor should
-     respect that setting or ignore it.
-   - Mention `screen_reader` and the `@say`, `@quiet`, `@speak`,
-     `@landmark` tags in `doc/ai-context-pack.md`, so AI help writes games
-     that read well. Add a line to the top-level README's feature list too.
-3. **An end-to-end automated check.** The unit tests cover the text logic but
-   not the hooks into the engine (turn start/end, `again` chains, undo,
-   restart). `drills/check.js` already runs the real engine in Node. Load
-   `a11y.js` the same way, play the demo's moves, and assert on what is said.
-   That catches a hook breaking when the engine changes.
-4. **Merge.**
-5. **Win conditions with progress** ("All crates on targets: 2 of 3"). A blind
-   player can't see what the goal is, so this is the most useful item on the
-   list.
-6. **Author tooling:** a `psmap check` warning for objects that will be
-   narrated but look like helper machinery (no legend character, never placed
-   in a level, not `@quiet`). The doc already calls this "the main thing to
-   check", and right now only the author's memory checks it.
-7. **Jump the inspector to the next object of one kind.**
-8. **On-screen buttons for phone screen readers.** This needs new UI and
-   testing on real phones, so it's a bigger job.
-9. **Verbosity levels, absolute coordinates.** Wait for step 1's players to
-   ask for them.
-
-Alongside, as a separate track: low-vision and colour-blind players aren't
-served by the screen reader, but they are by palette contrast
-(`palette_chart.py` already measures it) and by zoom (`min_cell_size`). Test
-those two first (see the table above), then decide whether a "high contrast"
-palette or a forced-zoom option is worth building.
+This lives in [`accessibility.md`](accessibility.md#order-of-work) now, next
+to the feature it plans. In short: the review fixes and the engine-connection
+tests are done. Next is a test by a person, and nothing new until then.

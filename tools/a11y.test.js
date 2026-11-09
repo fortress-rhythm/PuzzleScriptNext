@@ -152,6 +152,15 @@ test('relPhrase', () => {
 	assert.strictEqual(Core.relPhrase(12, 18, 5), '1 right, 1 down');
 });
 
+test('readObjectMeta reads // comment tags too', () => {
+	const src = 'Crate // @say wooden crate @landmark\nred\nRelay //@quiet\nblue\nWall // just a wall\ngrey';
+	const objs = { crate: { lineNumber: 1 }, relay: { lineNumber: 3 }, wall: { lineNumber: 5 } };
+	const meta = Core.readObjectMeta(src, objs);
+	assert.deepStrictEqual(meta.crate, { say: 'wooden crate', landmark: true });
+	assert.deepStrictEqual(meta.relay, { quiet: true });
+	assert.strictEqual(meta.wall, undefined);
+});
+
 test('readObjectMeta reads comments on the name line only', () => {
 	const src = [
 		'OBJECTS',

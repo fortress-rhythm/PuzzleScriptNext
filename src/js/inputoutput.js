@@ -1336,7 +1336,11 @@ function checkKey(e,justPressed) {
 	}
 	if (e.keyCode >= 0x70 && e.keyCode <= 0x83) // function keys
 		return;
-	// optional screen-reader layer (a11y.js): V toggles it; H, G, N, I/J/K/L, O, B, Tab when on
+	// Tab is never taken, so keyboard and screen-reader users can always move
+	// focus out of the game (WCAG 2.1.2). The game has no use for it.
+	if (e.keyCode === 9)
+		return;
+	// optional screen-reader layer (a11y.js): V toggles it; H, G, N, I/J/K/L, O, B, F when on
 	if (typeof A11y !== 'undefined' && A11y.handleKey(e.keyCode, justPressed))
 		return prevent(e);
 	

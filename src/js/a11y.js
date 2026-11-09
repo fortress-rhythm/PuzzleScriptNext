@@ -317,6 +317,8 @@ function formatTurn(events, ctx) {
  * Returns {lowerName: {say, quiet, speak, landmark}}.
  */
 const META_RE = /\(\s*@(say|quiet|speak|landmark)\b([^)]*)\)/gi;
+// the same tags after a // comment: each runs to the next @tag or the end of the line
+const SLASH_META_RE = /@(say|quiet|speak|landmark)\b([^@]*)/gi;
 function readObjectMeta(source, objects) {
 	const lines = source.split('\n');
 	const out = {};
@@ -336,6 +338,16 @@ function readObjectMeta(source, objects) {
 		while ((r = META_RE.exec(line))) {
 			const key = r[1].toLowerCase();
 			m[key] = key === 'say' ? r[2].trim() : true;
+		}
+		// games written with // comments (PuzzleScript Next): Crate // @say wooden crate @landmark
+		const slash = line.indexOf('//');
+		if (slash >= 0) {
+			SLASH_META_RE.lastIndex = 0;
+			const rest = line.slice(slash + 2);
+			while ((r = SLASH_META_RE.exec(rest))) {
+				const key = r[1].toLowerCase();
+				m[key] = key === 'say' ? r[2].trim() : true;
+			}
 		}
 		if (Object.keys(m).length) out[name] = m;
 	}
@@ -387,6 +399,7 @@ const A11y = {
 	inspector: null,         // cell index, or null when following the player
 	bookmarks: [],
 	bookmarkIdx: -1,
+	_offHintUntil: 0,        // after V turns voice mode off, keep the hint up briefly
 	_regionEl: null,
 	_announcedLevel: null,
 
@@ -449,12 +462,20 @@ const A11y = {
 		if (this.enabled) {
 			c.setAttribute('tabindex', '0');
 			c.setAttribute('aria-label', 'Game. Arrow keys move, X acts, Z undoes, R restarts. '
-				+ 'H describes your surroundings, G repeats, N lists everything, I J K L inspect, O reads the inspected square, V turns speech off.');
+				+ 'H describes your surroundings, G repeats, N lists everything, I J K L inspect, O reads the inspected square, '
+				+ 'B bookmarks it, F steps through bookmarks, V turns voice mode off. Tab leaves the game.');
 			// role=application makes screen readers pass letter keys to the game instead of browse mode
 			if (wrap) wrap.setAttribute('role', 'application');
 			if (wrap && !wrap.getAttribute('aria-label')) wrap.setAttribute('aria-label', 'Puzzle game');
 			try { c.focus({ preventScroll: true }); } catch (e) {}
 			if (typeof lastDownTarget !== 'undefined') lastDownTarget = c;
+			// Keys follow real focus while voice mode is on: Tab out and the
+			// game stops taking keys; Tab (or click) back in and it takes them again.
+			if (!c._a11yFocusHooked) {
+				c._a11yFocusHooked = true;
+				c.addEventListener('focus', () => { if (this.enabled && typeof lastDownTarget !== 'undefined') lastDownTarget = c; });
+				c.addEventListener('blur', () => { if (this.enabled && typeof lastDownTarget !== 'undefined' && lastDownTarget === c) lastDownTarget = null; });
+			}
 		} else {
 			c.removeAttribute('aria-label');
 			if (wrap && wrap.getAttribute('role') === 'application') wrap.removeAttribute('role');
@@ -669,12 +690,17 @@ const A11y = {
 			try { localStorage.setItem('ps_a11y', this.enabled ? '1' : '0'); } catch (e) {}
 			this._ensureRegion();
 			this._applyEnabled();
-			if (this.enabled) this.say('Speech on. Press H for surroundings, V to turn off.');
-			else if (this._regionEl) this._regionEl.textContent = 'Speech off.';
+			if (this.enabled) this.say('Voice mode on. Press H for surroundings, V to turn it off.');
+			else {
+				if (this._regionEl) this._regionEl.textContent = 'Voice mode off.';
+				this._offHintUntil = Date.now() + 3000;
+				setTimeout(() => this._redraw(), 3100);
+			}
+			this._redraw();
 			return true;
 		}
 		if (!this._ready()) return false;
-		if (!justPressed) return [72, 71, 78, 79, 66, 9, 73, 74, 75, 76].indexOf(keyCode) >= 0;
+		if (!justPressed) return [72, 71, 78, 79, 66, 70, 73, 74, 75, 76].indexOf(keyCode) >= 0;
 		switch (keyCode) {
 			case 72: this.say(this.surroundingsText()); return true;            // H
 			case 71: this.say(this.lastFull || 'Nothing yet.'); return true;   // G
@@ -697,7 +723,8 @@ const A11y = {
 				this.say(`Bookmark ${this.bookmarks.indexOf(c) + 1} set. ` + this.inspectorText(c));
 				return true;
 			}
-			case 9: {                                                           // Tab
+			// Not Tab: a screen-reader user must always be able to Tab out of the game (WCAG 2.1.2).
+			case 70: {                                                          // F
 				if (!this.bookmarks.length) { this.say('No bookmarks. Press B to set one.'); return true; }
 				this.bookmarkIdx = (this.bookmarkIdx + 1) % this.bookmarks.length;
 				const c = this.bookmarks[this.bookmarkIdx];
@@ -707,6 +734,41 @@ const A11y = {
 			}
 		}
 		return false;
+	},
+
+	_redraw() {
+		try { if (typeof redraw === 'function' && typeof canvas !== 'undefined' && canvas) redraw(); } catch (e) {}
+	},
+
+	// Text for the visible hint, or null for none. Drawn on the canvas, so
+	// screen readers never read it: it is for whoever is looking at the screen.
+	hintText() {
+		if (this.enabled) return 'Press V to toggle voice mode';
+		if (Date.now() < this._offHintUntil) return 'Voice mode off. Press V to toggle voice mode';
+		return null;
+	},
+
+	// Called at the end of redraw(): the hint goes in the top margin, or on a
+	// dark band across the top of the game when there is no margin to use.
+	drawHint(ctx, canvas, topMargin) {
+		const text = this.hintText();
+		if (!text || !ctx || !canvas) return;
+		const size = Math.max(10, Math.min(16, Math.round(canvas.height / 32)));
+		const band = size + 8;
+		ctx.save();
+		ctx.font = `${size}px sans-serif`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		const inMargin = topMargin >= band;
+		if (!inMargin) {
+			ctx.fillStyle = 'rgba(0,0,0,0.65)';
+			ctx.fillRect(0, 0, canvas.width, band);
+		}
+		ctx.fillStyle = inMargin && typeof state !== 'undefined' && state && state.fgcolor ? state.fgcolor : '#ddd';
+		ctx.globalAlpha = inMargin ? 0.75 : 1;
+		const y = inMargin ? Math.round(topMargin / 2) : Math.round(band / 2);
+		ctx.fillText(text, canvas.width / 2, y);
+		ctx.restore();
 	},
 
 	// ---- text screens (title, menus, messages). Polled from update().
