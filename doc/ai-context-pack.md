@@ -493,6 +493,18 @@ Positive Negative -> Negative Positive
   below N pixels per cell, the camera follows the player at that size
   instead. With no player, the level scrolls.
 - **LATE-rule tween warnings**: see the tweening caveat in section 9.
+- **Screen readers (voice mode)**: `screen_reader` in the prelude makes the
+  game speak to blind players: what changed each turn, the surroundings, and
+  an inspector. Players toggle it with V. It names things after their objects,
+  so help the author tag objects in a comment on the object's name line:
+  `Crate (@say wooden crate)` renames it, `(@quiet)` silences helper objects
+  (relays, counters, markers, flags: always suggest this for them),
+  `(@speak)` voices an invisible or background object, and `(@landmark)`
+  lists it first. Other engines ignore these comments. In a game that uses
+  `//` comments, write them `Crate // @say wooden crate @landmark` instead,
+  and make sure a `//` comment on its own line comes first in the file. If colour matters,
+  put it in the name. Keep levels small, and don't make sight-only puzzles
+  the point.
 
 ## 13. A complete small game, to calibrate against
 

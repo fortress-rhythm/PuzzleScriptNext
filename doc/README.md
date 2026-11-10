@@ -36,6 +36,14 @@ command, and which PuzzleScript Next spellings it reads.
 Why there is only one copy of the editor now, what changed when the standalone
 was archived, and how to bring it back. Only relevant if you want it back.
 
+**6. [`accessibility.md`](accessibility.md) — spoken play for blind players.**
+The `screen_reader` prelude flag, the keys, and the `@say` / `@quiet` /
+`@landmark` comments that make a game read well.
+
+## What has actually been tested
+
+[`feature-status.md`](feature-status.md) tracks every feature on three lines: built, checked by CI, and tested by a person. A feature only counts once a person has tested it. It also holds the order of work for the accessibility branch.
+
 ## If you just want to do the thing
 
 | you want to | do this |
@@ -50,7 +58,9 @@ was archived, and how to bring it back. Only relevant if you want it back.
 | edit a game's levels or sprites with the mouse | open `puzzlescript-map-editor/web/index.html`, or **MAP EDITOR** in the editor's toolbar |
 | see a game under every palette without editing it | the **Palette** dropdown in the map editor, or **PALETTES → in editor** in the engine editor |
 | make sure the map editor can open a game, in CI | `node puzzlescript-map-editor/src/cli.js check mygame.txt` |
-| run everything this fork checks | `npm test`, `npm run check:games`, `npm run check:drills`, `uv run tools/palette_test.py` |
+| make a game playable with a screen reader | `screen_reader` in the prelude; name things with `(@say …)`, silence helpers with `(@quiet)`; see `accessibility.md` |
+| hear what a screen reader would hear, without one | open the game with `?sr=show` on the address |
+| run everything this fork checks | `npm test`, `npm run test:a11y`, `npm run check:games`, `npm run check:drills`, `uv run tools/palette_test.py` |
 | set up a machine from scratch, or work out why EXPORT does nothing | [`setup.html`](setup.html) |
 
 ## What is generated, and from what

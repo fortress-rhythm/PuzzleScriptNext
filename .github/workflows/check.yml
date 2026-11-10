@@ -51,5 +51,8 @@ jobs:
       - name: The editor's AI context pack matches doc/ai-context-pack.md
         run: npm run check:ai-pack
 
+      - name: Screen-reader layer, unit and engine-connection tests
+        run: npm run test:a11y
+
       - name: Every drill answer passes its checks, every starter does not
         run: npm run check:drills
