@@ -1,0 +1,86 @@
+title Drill 09: Magnets
+author drills
+
+(
+  CONCEPT  ...  in a pattern means "any number of cells, including none":
+               [ A | ... | B ]    B anywhere in a straight line from A
+           Rules are tried in all four directions, so this finds every
+           B in line with A.
+
+  TASK     Crates are too heavy to push. Instead, every turn, each crate in
+           a straight line with a magnet M (up, down, left or right of it,
+           any distance) slides one cell toward that magnet. A crate that
+           is blocked stays put.
+
+  HINT     One rule. Which of  >  and  <  points back toward the magnet?
+
+  CHECK    node drills/check.js 09
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Crate
+Orange
+
+Target
+Yellow
+
+Magnet
+Red
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+M = Magnet
+O = Target
+@ = Crate and Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target
+Player, Wall, Crate, Magnet
+
+======
+RULES
+======
+
+[ Magnet | ... | Crate ] -> [ Magnet | ... | < Crate ]
+
+==============
+WINCONDITIONS
+==============
+
+All Target on Crate
+
+=======
+LEVELS
+=======
+
+########
+#M..O.*#
+#......#
+#P.....#
+########

@@ -46,10 +46,11 @@ was archived, and how to bring it back. Only relevant if you want it back.
 | change a colour in a shipped palette | edit `palettes/<name>.json`, then `uv run tools/palette_analysis.py --write` |
 | add a palette you found on Lospec | `palette-curation.md`, *Adding a palette, with the tool* |
 | check nothing has drifted | `uv run tools/palette_test.py` |
+| practise writing rules, with a checker | [`../drills/README.md`](../drills/README.md), then `node drills/check.js 01` |
 | edit a game's levels or sprites with the mouse | open `puzzlescript-map-editor/web/index.html`, or **MAP EDITOR** in the editor's toolbar |
 | see a game under every palette without editing it | the **Palette** dropdown in the map editor, or **PALETTES → in editor** in the engine editor |
 | make sure the map editor can open a game, in CI | `node puzzlescript-map-editor/src/cli.js check mygame.txt` |
-| run everything this fork checks | `npm test`, `npm run check:games`, `uv run tools/palette_test.py` |
+| run everything this fork checks | `npm test`, `npm run check:games`, `npm run check:drills`, `uv run tools/palette_test.py` |
 | set up a machine from scratch, or work out why EXPORT does nothing | [`setup.html`](setup.html) |
 
 ## What is generated, and from what

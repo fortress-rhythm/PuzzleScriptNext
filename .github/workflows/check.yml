@@ -50,3 +50,6 @@ jobs:
 
       - name: The editor's AI context pack matches doc/ai-context-pack.md
         run: npm run check:ai-pack
+
+      - name: Every drill answer passes its checks, every starter does not
+        run: npm run check:drills

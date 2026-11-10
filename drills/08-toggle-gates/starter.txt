@@ -1,0 +1,86 @@
+title Drill 08: Gates
+author drills
+
+(
+  CONCEPT  Rules run top to bottom, and each one repeats until it stops
+           matching, before the next rule starts. So a later rule can undo
+           an earlier one in the same turn.
+           action Player  matches when X (or space) was pressed.
+
+  TASK     Pressing X flips every gate: shut gates G open, open gates O
+           shut. An open gate the player is standing on stays open.
+
+           The two rules below look right, but pressing X shuts every gate
+           and never opens one. Turn on the rule trace (put verbose_logging
+           at the top, under author), press X, and read what happens. Then
+           fix it.
+
+  HINT     A gate needs to be "about to open" for a moment, in a state the
+           second rule does not touch. Add an object for that.
+
+  CHECK    node drills/check.js 08
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+GateShut
+DarkBlue
+
+GateOpen
+#223
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+G = GateShut
+O = GateOpen
+Q = Player and GateOpen
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+GateOpen
+Player, Wall, GateShut
+
+======
+RULES
+======
+
+[ action Player ] [ GateShut ] -> [ action Player ] [ GateOpen ]
+[ action Player ] [ GateOpen ] -> [ action Player ] [ GateShut ]
+
+==============
+WINCONDITIONS
+==============
+
+
+
+=======
+LEVELS
+=======
+
+#######
+#P.G..#
+#..O..#
+#######

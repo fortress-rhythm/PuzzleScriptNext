@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"name": "push a barrel", "map": ["######", "#PB..#", "######"], "keys": "R", "expect": ["######", "#.PB.#", "######"]},
+    {"name": "push a row of three", "map": ["#######", "#P*B*.#", "#######"], "keys": "R", "expect": ["#######", "#.P*B*#", "#######"]},
+    {"name": "a row against the wall stays put", "map": ["######", "#P*B*#", "######"], "keys": "R", "expect": ["######", "#P*B*#", "######"]},
+    {"name": "push a column upwards", "map": ["###", "#.#", "#B#", "#*#", "#P#", "###"], "keys": "U", "expect": ["###", "#B#", "#*#", "#P#", "#.#", "###"]},
+    {"name": "push the row so a crate lands on the target", "map": ["#######", "#PB*.O#", "#######"], "keys": "RR", "expect": "win"}
+  ]
+}

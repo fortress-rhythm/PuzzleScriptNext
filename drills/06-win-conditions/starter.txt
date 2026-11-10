@@ -1,0 +1,87 @@
+title Drill 06: Coins and gems
+author drills
+
+(
+  CONCEPT  WINCONDITIONS are checked after every turn, and all of them must
+           hold at once:
+               No Coin                every coin is gone
+               All Gem on Pedestal    every gem sits on a pedestal
+           (also: Some X, Some X on Y, No X on Y)
+
+  TASK     Walking over a coin collects it (it disappears). You win when
+           there are no coins left and every gem is on a pedestal.
+
+  HINT     One rule for collecting, two lines of win conditions.
+
+  CHECK    node drills/check.js 06
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Gem
+LightBlue
+
+Pedestal
+Gray
+
+Coin
+Yellow
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Gem
+_ = Pedestal
+$ = Coin
+@ = Gem and Pedestal
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Pedestal, Coin
+Player, Wall, Gem
+
+======
+RULES
+======
+
+[ > Player | Gem ] -> [ > Player | > Gem ]
+
+( write your rule here )
+
+==============
+WINCONDITIONS
+==============
+
+( write your win conditions here )
+
+=======
+LEVELS
+=======
+
+########
+#$.....#
+#..P*._#
+#.....$#
+########

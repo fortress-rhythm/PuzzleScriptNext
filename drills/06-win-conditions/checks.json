@@ -1,0 +1,8 @@
+{
+  "cases": [
+    {"name": "walking over a coin collects it", "map": ["#####", "#P$.#", "#####"], "keys": "R", "expect": ["#####", "#.P.#", "#####"]},
+    {"name": "gem on pedestal but a coin left: not won", "map": ["########", "#$.P*_.#", "########"], "keys": "R", "expect": "no win"},
+    {"name": "coins gone but gem off its pedestal: not won", "map": ["#######", "#P$*._#", "#######"], "keys": "R", "expect": "no win"},
+    {"name": "coins gone and gem on pedestal: won", "map": ["########", "#$.P*_.#", "########"], "keys": "RLLL", "expect": "win"}
+  ]
+}

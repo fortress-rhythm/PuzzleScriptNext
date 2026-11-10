@@ -1,0 +1,11 @@
+{
+  "cases": [
+    {"name": "enter an E tile moving right", "map": ["#####", "#PE.#", "#####"], "keys": "R", "expect": ["#####", "#.Q.#", "#####"]},
+    {"name": "an E tile blocks you moving left", "map": ["#####", "#EP.#", "#####"], "keys": "L", "expect": ["#####", "#EP.#", "#####"]},
+    {"name": "an E tile blocks you moving up", "map": ["###", "#E#", "#P#", "###"], "keys": "U", "expect": ["###", "#E#", "#P#", "###"]},
+    {"name": "an E tile blocks you moving down", "map": ["###", "#P#", "#E#", "###"], "keys": "D", "expect": ["###", "#P#", "#E#", "###"]},
+    {"name": "enter an N tile moving up", "map": ["###", "#G#", "#N#", "#P#", "###"], "keys": "UU", "expect": "win"},
+    {"name": "an N tile blocks you moving right", "map": ["#####", "#PN.#", "#####"], "keys": "R", "expect": ["#####", "#PN.#", "#####"]},
+    {"name": "you can step off an E tile any way", "map": ["####", "#.Q#", "#..#", "####"], "keys": "LD", "expect": ["####", "#.E#", "#P.#", "####"]}
+  ]
+}

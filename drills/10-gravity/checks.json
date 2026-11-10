@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"name": "push a boulder off a ledge and it falls", "map": ["#######", "#P*...#", "###.###", "###.###", "#######"], "keys": "R", "expect": ["#######", "#.P...#", "###.###", "###*###", "#######"]},
+    {"name": "step out from under a boulder", "map": ["#####", "#.*.#", "#.P.#", "#####"], "keys": "R", "expect": ["#####", "#...#", "#.*P#", "#####"]},
+    {"name": "boulders resting on boulders stay put", "map": ["#####", "#*..#", "#*P.#", "#####"], "keys": "R", "expect": ["#####", "#*..#", "#*.P#", "#####"]},
+    {"name": "boulders cannot be pushed up", "map": ["###", "#.#", "#*#", "#P#", "###"], "keys": "U", "expect": ["###", "#.#", "#*#", "#P#", "###"]},
+    {"name": "a stack falls when you step out", "map": ["####", "#*.#", "#*.#", "#P.#", "####"], "keys": "R", "expect": ["####", "#..#", "#*.#", "#*P#", "####"]}
+  ]
+}

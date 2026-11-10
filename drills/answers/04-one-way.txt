@@ -1,0 +1,91 @@
+title Drill 04: One-way tiles
+author drills
+
+(
+  CONCEPT  A direction word in front of a rule stops it rotating:
+               left [ ... ]      only the left-facing version runs
+           horizontal and vertical give you two directions at once.
+           A rule that keeps an object but drops its arrow
+               [ > Player | X ] -> [ Player | X ]
+           stops that move.
+
+  TASK     E tiles can only be entered by moving east (right). N tiles can
+           only be entered by moving north (up). Stepping off them works in
+           any direction. Reach the goal G.
+
+  HINT     Four short rules, or two if you use horizontal and vertical.
+
+  CHECK    node drills/check.js 04
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+EastOnly
+DarkBlue
+
+NorthOnly
+DarkGreen
+
+Goal
+Yellow
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+E = EastOnly
+N = NorthOnly
+G = Goal
+Q = Player and EastOnly
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+EastOnly, NorthOnly, Goal
+Player, Wall
+
+======
+RULES
+======
+
+left [ > Player | EastOnly ] -> [ Player | EastOnly ]
+vertical [ > Player | EastOnly ] -> [ Player | EastOnly ]
+down [ > Player | NorthOnly ] -> [ Player | NorthOnly ]
+horizontal [ > Player | NorthOnly ] -> [ Player | NorthOnly ]
+
+==============
+WINCONDITIONS
+==============
+
+All Player on Goal
+
+=======
+LEVELS
+=======
+
+#######
+#G....#
+#NEEE.#
+#.#.#.#
+#P....#
+#######

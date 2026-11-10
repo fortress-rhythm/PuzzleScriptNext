@@ -1,0 +1,105 @@
+title Drill 07: Keys and doors
+author drills
+
+(
+  CONCEPT  State lives in objects. "The player is carrying a key" is a
+           HasKey object sitting in the player's cell.
+           A rule can have several separate parts, matched anywhere:
+               [ A ] [ B ] -> [ ] [ B A ]     moves A to wherever B is
+
+  TASK     Walk over a key k to pick it up: the key vanishes and the player
+           gets a HasKey. HasKey must stay with the player wherever they go,
+           including when they bump a wall. Walking into a door D while
+           carrying a key opens it: the door and the HasKey both vanish and
+           the player steps in. Without a key, doors are walls. You can only
+           carry one key; walk over a second one and it stays on the floor.
+
+  HINT     Three rules. Watch out: HasKey is on its own layer, so if you
+           give it a movement it can walk into a wall the player bumped.
+
+  CHECK    node drills/check.js 07
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Door
+DarkRed
+
+Key
+Yellow
+.....
+.....
+.000.
+.....
+.....
+
+HasKey
+Yellow
+.....
+..0..
+.000.
+..0..
+.....
+
+Goal
+Green
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+D = Door
+k = Key
+G = Goal
+Q = Player and HasKey
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Key, Goal
+Player, Wall, Door
+HasKey
+
+======
+RULES
+======
+
+[ > Player HasKey | Door ] -> [ > Player | ]
+late [ HasKey no Player ] [ Player ] -> [ ] [ Player HasKey ]
+late [ Player Key no HasKey ] -> [ Player HasKey ]
+
+==============
+WINCONDITIONS
+==============
+
+All Player on Goal
+
+=======
+LEVELS
+=======
+
+#########
+#P.k.#..#
+#....D.G#
+#.k..#..#
+#########

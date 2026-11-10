@@ -1,0 +1,88 @@
+title Drill 05: Holes
+author drills
+
+(
+  CONCEPT  Each turn runs in order: your rules, then movement, then any
+           rules marked  late . A normal rule sees the board before anything
+           has moved; a late rule sees where things ended up.
+
+  TASK     A crate pushed into a hole fills it: the crate and the hole both
+           vanish on that same turn, leaving floor. The player cannot walk
+           into an open hole.
+
+  HINT     The push rule is written for you. Add one rule that blocks the
+           player, and one that fills the hole. Try the second without
+           late first and watch what happens.
+
+  CHECK    node drills/check.js 05
+)
+
+========
+OBJECTS
+========
+
+Background
+Black
+
+Wall
+Brown
+
+Player
+Pink
+
+Crate
+Orange
+
+Target
+Yellow
+
+Hole
+DarkGray
+
+=======
+LEGEND
+=======
+
+. = Background
+# = Wall
+P = Player
+* = Crate
+H = Hole
+O = Target
+@ = Crate and Target
+
+=======
+SOUNDS
+=======
+
+================
+COLLISIONLAYERS
+================
+
+Background
+Target, Hole
+Player, Wall, Crate
+
+======
+RULES
+======
+
+[ > Player | Crate ] -> [ > Player | > Crate ]
+
+( write your rules here )
+
+==============
+WINCONDITIONS
+==============
+
+All Target on Crate
+
+=======
+LEVELS
+=======
+
+########
+#......#
+#P*H*.O#
+#......#
+########

@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"name": "X opens a shut gate", "map": ["#####", "#P.G#", "#####"], "keys": "X", "expect": ["#####", "#P.O#", "#####"]},
+    {"name": "X shuts an open gate", "map": ["#####", "#P.O#", "#####"], "keys": "X", "expect": ["#####", "#P.G#", "#####"]},
+    {"name": "X flips both kinds at once", "map": ["######", "#PGO.#", "######"], "keys": "X", "expect": ["######", "#POG.#", "######"]},
+    {"name": "pressing X twice puts them back", "map": ["######", "#PGO.#", "######"], "keys": "XX", "expect": ["######", "#PGO.#", "######"]},
+    {"name": "a gate under the player stays open", "map": ["#####", "#Q.O#", "#####"], "keys": "X", "expect": ["#####", "#Q.G#", "#####"]}
+  ]
+}
